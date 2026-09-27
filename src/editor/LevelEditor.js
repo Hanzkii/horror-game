@@ -447,7 +447,8 @@ export default class LevelEditor {
         // Play level button
         this.dom.querySelector('#btn-play-level').addEventListener('click', () => {
             if (this.currentLevelData && this.onPlayLevel) {
-                this.toggle(false);
+                this.isOpen = false;
+                this.dom.style.display = 'none';
                 this.onPlayLevel(this.currentLevelData);
             }
         });

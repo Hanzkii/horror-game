@@ -97,6 +97,8 @@ async function init() {
     // Initialize Level Architect (Editor & Procedural Generator)
     const editor = new LevelEditor(canvas, scene, renderer, (customLevel) => {
         loadLevel(scene, customLevel, gameState, renderer);
+        currentState = GAME_STATES.STORY;
+        adaptiveAudio.startAmbient();
         hud.fadeIn(0.5);
     });
     
@@ -149,6 +151,12 @@ async function init() {
                 break;
                 
             case GAME_STATES.STORY:
+                if (editor.isOpen) {
+                    currentState = GAME_STATES.DESIGN_LEVEL;
+                    adaptiveAudio.stopAmbient();
+                    break;
+                }
+
                 if (input.isJustPressed('pause')) {
                     if (gameState.activeNote) {
                         gameState.activeNote = null;
@@ -246,8 +254,10 @@ async function init() {
                 
             case GAME_STATES.DESIGN_LEVEL:
                 if (!editor.isOpen) {
-                    currentState = GAME_STATES.MENU;
-                    mainMenu.showDesignMenu();
+                    if (currentState === GAME_STATES.DESIGN_LEVEL) {
+                        currentState = GAME_STATES.MENU;
+                        mainMenu.showDesignMenu();
+                    }
                 } else {
                     editor.render();
                     renderer.present();
