@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ECHO — A Horror Experience</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #fff;
+            font-family: monospace;
+            cursor: none;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 2s ease-in-out;
+        }
+        #loading-overlay h1 {
+            font-size: 4rem;
+            letter-spacing: 0.5rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay">
+        <div style="text-align: center;">
+            <h1>ECHO</h1>
+            <p style="font-size: 0.8rem; color: #666; letter-spacing: 0.2rem; margin-top: 1rem;">CLICK OR PRESS ANY KEY TO AWAKEN</p>
+            <p style="font-size: 0.7rem; color: #444; letter-spacing: 0.1rem; margin-top: 0.5rem;">[A / D] Move &bull; [SPACE] Jump &bull; [E] Interact &bull; [ESC] Pause</p>
+        </div>
+    </div>
+    <canvas id="gameCanvas" width="480" height="270"></canvas>
+    <script type="module" src="./src/main.js"></script>
+</body>
+</html>
