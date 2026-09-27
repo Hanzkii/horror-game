@@ -101,11 +101,16 @@ export default class HUD {
         }
 
         // Floor indicator & Clickable Pause Button in top right
-        if (gameState.currentLevel && gameState.floorIndex) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        if (gameState.isTestLevel) {
+            ctx.fillStyle = '#ffaa44';
             ctx.font = '10px monospace';
             ctx.textAlign = 'right';
-            ctx.fillText(`FLOOR B${gameState.floorIndex}`, width - 62, 16);
+            ctx.fillText('[TEST LEVEL MODE]', width - 62, 16);
+        } else if (gameState.currentLevel && gameState.floorIndex) {
+            ctx.fillStyle = gameState.isPublishedMap ? '#58a6ff' : 'rgba(255, 255, 255, 0.6)';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(gameState.isPublishedMap ? `B${gameState.floorIndex} [COMMUNITY]` : `FLOOR B${gameState.floorIndex}`, width - 62, 16);
         }
 
         // Clickable Pause Button in top right
@@ -261,6 +266,7 @@ export default class HUD {
                 this.pauseAction = 'quit';
             }
 
+            const quitLabel = gameState.isTestLevel ? 'EXIT TO EDITOR [CLICK/Q]' : 'QUIT TO MENU [CLICK/Q]';
             ctx.fillStyle = isHoverQuit ? 'rgba(180, 40, 40, 0.25)' : 'rgba(20, 24, 32, 0.7)';
             ctx.fillRect(btnX, quitY, btnW, btnH);
             ctx.strokeStyle = isHoverQuit ? '#ff5555' : '#444c66';
@@ -268,7 +274,7 @@ export default class HUD {
             ctx.strokeRect(btnX, quitY, btnW, btnH);
             ctx.fillStyle = isHoverQuit ? '#ff7777' : '#99aacc';
             ctx.font = '11px monospace';
-            ctx.fillText('QUIT TO MENU [CLICK/Q]', width / 2, quitY + 15);
+            ctx.fillText(quitLabel, width / 2, quitY + 15);
         }
 
         // Fade Overlay

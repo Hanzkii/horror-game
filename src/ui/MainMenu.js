@@ -17,16 +17,15 @@ export default class MainMenu {
         
         this.mode = 'main'; // 'main', 'designSubMenu', 'characterDesign', 'settings', 'controls'
         
-        // Main menu has DESCEND, DESIGN STUDIO, and SETTINGS
-        this.options = ['DESCEND', 'DESIGN STUDIO', 'SETTINGS'];
+        // Main menu has DESCEND, CHARACTER DESIGN, SETTINGS, and DESIGN STUDIO [DEV]
+        this.options = ['DESCEND', 'CHARACTER DESIGN', 'SETTINGS', 'DESIGN STUDIO [DEV]'];
         this.settingsReturnMode = 'main';
+        this.charReturnMode = 'main';
         
-        // Everything lives inside DESIGN STUDIO
+        // Developer tools inside DESIGN STUDIO
         this.designOptions = [
-            'LEVEL DESIGN',
-            'SOUND DESIGN',
-            'CHARACTER DESIGN',
-            'SETTINGS & AUDIO',
+            'LEVEL ARCHITECT',
+            'SOUND STUDIO',
             'CONTROLS',
             '< BACK TO TITLE'
         ];
@@ -227,16 +226,20 @@ export default class MainMenu {
                 if (this.selectedIndex === 0) {
                     this.selection = 'story';
                 } else if (this.selectedIndex === 1) {
-                    this.mode = 'designSubMenu';
+                    this.mode = 'characterDesign';
+                    this.charReturnMode = 'main';
                     this.selectedIndex = 0;
                 } else if (this.selectedIndex === 2) {
                     this.mode = 'settings';
                     this.settingsReturnMode = 'main';
                     this.selectedIndex = 0;
+                } else if (this.selectedIndex === 3) {
+                    this.mode = 'designSubMenu';
+                    this.selectedIndex = 0;
                 }
             }
         }
-        // --- 2. DESIGN STUDIO (Everything lives here) ---
+        // --- 2. DESIGN STUDIO [DEV] ---
         else if (this.mode === 'designSubMenu') {
             const count = this.designOptions.length;
 
@@ -254,28 +257,19 @@ export default class MainMenu {
             if (confirmPressed) {
                 this.playSfx('click');
                 switch (this.selectedIndex) {
-                    case 0: // LEVEL DESIGN
+                    case 0: // LEVEL ARCHITECT
                         this.selection = 'design_level';
                         break;
-                    case 1: // SOUND DESIGN
+                    case 1: // SOUND STUDIO
                         this.selection = 'design_sound';
                         break;
-                    case 2: // CHARACTER DESIGN
-                        this.mode = 'characterDesign';
-                        this.selectedIndex = 0;
-                        break;
-                    case 3: // SETTINGS & AUDIO
-                        this.mode = 'settings';
-                        this.settingsReturnMode = 'designSubMenu';
-                        this.selectedIndex = 0;
-                        break;
-                    case 4: // CONTROLS
+                    case 2: // CONTROLS
                         this.mode = 'controls';
                         this.selectedIndex = 0;
                         break;
-                    case 5: // BACK
+                    case 3: // BACK TO TITLE
                         this.mode = 'main';
-                        this.selectedIndex = 1;
+                        this.selectedIndex = 3;
                         break;
                 }
             }
@@ -283,7 +277,7 @@ export default class MainMenu {
             if (input.isJustPressed('pause')) {
                 this.playSfx('click');
                 this.mode = 'main';
-                this.selectedIndex = 1;
+                this.selectedIndex = 3;
             }
         }
         // --- 3. CHARACTER DESIGN STUDIO ---
@@ -315,8 +309,8 @@ export default class MainMenu {
                     this.cycleCharacterOption(clickedHitbox.targetIndex, 1);
                 } else if (clickedHitbox.action === 'back') {
                     this.playSfx('click');
-                    this.mode = 'designSubMenu';
-                    this.selectedIndex = 2;
+                    this.mode = this.charReturnMode || 'main';
+                    this.selectedIndex = (this.charReturnMode === 'main') ? 1 : 2;
                 } else {
                     this.selectedIndex = clickedHitbox.index;
                 }
@@ -325,8 +319,8 @@ export default class MainMenu {
             if (input.isJustPressed('confirm') || input.isJustPressed('interact')) {
                 if (this.selectedIndex === 5) { // BACK
                     this.playSfx('click');
-                    this.mode = 'designSubMenu';
-                    this.selectedIndex = 2;
+                    this.mode = this.charReturnMode || 'main';
+                    this.selectedIndex = (this.charReturnMode === 'main') ? 1 : 2;
                 } else {
                     this.cycleCharacterOption(this.selectedIndex, 1);
                 }
@@ -334,8 +328,8 @@ export default class MainMenu {
 
             if (input.isJustPressed('pause')) {
                 this.playSfx('click');
-                this.mode = 'designSubMenu';
-                this.selectedIndex = 2;
+                this.mode = this.charReturnMode || 'main';
+                this.selectedIndex = (this.charReturnMode === 'main') ? 1 : 2;
             }
         }
         // --- 4. SETTINGS & AUDIO ---
@@ -473,15 +467,15 @@ export default class MainMenu {
             ctx.font = '11px monospace';
             ctx.fillText('A Psychological Horror Experience', width / 2, height / 3 + 20);
             
-            ctx.font = '13px monospace';
-            const startY = height / 2 + 6;
+            ctx.font = '12px monospace';
+            const startY = height / 2 - 12;
             const itemH = 26;
 
             this.options.forEach((opt, i) => {
                 const y = startY + i * itemH;
                 const isSelected = (i === this.selectedIndex);
 
-                const boxW = 210;
+                const boxW = 220;
                 const boxH = 22;
                 const bx = width / 2 - boxW / 2;
                 const by = y - 15;
@@ -493,10 +487,66 @@ export default class MainMenu {
                     h: boxH
                 });
 
+                const isDevBtn = opt.includes('[DEV]');
+
                 if (isSelected) {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+                    ctx.fillStyle = isDevBtn ? 'rgba(110, 64, 201, 0.25)' : 'rgba(255, 255, 255, 0.12)';
                     ctx.fillRect(bx, by, boxW, boxH);
-                    ctx.strokeStyle = '#99aacc';
+                    ctx.strokeStyle = isDevBtn ? '#ab7df8' : '#99aacc';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(bx, by, boxW, boxH);
+                    ctx.fillStyle = isDevBtn ? '#d2a8ff' : '#ffffff';
+                    ctx.fillText(`>  ${opt}  <`, width / 2, y);
+                } else {
+                    ctx.fillStyle = isDevBtn ? 'rgba(25, 18, 38, 0.65)' : 'rgba(20, 22, 30, 0.6)';
+                    ctx.fillRect(bx, by, boxW, boxH);
+                    ctx.strokeStyle = isDevBtn ? '#442c6b' : '#303444';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(bx, by, boxW, boxH);
+                    ctx.fillStyle = isDevBtn ? '#b392f0' : '#888899';
+                    ctx.fillText(opt, width / 2, y);
+                }
+            });
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = '9px monospace';
+            ctx.fillText('[MOUSE CLICK] Select  •  [W/S] Move', width / 2, height - 12);
+        }
+        // --- 2. DESIGN STUDIO [DEV] SUB-MENU ---
+        else if (this.mode === 'designSubMenu') {
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#d2a8ff';
+            ctx.font = '20px monospace';
+            ctx.fillText('DEVELOPER STUDIO', width / 2, height / 4 - 4);
+
+            ctx.fillStyle = 'rgba(180, 190, 210, 0.5)';
+            ctx.font = '10px monospace';
+            ctx.fillText('Level Architect, Procedural Synthesis & Audio Forge', width / 2, height / 4 + 14);
+            
+            ctx.font = '12px monospace';
+            const startY = height / 2 - 16;
+            const itemH = 24;
+
+            this.designOptions.forEach((opt, i) => {
+                const y = startY + i * itemH;
+                const isSelected = (i === this.selectedIndex);
+
+                const boxW = 210;
+                const boxH = 20;
+                const bx = width / 2 - boxW / 2;
+                const by = y - 14;
+                this.hitboxes.push({
+                    index: i,
+                    x: bx,
+                    y: by,
+                    w: boxW,
+                    h: boxH
+                });
+
+                if (isSelected) {
+                    ctx.fillStyle = 'rgba(110, 64, 201, 0.25)';
+                    ctx.fillRect(bx, by, boxW, boxH);
+                    ctx.strokeStyle = '#ab7df8';
                     ctx.lineWidth = 1;
                     ctx.strokeRect(bx, by, boxW, boxH);
                     ctx.fillStyle = '#ffffff';
@@ -507,51 +557,7 @@ export default class MainMenu {
                     ctx.strokeStyle = '#303444';
                     ctx.lineWidth = 1;
                     ctx.strokeRect(bx, by, boxW, boxH);
-                    ctx.fillStyle = '#888899';
-                    ctx.fillText(opt, width / 2, y);
-                }
-            });
-
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.font = '9px monospace';
-            ctx.fillText('[MOUSE CLICK] Select  •  [W/S] Move', width / 2, height - 12);
-        }
-        // --- 2. DESIGN STUDIO SUB-MENU ---
-        else if (this.mode === 'designSubMenu') {
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '22px monospace';
-            ctx.fillText('DESIGN STUDIO', width / 2, height / 4);
-
-            ctx.fillStyle = 'rgba(180, 190, 210, 0.4)';
-            ctx.font = '10px monospace';
-            ctx.fillText('Architectural, Acoustic & Entity Forge', width / 2, height / 4 + 16);
-            
-            ctx.font = '12px monospace';
-            const startY = height / 2 - 20;
-            const itemH = 22;
-
-            this.designOptions.forEach((opt, i) => {
-                const y = startY + i * itemH;
-                const isSelected = (i === this.selectedIndex);
-
-                const boxW = 220;
-                const boxH = 18;
-                this.hitboxes.push({
-                    index: i,
-                    x: width / 2 - boxW / 2,
-                    y: y - 13,
-                    w: boxW,
-                    h: boxH
-                });
-
-                if (isSelected) {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-                    ctx.fillRect(width / 2 - boxW / 2, y - 13, boxW, boxH);
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillText(`>  ${opt}  <`, width / 2, y);
-                } else {
-                    ctx.fillStyle = (i === 5) ? '#996666' : '#888899';
+                    ctx.fillStyle = (i === this.designOptions.length - 1) ? '#ff7777' : '#c9d1d9';
                     ctx.fillText(opt, width / 2, y);
                 }
             });

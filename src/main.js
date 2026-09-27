@@ -79,16 +79,54 @@ async function init() {
     const soundStudio = new SoundStudio(audio);
     const adaptiveAudio = new AdaptiveAudio(audio, soundStudio);
 
+    let isTestLevelMode = false;
+
+    // Helper to get the next level in the main dungeon descent, injecting published community levels
+    function getNextDungeonLevel(floorIndex) {
+        let publishedList = [];
+        try {
+            const raw = localStorage.getItem('echo_published_levels');
+            if (raw) publishedList = JSON.parse(raw);
+        } catch (e) {}
+
+        // If there are published levels, integrate them into the descent!
+        const pubIdx = floorIndex - 2;
+        if (publishedList.length > 0 && pubIdx >= 0 && pubIdx < publishedList.length) {
+            const pub = publishedList[pubIdx];
+            gameState.isPublishedMap = true;
+            return {
+                ...pub,
+                name: `Depth B${floorIndex} [COMMUNITY: ${pub.name}]`,
+                isPublishedMap: true
+            };
+        }
+
+        gameState.isPublishedMap = false;
+        return generateProceduralLevel({
+            seed: Math.floor(Math.random() * 999999),
+            roomCount: Math.min(8, 4 + floorIndex),
+            hazardDensity: Math.min(0.75, 0.3 + floorIndex * 0.08),
+            verticality: Math.min(0.75, 0.4 + floorIndex * 0.08),
+            name: `Catacombs — Depth B${floorIndex}`
+        });
+    }
+
     // Handler for descending deeper when unlocking exit doors
     scene.onNextLevel = () => {
+        if (isTestLevelMode) {
+            // It was a test level from Level Architect — return back to editor!
+            if (audio) audio.play('stinger_sharp');
+            isTestLevelMode = false;
+            gameState.isTestLevel = false;
+            currentState = GAME_STATES.DESIGN_LEVEL;
+            adaptiveAudio.stopAmbient();
+            editor.toggle(true);
+            editor.showTooltipMsg('🎉 Test Level Completed! Exit door reached successfully.');
+            return;
+        }
+
         gameState.floorIndex = (gameState.floorIndex || 1) + 1;
-        const nextLevel = generateProceduralLevel({
-            seed: Math.floor(Math.random() * 999999),
-            roomCount: Math.min(8, 4 + gameState.floorIndex),
-            hazardDensity: Math.min(0.75, 0.3 + gameState.floorIndex * 0.08),
-            verticality: Math.min(0.75, 0.4 + gameState.floorIndex * 0.08),
-            name: `Catacombs — Depth B${gameState.floorIndex}`
-        });
+        const nextLevel = getNextDungeonLevel(gameState.floorIndex);
         loadLevel(scene, nextLevel, gameState, renderer);
         editor.loadLevel(nextLevel);
         hud.fadeIn(0.5);
@@ -96,6 +134,8 @@ async function init() {
 
     // Initialize Level Architect (Editor & Procedural Generator)
     const editor = new LevelEditor(canvas, scene, renderer, (customLevel) => {
+        isTestLevelMode = true;
+        gameState.isTestLevel = true;
         loadLevel(scene, customLevel, gameState, renderer);
         currentState = GAME_STATES.STORY;
         adaptiveAudio.startAmbient();
@@ -136,8 +176,11 @@ async function init() {
                 const sel = mainMenu.getSelection();
                 if (sel === 'story') { 
                     currentState = GAME_STATES.STORY; 
+                    isTestLevelMode = false;
+                    gameState.isTestLevel = false;
                     if (!gameState.currentLevel) {
                         gameState.floorIndex = 1;
+                        gameState.isPublishedMap = false;
                         loadLevel(scene, Level1, gameState, renderer);
                     }
                     adaptiveAudio.startAmbient();
@@ -362,7 +405,14 @@ async function init() {
                 } else if (pauseAction === 'quit' || input.keys['KeyQ']) {
                     gameState.isPaused = false;
                     adaptiveAudio.stopAmbient();
-                    currentState = GAME_STATES.MENU;
+                    if (isTestLevelMode) {
+                        isTestLevelMode = false;
+                        gameState.isTestLevel = false;
+                        currentState = GAME_STATES.DESIGN_LEVEL;
+                        editor.toggle(true);
+                    } else {
+                        currentState = GAME_STATES.MENU;
+                    }
                 }
                 break;
                 

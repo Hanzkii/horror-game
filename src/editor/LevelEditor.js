@@ -94,6 +94,9 @@ export default class LevelEditor {
                     <button id="btn-editor-open-sound" data-tooltip="Open Sound Design Studio & Audio Synthesizer" style="background: #6e40c9; border: 1px solid #8957e5; color: #ffffff; padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(110,64,201,0.4); transition: all 0.15s;">
                         <span>🎵</span> SOUND STUDIO
                     </button>
+                    <button id="btn-publish-level" data-tooltip="Publish this level into the main game descent pool for players to encounter" style="background: #1f6feb; border: 1px solid #388bfd; color: #ffffff; padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(31,111,235,0.4); transition: all 0.15s;">
+                        <span>🚀</span> PUBLISH TO GAME
+                    </button>
                     <button id="btn-play-level" data-tooltip="Playtest this dungeon layout immediately" style="background: #238636; border: 1px solid #2ea043; color: #ffffff; padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(35,134,54,0.4); transition: all 0.15s;">
                         <span>▶</span> TEST LEVEL
                     </button>
@@ -215,6 +218,16 @@ export default class LevelEditor {
                         <button class="preset-btn" data-preset="level1" data-tooltip="Handcrafted intro map with crypt, shaft, and spike room" style="padding: 6px 10px; font-size: 12px; background: #161b22; border: 1px solid #30363d; color: #c9d1d9; cursor: pointer; text-align: left; border-radius: 5px; font-weight: 500;">The Awakening (Original)</button>
                         <button class="preset-btn" data-preset="catacombs" data-tooltip="Moderate labyrinth with climbing towers and lore notes" style="padding: 6px 10px; font-size: 12px; background: #161b22; border: 1px solid #30363d; color: #c9d1d9; cursor: pointer; text-align: left; border-radius: 5px; font-weight: 500;">The Catacombs (Balanced)</button>
                         <button class="preset-btn" data-preset="gauntlet" data-tooltip="High-danger nightmare filled with spikes and multiple shadows" style="padding: 6px 10px; font-size: 12px; background: #161b22; border: 1px solid #30363d; color: #ffaaaa; cursor: pointer; text-align: left; border-radius: 5px; font-weight: 500;">The Gauntlet (Extreme)</button>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid #30363d; padding-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: 700; color: #58a6ff; text-transform: uppercase;">Published In Game</span>
+                        <span id="published-count-badge" style="background: #1f6feb; color: #ffffff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px;">0 POOL</span>
+                    </div>
+                    <div id="published-levels-list" style="display: flex; flex-direction: column; gap: 5px; max-height: 120px; overflow-y: auto;">
+                        <span style="font-size: 11px; color: #6e7681; font-style: italic;">No levels published yet</span>
                     </div>
                 </div>
             </div>
@@ -443,6 +456,12 @@ export default class LevelEditor {
         // Undo & Redo buttons
         this.dom.querySelector('#btn-undo').addEventListener('click', () => this.undo());
         this.dom.querySelector('#btn-redo').addEventListener('click', () => this.redo());
+
+        // Publish level button
+        const btnPublish = this.dom.querySelector('#btn-publish-level');
+        if (btnPublish) {
+            btnPublish.addEventListener('click', () => this.publishCurrentLevel());
+        }
 
         // Play level button
         this.dom.querySelector('#btn-play-level').addEventListener('click', () => {
@@ -748,6 +767,129 @@ export default class LevelEditor {
     }
 
     /**
+     * Publishes current level to the main game loop descent pool.
+     */
+    publishCurrentLevel() {
+        if (!this.currentLevelData) return;
+        const defaultName = this.currentLevelData.name || 'Custom Crypt';
+        const name = prompt('Publish Level to Main Game Loop — Enter dungeon name:', defaultName);
+        if (!name || name.trim() === '') return;
+
+        this.currentLevelData.name = name.trim();
+        this.dom.querySelector('#editor-level-name').innerText = `Level: ${this.currentLevelData.name}`;
+
+        try {
+            const stored = localStorage.getItem('echo_published_levels');
+            let publishedList = stored ? JSON.parse(stored) : [];
+
+            const levelPayload = {
+                id: 'pub_' + Date.now(),
+                name: this.currentLevelData.name,
+                seed: this.currentLevelData.seed || Date.now(),
+                width: this.currentLevelData.width,
+                height: this.currentLevelData.height,
+                tileSize: this.currentLevelData.tileSize || 16,
+                playerStart: { ...this.currentLevelData.playerStart },
+                backgroundColor: this.currentLevelData.backgroundColor || '#0a0a0f',
+                ambientTrack: this.currentLevelData.ambientTrack || 'ambient_drip',
+                tiles: this.currentLevelData.tiles.map(row => [...row]),
+                entities: this.currentLevelData.entities.map(ent => ({
+                    ...ent,
+                    properties: { ...(ent.properties || {}) }
+                })),
+                publishedAt: new Date().toISOString()
+            };
+
+            const existingIdx = publishedList.findIndex(p => p.name.toLowerCase() === this.currentLevelData.name.toLowerCase());
+            if (existingIdx !== -1) {
+                publishedList[existingIdx] = levelPayload;
+            } else {
+                publishedList.push(levelPayload);
+            }
+
+            localStorage.setItem('echo_published_levels', JSON.stringify(publishedList));
+            this.showTooltipMsg(`🚀 "${this.currentLevelData.name}" Published! Added to Main Game Descent Pool.`);
+            this.renderPublishedListUI();
+        } catch (e) {
+            console.error('Failed to publish level:', e);
+            this.showTooltipMsg('❌ Failed to publish level to localStorage');
+        }
+    }
+
+    /**
+     * Refreshes the published levels list in the editor sidebar.
+     */
+    renderPublishedListUI() {
+        const listEl = this.dom.querySelector('#published-levels-list');
+        const badgeEl = this.dom.querySelector('#published-count-badge');
+        if (!listEl) return;
+
+        let publishedList = [];
+        try {
+            const raw = localStorage.getItem('echo_published_levels');
+            if (raw) publishedList = JSON.parse(raw);
+        } catch (e) {}
+
+        if (badgeEl) {
+            badgeEl.innerText = `${publishedList.length} IN POOL`;
+        }
+
+        listEl.innerHTML = '';
+        if (publishedList.length === 0) {
+            listEl.innerHTML = '<span style="font-size: 11px; color: #6e7681; font-style: italic;">No levels published yet</span>';
+            return;
+        }
+
+        publishedList.forEach((lvl, idx) => {
+            const itemRow = document.createElement('div');
+            itemRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 4px 8px; font-size: 11px; gap: 4px;';
+
+            const nameBtn = document.createElement('button');
+            nameBtn.style.cssText = 'background: transparent; border: none; color: #58a6ff; font-size: 11px; font-weight: 600; text-align: left; cursor: pointer; padding: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;';
+            nameBtn.innerText = `${idx + 1}. ${lvl.name}`;
+            nameBtn.title = 'Click to load & edit this published level';
+            nameBtn.addEventListener('click', () => {
+                this.saveSnapshot();
+                this.loadLevel(lvl);
+                this.showTooltipMsg(`Loaded published level: "${lvl.name}"`);
+            });
+
+            const delBtn = document.createElement('button');
+            delBtn.style.cssText = 'background: transparent; border: none; color: #f85149; font-size: 12px; cursor: pointer; padding: 0 4px; opacity: 0.7;';
+            delBtn.innerText = '✖';
+            delBtn.title = 'Unpublish (remove from game pool)';
+            delBtn.addEventListener('mouseenter', () => delBtn.style.opacity = '1');
+            delBtn.addEventListener('mouseleave', () => delBtn.style.opacity = '0.7');
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm(`Remove "${lvl.name}" from the Main Game Descent Pool?`)) {
+                    this.deletePublishedLevel(lvl.name);
+                }
+            });
+
+            itemRow.appendChild(nameBtn);
+            itemRow.appendChild(delBtn);
+            listEl.appendChild(itemRow);
+        });
+    }
+
+    /**
+     * Removes a level from published game pool.
+     */
+    deletePublishedLevel(name) {
+        try {
+            const raw = localStorage.getItem('echo_published_levels');
+            let publishedList = raw ? JSON.parse(raw) : [];
+            publishedList = publishedList.filter(p => p.name !== name);
+            localStorage.setItem('echo_published_levels', JSON.stringify(publishedList));
+            this.showTooltipMsg(`Removed "${name}" from descent pool.`);
+            this.renderPublishedListUI();
+        } catch (e) {
+            console.error('Failed to delete published level:', e);
+        }
+    }
+
+    /**
      * Toggles editor open/closed state.
      */
     toggle(forceState) {
@@ -758,6 +900,7 @@ export default class LevelEditor {
             if (!this.currentLevelData) {
                 this.loadLevel(Level1);
             }
+            this.renderPublishedListUI();
         } else if (this.onClose) {
             this.onClose();
         }
