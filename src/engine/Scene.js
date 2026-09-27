@@ -84,6 +84,51 @@ export default class Scene {
             this.player.y = this.player.spawnY || 160;
             this.player.vx = 0;
             this.player.vy = 0;
+            this.player.state = 0; // IDLE
+        }
+
+        // 1. Reset game state and puzzle flags
+        if (this.gameState) {
+            this.gameState.sanity = this.gameState.maxSanity || 100;
+            this.gameState.health = this.gameState.maxHealth || 100;
+            if (this.gameState.flags) {
+                if (typeof this.gameState.flags.clear === 'function') {
+                    this.gameState.flags.clear();
+                } else {
+                    this.gameState.flags = {};
+                }
+            }
+            this.gameState.activeNote = null;
+            this.gameState.canInteract = false;
+        }
+
+        // 2. Reset all puzzle levers, switches, doors, traps, and banish active shadows
+        for (const ent of this.entities) {
+            if (ent.type === 'interactable') {
+                // Reset switches / levers to unactivated state
+                if (ent.interactType === 2 || ent.properties?.interactType === 2) {
+                    ent.isActivated = false;
+                    ent.timer = 0;
+                }
+                // Reset doors to locked state
+                if (ent.interactType === 1 || ent.properties?.interactType === 1) {
+                    ent.isActivated = false;
+                    ent.isLocked = true;
+                }
+            } else if (ent.type === 'hazard') {
+                if (ent.hazardType === 1) { // Falling block
+                    ent.x = ent.spawnX || ent.x;
+                    ent.y = ent.spawnY || ent.y;
+                    ent.vy = 0;
+                    ent.isFalling = false;
+                    ent.isShaking = false;
+                    ent.respawnTimer = 0;
+                }
+            } else if (ent.type === 'shadow') {
+                if (typeof ent.banish === 'function') {
+                    ent.banish('respawn', this);
+                }
+            }
         }
     }
     

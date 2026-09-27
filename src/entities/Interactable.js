@@ -68,6 +68,18 @@ export class Interactable extends Entity {
             }
             if (scene.audio) scene.audio.play('paper');
             
+            // Surprise element: Awakening shadow upon disturbing cursed notes
+            if (scene.entities) {
+                const isCursed = Math.random() < 0.4 || (this.properties.text && this.properties.text.toLowerCase().includes('shadow'));
+                if (isCursed) {
+                    for (const ent of scene.entities) {
+                        if (ent.type === 'shadow' && typeof ent.awaken === 'function') {
+                            ent.awaken(player, scene, 'note');
+                        }
+                    }
+                }
+            }
+            
         } else if (this.interactType === INTERACTABLE_TYPES.DOOR) {
             // Check if door requires a lever / key
             const requiresFlag = this.properties.requiresFlag;
@@ -103,6 +115,15 @@ export class Interactable extends Entity {
             }
             if (this.properties.onToggle) {
                 this.properties.onToggle(scene);
+            }
+
+            // Surprise element: Awakening the shadow lurker upon solving or triggering mechanisms!
+            if (this.isActivated && scene.entities) {
+                for (const ent of scene.entities) {
+                    if (ent.type === 'shadow' && typeof ent.awaken === 'function') {
+                        ent.awaken(player, scene, 'lever');
+                    }
+                }
             }
         }
     }

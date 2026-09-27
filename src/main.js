@@ -211,9 +211,12 @@ async function init() {
                 if (scene.player) {
                     for (const ent of scene.entities) {
                         const dist = Math.hypot(ent.x - scene.player.x, ent.y - scene.player.y);
-                        if (ent instanceof Shadow) {
-                            if (dist < shadowDistance) shadowDistance = dist;
-                            if (ent.jumpScareTimer > 0) drawJumpscare = true;
+                        if (ent instanceof Shadow || ent.type === 'shadow') {
+                            const isAwake = (ent.state !== undefined ? ent.state !== 0 : true) && (ent.alpha === undefined || ent.alpha > 0.05);
+                            if (isAwake) {
+                                if (dist < shadowDistance) shadowDistance = dist;
+                                if (ent.jumpScareTimer > 0) drawJumpscare = true;
+                            }
                         } else if (ent.type === 'interactable') {
                             const iType = (ent.interactType !== undefined) ? ent.interactType : ent.properties?.interactType;
                             if (iType === 2) { // Lever / Switch
