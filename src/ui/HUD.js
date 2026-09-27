@@ -219,11 +219,36 @@ export default class HUD {
                 }
             }
             
-            // Footer close hint
-            ctx.fillStyle = '#7a7065';
+            // Top-right Close Button
+            const closeBtnW = 54;
+            const closeBtnH = 16;
+            const closeBtnX = boxX + boxW - closeBtnW - 8;
+            const closeBtnY = boxY + 8;
+            let isHoverClose = false;
+            if (input) {
+                const m = input.getMousePos();
+                if (m.x >= closeBtnX && m.x <= closeBtnX + closeBtnW && m.y >= closeBtnY && m.y <= closeBtnY + closeBtnH) {
+                    isHoverClose = true;
+                    if (input.isMouseClicked && input.isMouseClicked()) {
+                        gameState.activeNote = null;
+                    }
+                }
+            }
+            ctx.fillStyle = isHoverClose ? 'rgba(200, 50, 50, 0.45)' : 'rgba(30, 30, 40, 0.65)';
+            ctx.fillRect(closeBtnX, closeBtnY, closeBtnW, closeBtnH);
+            ctx.strokeStyle = isHoverClose ? '#ff7777' : '#554433';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(closeBtnX, closeBtnY, closeBtnW, closeBtnH);
+            ctx.fillStyle = isHoverClose ? '#ffffff' : '#c0b090';
             ctx.font = '9px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText('[ CLICK / ESC / SPACE ] Close', width / 2, boxY + boxH - 10);
+            ctx.fillText('✖ CLOSE', closeBtnX + closeBtnW / 2, closeBtnY + 11);
+
+            // Footer close hint
+            ctx.fillStyle = '#8a8075';
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('[ CLICK ANYWHERE / SPACE / E / ESC ] TO CLOSE', width / 2, boxY + boxH - 10);
         }
 
         // Pause Menu with full mouse interaction

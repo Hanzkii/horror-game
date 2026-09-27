@@ -201,9 +201,28 @@ async function init() {
                 }
 
                 if (gameState.activeNote) {
-                    if (input.isJustPressed('pause') || input.isJustPressed('interact') || input.isJustPressed('confirm') || input.isJustPressed('jump') || (input.mouse && input.mouse.isClicked)) {
+                    const isClosePressed = 
+                        input.isJustPressed('pause') || 
+                        input.isJustPressed('interact') || 
+                        input.isJustPressed('confirm') || 
+                        input.isJustPressed('jump') || 
+                        (input.isMouseClicked && input.isMouseClicked()) ||
+                        Boolean(input.keys['KeyE']) ||
+                        Boolean(input.keys['Space']) ||
+                        Boolean(input.keys['Escape']) ||
+                        Boolean(input.keys['Enter']);
+
+                    if (isClosePressed) {
                         gameState.activeNote = null;
-                        if (audioManager) audioManager.play('paper');
+                        if (input.keys) {
+                            input.keys['KeyE'] = false;
+                            input.keys['Space'] = false;
+                            input.keys['Escape'] = false;
+                            input.keys['Enter'] = false;
+                        }
+                        try {
+                            if (audio) audio.play('paper');
+                        } catch (e) {}
                     }
                 } else if (input.isJustPressed('pause') || hud.getRequestedPause()) {
                     currentState = GAME_STATES.PAUSED;
@@ -358,6 +377,9 @@ async function init() {
                     if (scene && scene.entities) {
                         for (const ent of scene.entities) {
                             if (ent.type === 'interactable' || (ent.tags && ent.tags.includes('interactable'))) {
+                                const isTorch = (ent.interactType === 3 || ent.properties?.interactType === 3);
+                                if (isTorch) continue;
+
                                 const d = Math.hypot(ent.x + ent.width / 2 - worldMx, ent.y + ent.height / 2 - worldMy);
                                 if (d < 28) {
                                     nearInteractable = true;

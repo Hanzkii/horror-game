@@ -31,19 +31,9 @@ export class Interactable extends Entity {
         const player = scene.getPlayer();
         if (!player) return;
         
-        // Torches provide passive sanctuary, and can be actively flared!
+        // Torches are pure ambient light sources and automatic sanctuaries (no interaction prompt)
         if (this.interactType === INTERACTABLE_TYPES.TORCH) {
-            if (this.flareTimer > 0) {
-                this.flareTimer -= dt;
-            }
-            const center = { x: this.x + this.width / 2, y: this.y + this.height / 2 };
-            const pCenter = { x: player.x + player.width / 2, y: player.y + player.height / 2 };
-            const distSq = Math.pow(center.x - pCenter.x, 2) + Math.pow(center.y - pCenter.y, 2);
-            
-            this.showPrompt = distSq <= Math.pow(38, 2);
-            if (this.showPrompt && scene.gameState) {
-                scene.gameState.canInteract = true;
-            }
+            this.showPrompt = false;
             return;
         }
         
@@ -130,22 +120,8 @@ export class Interactable extends Entity {
                 }
             }
         } else if (this.interactType === INTERACTABLE_TYPES.TORCH) {
-            // Flare torch with a holy blaze!
-            this.flareTimer = 3.5;
-            if (scene.audio) scene.audio.play('flame_flare');
-            if (scene.postProcessing) scene.postProcessing.addTrauma(0.35);
-
-            // Banish and disintegrate any shadow in 260px!
-            if (scene.entities) {
-                for (const ent of scene.entities) {
-                    if (ent.type === 'shadow' && typeof ent.despawnInLight === 'function') {
-                        const dist = Math.hypot(ent.x - (this.x + 8), ent.y - (this.y + 6));
-                        if (dist < 260) {
-                            ent.despawnInLight(scene, { x: this.x + 8, y: this.y + 6, radius: 150 });
-                        }
-                    }
-                }
-            }
+            // Torches are passive sanctuaries that automatically protect against shadows
+            return;
         }
     }
     
@@ -160,12 +136,10 @@ export class Interactable extends Entity {
             SpriteRenderer.drawTorch(renderer, this.x, this.y, this.timer);
         }
         
-        // Mouse/Keyboard interaction prompt
-        if (this.showPrompt) {
+        // Mouse/Keyboard interaction prompt (never shown for torches)
+        if (this.showPrompt && this.interactType !== INTERACTABLE_TYPES.TORCH) {
             let promptText = '[ CLICK ]';
-            if (this.interactType === INTERACTABLE_TYPES.TORCH) {
-                promptText = '[ CLICK ] Flare Flame';
-            } else if (this.interactType === INTERACTABLE_TYPES.SWITCH) {
+            if (this.interactType === INTERACTABLE_TYPES.SWITCH) {
                 promptText = this.isActivated ? '[ CLICK ] Reset' : '[ CLICK ] Pull';
             } else if (this.interactType === INTERACTABLE_TYPES.NOTE) {
                 promptText = '[ CLICK ] Read';
@@ -174,7 +148,7 @@ export class Interactable extends Entity {
             }
 
             renderer.drawText(promptText, this.x + this.width / 2, this.y - 12, {
-                color: (this.interactType === INTERACTABLE_TYPES.TORCH) ? '#ffd080' : '#ffffff',
+                color: '#ffffff',
                 font: '9px monospace',
                 align: 'center'
             });

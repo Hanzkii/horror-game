@@ -321,6 +321,9 @@ export class Player extends Entity {
 
             for (const ent of scene.entities) {
                 if (ent.type === 'interactable' && ent.active) {
+                    const isTorch = (ent.interactType === 3 || ent.properties?.interactType === 3);
+                    if (isTorch) continue;
+
                     const entCenter = { x: ent.x + ent.width / 2, y: ent.y + ent.height / 2 };
                     const distToPlayer = Math.hypot(center.x - entCenter.x, center.y - entCenter.y);
                     
@@ -340,6 +343,9 @@ export class Player extends Entity {
             let closestDist = Infinity;
             for (const ent of scene.entities) {
                 if (ent.type === 'interactable' && ent.active) {
+                    const isTorch = (ent.interactType === 3 || ent.properties?.interactType === 3);
+                    if (isTorch) continue;
+
                     const entCenter = { x: ent.x + ent.width / 2, y: ent.y + ent.height / 2 };
                     const dist = Math.hypot(center.x - entCenter.x, center.y - entCenter.y);
                     if (dist <= reachRadius && dist < closestDist) {

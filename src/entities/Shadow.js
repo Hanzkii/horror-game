@@ -277,17 +277,40 @@ export class Shadow extends Entity {
         // Floating hover motion
         this.y = this.homeY + Math.sin(this.timer * 2.5) * 4;
 
-        // --- ESCAPE / DESPAWN MECHANIC 1: TORCHLIGHT SANCTUARY ---
-        // If the player entered sanctuary or shadow touched holy torchlight:
-        if (scene.lights && scene.lights.length > 0) {
-            for (const light of scene.lights) {
-                const distPlayerToTorch = Math.hypot(player.x - light.x, player.y - light.y);
-                const distShadowToTorch = Math.hypot(this.x - light.x, this.y - light.y);
-                
-                // If player is under torch sanctuary OR shadow touched light:
-                if (distPlayerToTorch < light.radius * 0.95 || distShadowToTorch < light.radius * 1.05) {
-                    this.despawnInLight(scene, light);
+        // --- ESCAPE / DESPAWN MECHANIC 1: TORCHES & SACRED FLAMES ---
+        // Torches automatically despawn shadow lurkers upon collision/proximity, and shadow lurkers actively avoid flames!
+        if (scene && scene.entities) {
+            for (const ent of scene.entities) {
+                const isTorch = ent.type === 'interactable' && (ent.interactType === 3 || ent.properties?.interactType === 3);
+                if (!isTorch) continue;
+
+                const torchCenterX = ent.x + ent.width / 2;
+                const torchCenterY = ent.y + ent.height / 2;
+                const shadowCenterX = this.x + this.width / 2;
+                const shadowCenterY = this.y + this.height / 2;
+                const playerCenterX = player.x + player.width / 2;
+                const playerCenterY = player.y + player.height / 2;
+
+                const distShadowToTorch = Math.hypot(shadowCenterX - torchCenterX, shadowCenterY - torchCenterY);
+                const distPlayerToTorch = Math.hypot(playerCenterX - torchCenterX, playerCenterY - torchCenterY);
+
+                // 1. DESPAWN / BANISH: If shadow collides with or approaches flame (<70px) OR player reaches sanctuary near torch (<60px):
+                if (distShadowToTorch < 70 || distPlayerToTorch < 60) {
+                    this.despawnInLight(scene, { x: torchCenterX, y: torchCenterY, radius: 85 });
                     return;
+                }
+
+                // 2. FLAME AVOIDANCE: If shadow gets near the flame (between 70px and 150px):
+                // Shadow actively fears fire — steers away with repellent force!
+                if (distShadowToTorch < 150) {
+                    const avoidDir = Math.sign(shadowCenterX - torchCenterX) || 1;
+                    this.x += avoidDir * (120 * dt);
+                    this.homeX = this.x;
+                    
+                    if (this.soundCooldown <= 0) {
+                        if (scene && scene.audio) scene.audio.play('whisper');
+                        this.soundCooldown = 1.8;
+                    }
                 }
             }
         }
