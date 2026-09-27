@@ -157,13 +157,14 @@ async function init() {
                     break;
                 }
 
-                if (input.isJustPressed('pause')) {
-                    if (gameState.activeNote) {
+                if (gameState.activeNote) {
+                    if (input.isJustPressed('pause') || input.isJustPressed('interact') || input.isJustPressed('confirm') || input.isJustPressed('jump') || (input.mouse && input.mouse.isClicked)) {
                         gameState.activeNote = null;
-                    } else {
-                        currentState = GAME_STATES.PAUSED;
-                        gameState.isPaused = true;
+                        if (audioManager) audioManager.play('paper');
                     }
+                } else if (input.isJustPressed('pause')) {
+                    currentState = GAME_STATES.PAUSED;
+                    gameState.isPaused = true;
                 }
 
                 if (!gameState.isPaused && !gameState.activeNote) {
