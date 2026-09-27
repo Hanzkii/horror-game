@@ -15,10 +15,11 @@ export default class MainMenu {
         this.audio = audio;
         this.canvas = canvas;
         
-        this.mode = 'main'; // 'main', 'designSubMenu', 'characterDesign', 'settings', 'controls'
+        this.mode = 'main'; // 'main', 'designSubMenu', 'characterDesign', 'settings', 'tutorial', 'controls'
         
-        // Main menu has DESCEND, CHARACTER DESIGN, SETTINGS, and DESIGN STUDIO [DEV]
-        this.options = ['DESCEND', 'CHARACTER DESIGN', 'SETTINGS', 'DESIGN STUDIO [DEV]'];
+        // Main menu has DESCEND, TUTORIAL, CHARACTER DESIGN, SETTINGS, and DESIGN STUDIO [DEV]
+        this.options = ['DESCEND', 'TUTORIAL', 'CHARACTER DESIGN', 'SETTINGS', 'DESIGN STUDIO [DEV]'];
+        this.tutorialReturnMode = 'main';
         this.settingsReturnMode = 'main';
         this.charReturnMode = 'main';
         
@@ -26,7 +27,7 @@ export default class MainMenu {
         this.designOptions = [
             'LEVEL ARCHITECT',
             'SOUND STUDIO',
-            'CONTROLS',
+            'SURVIVAL GUIDE',
             '< BACK TO TITLE'
         ];
 
@@ -226,14 +227,18 @@ export default class MainMenu {
                 if (this.selectedIndex === 0) {
                     this.selection = 'story';
                 } else if (this.selectedIndex === 1) {
+                    this.mode = 'tutorial';
+                    this.tutorialReturnMode = 'main';
+                    this.selectedIndex = 0;
+                } else if (this.selectedIndex === 2) {
                     this.mode = 'characterDesign';
                     this.charReturnMode = 'main';
                     this.selectedIndex = 0;
-                } else if (this.selectedIndex === 2) {
+                } else if (this.selectedIndex === 3) {
                     this.mode = 'settings';
                     this.settingsReturnMode = 'main';
                     this.selectedIndex = 0;
-                } else if (this.selectedIndex === 3) {
+                } else if (this.selectedIndex === 4) {
                     this.mode = 'designSubMenu';
                     this.selectedIndex = 0;
                 }
@@ -263,13 +268,14 @@ export default class MainMenu {
                     case 1: // SOUND STUDIO
                         this.selection = 'design_sound';
                         break;
-                    case 2: // CONTROLS
-                        this.mode = 'controls';
+                    case 2: // SURVIVAL GUIDE & CONTROLS
+                        this.mode = 'tutorial';
+                        this.tutorialReturnMode = 'designSubMenu';
                         this.selectedIndex = 0;
                         break;
                     case 3: // BACK TO TITLE
                         this.mode = 'main';
-                        this.selectedIndex = 3;
+                        this.selectedIndex = 4;
                         break;
                 }
             }
@@ -277,7 +283,7 @@ export default class MainMenu {
             if (input.isJustPressed('pause')) {
                 this.playSfx('click');
                 this.mode = 'main';
-                this.selectedIndex = 3;
+                this.selectedIndex = 4;
             }
         }
         // --- 3. CHARACTER DESIGN STUDIO ---
@@ -310,7 +316,7 @@ export default class MainMenu {
                 } else if (clickedHitbox.action === 'back') {
                     this.playSfx('click');
                     this.mode = this.charReturnMode || 'main';
-                    this.selectedIndex = (this.charReturnMode === 'main') ? 1 : 2;
+                    this.selectedIndex = (this.charReturnMode === 'main') ? 2 : 2;
                 } else {
                     this.selectedIndex = clickedHitbox.index;
                 }
@@ -320,7 +326,7 @@ export default class MainMenu {
                 if (this.selectedIndex === 5) { // BACK
                     this.playSfx('click');
                     this.mode = this.charReturnMode || 'main';
-                    this.selectedIndex = (this.charReturnMode === 'main') ? 1 : 2;
+                    this.selectedIndex = (this.charReturnMode === 'main') ? 2 : 2;
                 } else {
                     this.cycleCharacterOption(this.selectedIndex, 1);
                 }
@@ -329,7 +335,7 @@ export default class MainMenu {
             if (input.isJustPressed('pause')) {
                 this.playSfx('click');
                 this.mode = this.charReturnMode || 'main';
-                this.selectedIndex = (this.charReturnMode === 'main') ? 1 : 2;
+                this.selectedIndex = (this.charReturnMode === 'main') ? 2 : 2;
             }
         }
         // --- 4. SETTINGS & AUDIO ---
@@ -371,23 +377,24 @@ export default class MainMenu {
                 } else if (this.selectedIndex === 4) {
                     this.playSfx('click');
                     this.mode = this.settingsReturnMode || 'main';
-                    this.selectedIndex = (this.settingsReturnMode === 'main') ? 2 : 3;
+                    this.selectedIndex = (this.settingsReturnMode === 'main') ? 3 : 3;
                 }
             }
 
             if (input.isJustPressed('pause')) {
                 this.playSfx('click');
                 this.mode = this.settingsReturnMode || 'main';
-                this.selectedIndex = (this.settingsReturnMode === 'main') ? 2 : 3;
+                this.selectedIndex = (this.settingsReturnMode === 'main') ? 3 : 3;
             }
         }
-        // --- 5. CONTROLS GUIDE ---
-        else if (this.mode === 'controls') {
-            const backClicked = (isClicked && isOverHitbox) || input.isJustPressed('pause') || input.isJustPressed('confirm') || input.isJustPressed('interact');
+        // --- 5. TUTORIAL & SURVIVAL GUIDE ---
+        else if (this.mode === 'tutorial' || this.mode === 'controls') {
+            const backClicked = (isClicked && isOverHitbox) || input.isJustPressed('pause') || input.isJustPressed('confirm') || input.isJustPressed('interact') || input.isJustPressed('jump');
             if (backClicked) {
                 this.playSfx('click');
-                this.mode = 'designSubMenu';
-                this.selectedIndex = 4;
+                const returnTarget = this.tutorialReturnMode || 'main';
+                this.mode = returnTarget;
+                this.selectedIndex = (returnTarget === 'main') ? 1 : 2;
             }
         }
     }
@@ -460,15 +467,15 @@ export default class MainMenu {
         if (this.mode === 'main') {
             ctx.textAlign = 'center';
             ctx.fillStyle = `rgba(240, 240, 255, ${this.titleAlpha})`;
-            ctx.font = '38px monospace';
-            ctx.fillText('ECHO', width / 2, height / 3);
+            ctx.font = '34px monospace';
+            ctx.fillText('ECHO', width / 2, 50);
             
             ctx.fillStyle = 'rgba(200, 210, 230, 0.4)';
-            ctx.font = '11px monospace';
-            ctx.fillText('A Psychological Horror Experience', width / 2, height / 3 + 20);
+            ctx.font = '10px monospace';
+            ctx.fillText('A Psychological Horror Experience', width / 2, 66);
             
-            ctx.font = '12px monospace';
-            const startY = height / 2 - 12;
+            ctx.font = '11px monospace';
+            const startY = 92;
             const itemH = 26;
 
             this.options.forEach((opt, i) => {
@@ -476,9 +483,9 @@ export default class MainMenu {
                 const isSelected = (i === this.selectedIndex);
 
                 const boxW = 220;
-                const boxH = 22;
+                const boxH = 21;
                 const bx = width / 2 - boxW / 2;
-                const by = y - 15;
+                const by = y - 14;
                 this.hitboxes.push({
                     index: i,
                     x: bx,
@@ -510,7 +517,7 @@ export default class MainMenu {
 
             ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
             ctx.font = '9px monospace';
-            ctx.fillText('[MOUSE CLICK] Select  •  [W/S] Move', width / 2, height - 12);
+            ctx.fillText('[MOUSE CLICK] Select  •  [W/S] Move  •  [ENTER] Confirm', width / 2, height - 12);
         }
         // --- 2. DESIGN STUDIO [DEV] SUB-MENU ---
         else if (this.mode === 'designSubMenu') {
@@ -786,61 +793,141 @@ export default class MainMenu {
             ctx.font = '9px monospace';
             ctx.fillText('[A/D] or [CLICK] Adjust • [ESC] Return', width / 2, height - 12);
         }
-        // --- 5. CONTROLS GUIDE ---
-        else if (this.mode === 'controls') {
-            const boxX = width * 0.15;
-            const boxY = height * 0.15;
-            const boxW = width * 0.7;
-            const boxH = height * 0.7;
+        // --- 5. TUTORIAL & SURVIVAL GUIDE ---
+        else if (this.mode === 'tutorial' || this.mode === 'controls') {
+            const boxX = 14;
+            const boxY = 8;
+            const boxW = width - 28;
+            const boxH = height - 16;
 
-            ctx.fillStyle = 'rgba(12, 14, 20, 0.94)';
+            // Deep horror parchment background
+            ctx.fillStyle = 'rgba(8, 10, 16, 0.96)';
             ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#282c37';
+            ctx.strokeStyle = '#32374b';
+            ctx.lineWidth = 1;
             ctx.strokeRect(boxX, boxY, boxW, boxH);
+            ctx.strokeStyle = '#1a1d29';
+            ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
             
+            // Header
             ctx.textAlign = 'center';
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '16px monospace';
-            ctx.fillText('CONTROLS GUIDE', width / 2, boxY + 25);
+            ctx.fillStyle = '#ffeedd';
+            ctx.font = 'bold 13px monospace';
+            ctx.fillText('SURVIVAL GUIDE & CONTROLS', width / 2, boxY + 18);
             
-            ctx.textAlign = 'left';
-            ctx.fillStyle = '#b0b8c8';
-            ctx.font = '11px monospace';
+            ctx.fillStyle = 'rgba(255, 175, 95, 0.75)';
+            ctx.font = '8px monospace';
+            ctx.fillText('— Read carefully before descending into the abyss —', width / 2, boxY + 29);
 
-            const controlsList = [
+            // Left Column: KEYBOARD CONTROLS (IN-GAME)
+            const col1X = boxX + 12;
+            const colW = Math.floor((boxW - 32) / 2);
+            const col2X = col1X + colW + 8;
+            const contentStartY = boxY + 44;
+
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#7ee787';
+            ctx.font = 'bold 9px monospace';
+            ctx.fillText('KEYBOARD CONTROLS', col1X, contentStartY);
+            
+            ctx.strokeStyle = 'rgba(126, 231, 135, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(col1X, contentStartY + 3);
+            ctx.lineTo(col1X + colW - 8, contentStartY + 3);
+            ctx.stroke();
+
+            const keyControls = [
                 ['A / D  or  ← / →', 'Move Character'],
-                ['SPACE or W or ↑', 'Jump / Variable Lift'],
-                ['E  or  ENTER',     'Interact / Read / Pull Lever'],
-                ['TAB',             'Open / Close Level Architect'],
-                ['MOUSE CLICK',     'Menu Navigation & Editor Tools'],
-                ['ESC',             'Pause Game / Return to Menu'],
-                ['Q (in Pause)',    'Quit to Main Menu']
+                ['SPACE or W or ↑', 'Jump / Vault'],
+                ['E',                 'Interact (at objects)'],
+                ['E / SPACE / ESC',  'Dismiss Lore Notes'],
+                ['ESC',              'Pause / Settings Menu']
             ];
 
-            controlsList.forEach((item, idx) => {
-                const py = boxY + 48 + idx * 15;
+            keyControls.forEach((item, idx) => {
+                const py = contentStartY + 16 + idx * 14;
                 ctx.fillStyle = '#7ee787';
-                ctx.fillText(item[0], boxX + 20, py);
-                ctx.fillStyle = '#9999aa';
-                ctx.fillText(item[1], boxX + 175, py);
+                ctx.font = '9px monospace';
+                ctx.fillText(item[0], col1X, py);
+                ctx.fillStyle = '#a8b2c4';
+                ctx.fillText(item[1], col1X + 105, py);
             });
+
+            // Note on Mouse in dungeon
+            const noteY = contentStartY + 90;
+            ctx.fillStyle = 'rgba(240, 180, 80, 0.12)';
+            ctx.fillRect(col1X, noteY, colW - 8, 43);
+            ctx.strokeStyle = 'rgba(240, 180, 80, 0.4)';
+            ctx.strokeRect(col1X, noteY, colW - 8, 43);
             
-            // Back button
-            const backY = boxY + boxH - 16;
+            ctx.fillStyle = '#ffcf70';
+            ctx.font = 'bold 8px monospace';
+            ctx.fillText('MOUSE USAGE NOTICE:', col1X + 6, noteY + 11);
+            ctx.fillStyle = '#c5ccd6';
+            ctx.font = '8px monospace';
+            ctx.fillText('• Mouse is hidden during gameplay.', col1X + 6, noteY + 21);
+            ctx.fillText('• Used only in menus & editors.', col1X + 6, noteY + 30);
+            ctx.fillText('• Approach pulsing dots to press E.', col1X + 6, noteY + 39);
+
+            // Right Column: SURVIVAL PROTOCOLS
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#f0883e';
+            ctx.font = 'bold 9px monospace';
+            ctx.fillText('SURVIVAL PROTOCOLS', col2X, contentStartY);
+
+            ctx.strokeStyle = 'rgba(240, 136, 62, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(col2X, contentStartY + 3);
+            ctx.lineTo(col2X + colW, contentStartY + 3);
+            ctx.stroke();
+
+            const protocols = [
+                { title: 'LIGHT & SANITY:', desc: 'Darkness drains sanity. Panic distorts sight & sound.' },
+                { title: 'SAFE HAVENS:', desc: 'Wall torches replenish your mind and keep you alive.' },
+                { title: 'SHADOW LURKERS:', desc: 'Awakened by puzzle interactions. Stalk when backs turn!' },
+                { title: 'BANISHMENT:', desc: 'Cannot be killed by hands. LURE THEM TO TORCH FIRE!' },
+                { title: 'DEATH RESETS:', desc: 'Perishing in darkness resets levers and mechanisms.' }
+            ];
+
+            protocols.forEach((rule, idx) => {
+                const py = contentStartY + 14 + idx * 23;
+                ctx.fillStyle = '#ffaa77';
+                ctx.font = 'bold 8px monospace';
+                ctx.fillText(rule.title, col2X, py);
+                ctx.fillStyle = '#8b949e';
+                ctx.font = '8px monospace';
+                ctx.fillText(rule.desc, col2X, py + 9);
+            });
+
+            // Back button at bottom
+            const backY = boxY + boxH - 22;
+            const btnW = 150;
+            const btnH = 17;
+            const btnX = Math.round(width / 2 - btnW / 2);
+            
             this.hitboxes.push({
                 index: 0,
-                x: width / 2 - 50,
-                y: backY - 12,
-                w: 100,
-                h: 18
+                x: btnX,
+                y: backY - 3,
+                w: btnW,
+                h: btnH,
+                action: 'back'
             });
 
             ctx.textAlign = 'center';
             ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.fillRect(width / 2 - 50, backY - 12, 100, 18);
+            ctx.fillRect(btnX, backY - 3, btnW, btnH);
+            ctx.strokeStyle = '#58607a';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(btnX, backY - 3, btnW, btnH);
+
             ctx.fillStyle = '#ffffff';
-            ctx.font = '12px monospace';
-            ctx.fillText('[ < BACK ]', width / 2, backY);
+            ctx.font = '10px monospace';
+            ctx.fillText('< BACK TO TITLE', width / 2, backY + 9);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = '8px monospace';
+            ctx.fillText('[CLICK OR PRESS ESC / E / SPACE / ENTER TO RETURN]', width / 2, boxY + boxH - 2);
         }
     }
     

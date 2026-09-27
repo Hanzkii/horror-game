@@ -168,6 +168,7 @@ async function init() {
 
         switch (currentState) {
             case GAME_STATES.MENU:
+                canvas.style.cursor = 'default';
                 mainMenu.update(dt, input);
                 renderer.clear();
                 mainMenu.render();
@@ -368,42 +369,8 @@ async function init() {
                     }
                 }
 
-                // In-game mouse reticle
-                const mPos = input ? input.getMousePos() : { x: -999, y: -999 };
-                if (mPos.x >= 0 && mPos.x <= GAME_WIDTH && mPos.y >= 0 && mPos.y <= GAME_HEIGHT && !gameState.activeNote) {
-                    const worldMx = mPos.x + renderer.camera.x;
-                    const worldMy = mPos.y + renderer.camera.y;
-                    let nearInteractable = false;
-                    if (scene && scene.entities) {
-                        for (const ent of scene.entities) {
-                            if (ent.type === 'interactable' || (ent.tags && ent.tags.includes('interactable'))) {
-                                const isTorch = (ent.interactType === 3 || ent.properties?.interactType === 3);
-                                if (isTorch) continue;
-
-                                const d = Math.hypot(ent.x + ent.width / 2 - worldMx, ent.y + ent.height / 2 - worldMy);
-                                if (d < 28) {
-                                    nearInteractable = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    ctx.save();
-                    ctx.strokeStyle = nearInteractable ? 'rgba(255, 215, 0, 0.9)' : 'rgba(220, 230, 245, 0.55)';
-                    ctx.lineWidth = 1;
-                    const arm = nearInteractable ? 5 : 3;
-                    ctx.beginPath();
-                    ctx.moveTo(mPos.x - arm, mPos.y);
-                    ctx.lineTo(mPos.x + arm, mPos.y);
-                    ctx.moveTo(mPos.x, mPos.y - arm);
-                    ctx.lineTo(mPos.x, mPos.y + arm);
-                    ctx.stroke();
-                    if (nearInteractable) {
-                        ctx.strokeRect(mPos.x - 4, mPos.y - 4, 8, 8);
-                    }
-                    ctx.restore();
-                }
+                // Mouse cursor hidden during gameplay (shown only in menus and active note screens)
+                canvas.style.cursor = (gameState.activeNote || gameState.isPaused) ? 'default' : 'none';
 
                 hud.render(gameState, input);
                 renderer.present();
@@ -415,6 +382,7 @@ async function init() {
                 break;
                 
             case GAME_STATES.PAUSED:
+                canvas.style.cursor = 'default';
                 renderer.clear();
                 scene.render(renderer);
                 hud.render(gameState, input);

@@ -172,10 +172,9 @@ export class Player extends Entity {
             this.jumpTimer = 0;
         }
         
-        // Interaction (Keyboard 'E' or Left Mouse Click)
-        const isClick = input.isMouseClicked ? input.isMouseClicked() : Boolean(input.mouse?.isClicked);
-        if (input.isJustPressed('interact') || isClick) {
-            this.tryInteract(scene, input);
+        // Interaction (Keyboard 'E' only when standing near object)
+        if (input.isJustPressed('interact')) {
+            this.tryInteract(scene);
         }
     }
     
@@ -306,52 +305,24 @@ export class Player extends Entity {
         }
     }
     
-    tryInteract(scene, input = null) {
+    tryInteract(scene) {
         if (!scene || !scene.entities) return false;
         
         const center = { x: this.x + this.width / 2, y: this.y + this.height / 2 };
-        const reachRadius = 45; // generous reach for keyboard or mouse click
+        const reachRadius = 38; // interaction distance when player walks up to object
         
-        // If mouse position is available, check if player clicked on a specific interactable
         let targetEnt = null;
-        if (input && scene.renderer && scene.renderer.camera) {
-            const m = input.getMousePos();
-            const worldMouseX = m.x + scene.renderer.camera.x;
-            const worldMouseY = m.y + scene.renderer.camera.y;
+        let closestDist = Infinity;
+        for (const ent of scene.entities) {
+            if (ent.type === 'interactable' && ent.active) {
+                const isTorch = (ent.interactType === 3 || ent.properties?.interactType === 3);
+                if (isTorch) continue;
 
-            for (const ent of scene.entities) {
-                if (ent.type === 'interactable' && ent.active) {
-                    const isTorch = (ent.interactType === 3 || ent.properties?.interactType === 3);
-                    if (isTorch) continue;
-
-                    const entCenter = { x: ent.x + ent.width / 2, y: ent.y + ent.height / 2 };
-                    const distToPlayer = Math.hypot(center.x - entCenter.x, center.y - entCenter.y);
-                    
-                    if (distToPlayer <= 55) {
-                        const mouseDistToEnt = Math.hypot(worldMouseX - entCenter.x, worldMouseY - entCenter.y);
-                        if (mouseDistToEnt <= 32) {
-                            targetEnt = ent;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        // If no direct click on a specific object, interact with closest in reach
-        if (!targetEnt) {
-            let closestDist = Infinity;
-            for (const ent of scene.entities) {
-                if (ent.type === 'interactable' && ent.active) {
-                    const isTorch = (ent.interactType === 3 || ent.properties?.interactType === 3);
-                    if (isTorch) continue;
-
-                    const entCenter = { x: ent.x + ent.width / 2, y: ent.y + ent.height / 2 };
-                    const dist = Math.hypot(center.x - entCenter.x, center.y - entCenter.y);
-                    if (dist <= reachRadius && dist < closestDist) {
-                        closestDist = dist;
-                        targetEnt = ent;
-                    }
+                const entCenter = { x: ent.x + ent.width / 2, y: ent.y + ent.height / 2 };
+                const dist = Math.hypot(center.x - entCenter.x, center.y - entCenter.y);
+                if (dist <= reachRadius && dist < closestDist) {
+                    closestDist = dist;
+                    targetEnt = ent;
                 }
             }
         }

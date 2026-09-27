@@ -136,22 +136,12 @@ export class Interactable extends Entity {
             SpriteRenderer.drawTorch(renderer, this.x, this.y, this.timer);
         }
         
-        // Mouse/Keyboard interaction prompt (never shown for torches)
+        // In-world interaction glint (no floating text tooltips)
         if (this.showPrompt && this.interactType !== INTERACTABLE_TYPES.TORCH) {
-            let promptText = '[ CLICK ]';
-            if (this.interactType === INTERACTABLE_TYPES.SWITCH) {
-                promptText = this.isActivated ? '[ CLICK ] Reset' : '[ CLICK ] Pull';
-            } else if (this.interactType === INTERACTABLE_TYPES.NOTE) {
-                promptText = '[ CLICK ] Read';
-            } else if (this.interactType === INTERACTABLE_TYPES.DOOR) {
-                promptText = this.isLocked ? '[ CLICK ] Inspect' : '[ CLICK ] Enter';
-            }
-
-            renderer.drawText(promptText, this.x + this.width / 2, this.y - 12, {
-                color: '#ffffff',
-                font: '9px monospace',
-                align: 'center'
-            });
+            const glintPulse = (Math.sin(this.timer * 6) + 1) * 0.5;
+            const glintY = this.y - 3 + Math.sin(this.timer * 4) * 2;
+            const glintX = this.x + this.width / 2;
+            renderer.drawRect(glintX - 1, glintY - 1, 2, 2, `rgba(255, 230, 140, ${0.35 + glintPulse * 0.55})`);
         }
     }
 }

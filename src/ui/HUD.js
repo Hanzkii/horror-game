@@ -138,12 +138,17 @@ export default class HUD {
         ctx.textAlign = 'center';
         ctx.fillText('PAUSE', pauseBtnX + pauseBtnW / 2, pauseBtnY + 11);
 
-        // Interaction Prompt - hidden when reading notes or paused
-        if (gameState.canInteract && !gameState.activeNote && !gameState.isPaused) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-            ctx.font = '12px monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('[ CLICK ] or [ E ] Interact', width / 2, height * 0.82);
+        // Subtle Floor 1 controls hint (smoothly fades out after 6 seconds)
+        if (gameState.floorIndex === 1) {
+            if (gameState.introTipTimer === undefined) gameState.introTipTimer = 6.0;
+            if (gameState.introTipTimer > 0) {
+                gameState.introTipTimer -= 0.016;
+                const tipAlpha = Math.min(1.0, gameState.introTipTimer);
+                ctx.fillStyle = `rgba(200, 215, 240, ${tipAlpha * 0.75})`;
+                ctx.font = '9px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('[A/D] Walk  •  [SPACE] Jump  •  [E] Interact near objects', width / 2, 28);
+            }
         }
 
         // Note Reading Overlay with responsive word-wrapping
@@ -248,7 +253,7 @@ export default class HUD {
             ctx.fillStyle = '#8a8075';
             ctx.font = '9px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText('[ CLICK ANYWHERE / SPACE / E / ESC ] TO CLOSE', width / 2, boxY + boxH - 10);
+            ctx.fillText('[ PRESS E / SPACE / ESC OR CLICK TO CLOSE ]', width / 2, boxY + boxH - 10);
         }
 
         // Pause Menu with full mouse interaction
