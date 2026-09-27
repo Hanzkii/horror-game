@@ -287,6 +287,7 @@ export class Player extends Entity {
     }
     
     render(renderer) {
-        SpriteRenderer.drawPlayer(renderer, this.x, this.y, this.state, this.walkFrame, this.facingRight, this.breathTimer, this.isBlinking);
+        const custom = this.customization || (typeof window !== 'undefined' ? window.gameCustomization : null);
+        SpriteRenderer.drawPlayer(renderer, this.x, this.y, this.state, this.walkFrame, this.facingRight, this.breathTimer, this.isBlinking, custom);
     }
 }

@@ -81,10 +81,11 @@ export default class SpriteRenderer {
         }
     }
 
-    static drawPlayer(renderer, x, y, state, frame, facingRight, breathTimer, isBlinking = false) {
-        const hSkin = '#d4cec0';
-        const hTorso = '#3a4a5c';
-        const hLegs = '#2a2a3a';
+    static drawPlayer(renderer, x, y, state, frame, facingRight, breathTimer, isBlinking = false, custom = null) {
+        const hSkin = custom?.skin || '#d4cec0';
+        const hTorso = custom?.hoodie || '#3a4a5c';
+        const hLegs = custom?.pants || '#2a2a3a';
+        const hEyes = custom?.eyes || '#ffffff';
         
         const w = 12;
         const h = 17;
@@ -122,7 +123,7 @@ export default class SpriteRenderer {
         }
 
         // Draw left arm (behind)
-        renderer.drawRect(x + 1, leftArmY - breathScale, 2, 5, '#2d3a48');
+        renderer.drawRect(x + 1, leftArmY - breathScale, 2, 5, '#222830');
 
         // Draw legs
         renderer.drawRect(x + 2, leftLegY, 4, 7, hLegs);
@@ -132,7 +133,7 @@ export default class SpriteRenderer {
         renderer.drawRect(x + 2, y + 4 - breathScale, 8, 6 + breathScale, hTorso);
         
         // Draw right arm (front)
-        renderer.drawRect(x + 9, rightArmY - breathScale, 2, 5, '#2d3a48');
+        renderer.drawRect(x + 9, rightArmY - breathScale, 2, 5, '#222830');
 
         // Head
         renderer.drawRect(x + 3, y - breathScale, 6, 4, hSkin);
@@ -147,8 +148,8 @@ export default class SpriteRenderer {
         // Eyes
         if (!isBlinking) {
             const eyeX = facingRight ? x + 6 : x + 4;
-            renderer.drawRect(eyeX, y + 2 - breathScale, 1, 1, '#ffffff');
-            renderer.drawRect(eyeX + 2, y + 2 - breathScale, 1, 1, '#ffffff');
+            renderer.drawRect(eyeX, y + 2 - breathScale, 1, 1, hEyes);
+            renderer.drawRect(eyeX + 2, y + 2 - breathScale, 1, 1, hEyes);
         }
     }
 
