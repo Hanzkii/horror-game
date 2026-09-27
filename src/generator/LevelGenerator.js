@@ -32,6 +32,21 @@ const CREEPY_NOTES = [
     "Every step echoes twice. Only one sound is mine."
 ];
 
+function ensurePlatformClearances(grid, cols, rows) {
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            if (grid[r][c] === 3) { // One-way platform
+                // Ensure at least 2 tiles of clear headroom above the platform
+                for (let h = 1; h <= 2; h++) {
+                    if (r - h >= 0 && (grid[r - h][c] === 1 || grid[r - h][c] === 2)) {
+                        grid[r - h][c] = 0; // Clear solid ceiling to air so player can stand on it!
+                    }
+                }
+            }
+        }
+    }
+}
+
 function runBFS(grid, startC, startR, leverC, leverR, exitC, exitR) {
     const rows = grid.length;
     const cols = grid[0].length;
@@ -40,21 +55,29 @@ function runBFS(grid, startC, startR, leverC, leverR, exitC, exitR) {
     const queue = [{c: startC, r: startR}];
     visited[startR][startC] = true;
 
-    const isPassable = (c, r) => {
-        if (r < 0 || r >= rows || c < 0 || c >= cols) return false;
-        return grid[r][c] === 0 || grid[r][c] === 3 || grid[r][c] === 4;
+    // The player is ~17px tall and occupies both row r (feet) and row r-1 (head).
+    // Both must be passable (0, 3, or 4), NOT solid blocks (1 or 2).
+    const canPlayerFit = (c, r) => {
+        if (r < 1 || r >= rows || c < 0 || c >= cols) return false;
+        const feet = grid[r][c];
+        const head = grid[r - 1][c];
+        const feetPassable = (feet === 0 || feet === 3 || feet === 4);
+        const headPassable = (head === 0 || head === 3 || head === 4);
+        return feetPassable && headPassable;
     };
 
     const isStanding = (c, r) => {
         if (r + 1 >= rows) return true;
-        return grid[r+1][c] === 1 || grid[r+1][c] === 2 || grid[r+1][c] === 3;
+        const floor = grid[r + 1][c];
+        const hasSolidFloor = (floor === 1 || floor === 2 || floor === 3);
+        return hasSolidFloor && canPlayerFit(c, r);
     };
 
     while (queue.length > 0) {
         const {c, r} = queue.shift();
         
         const tryAdd = (nc, nr) => {
-            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows && !visited[nr][nc] && isPassable(nc, nr)) {
+            if (nc >= 0 && nc < cols && nr >= 1 && nr < rows && !visited[nr][nc] && canPlayerFit(nc, nr)) {
                 visited[nr][nc] = true;
                 queue.push({c: nc, r: nr});
             }
@@ -69,11 +92,11 @@ function runBFS(grid, startC, startR, leverC, leverR, exitC, exitR) {
 
         // Jump up to 3 tiles
         if (isStanding(c, r)) {
-            if (isPassable(c, r - 1)) {
+            if (canPlayerFit(c, r - 1)) {
                 tryAdd(c, r - 1);
-                if (isPassable(c, r - 2)) {
+                if (canPlayerFit(c, r - 2)) {
                     tryAdd(c, r - 2);
-                    if (isPassable(c, r - 3)) {
+                    if (canPlayerFit(c, r - 3)) {
                         tryAdd(c, r - 3);
                     }
                 }
@@ -95,6 +118,19 @@ function runBFS(grid, startC, startR, leverC, leverR, exitC, exitR) {
         return false;
     };
 
+    // Platform validation: verify player can actually land/stand on top of reachable platforms
+    let platformsValid = true;
+    for (let r = 1; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            if (grid[r][c] === 3 && visited[r][c]) {
+                // If platform is visited, check that player can stand on top (at r - 1)
+                if (!canPlayerFit(c, r - 1)) {
+                    platformsValid = false;
+                }
+            }
+        }
+    }
+
     let maxReachableCol = 0;
     for (let c = 0; c < cols; c++) {
         for (let r = 0; r < rows; r++) {
@@ -105,7 +141,7 @@ function runBFS(grid, startC, startR, leverC, leverR, exitC, exitR) {
     }
 
     return {
-        valid: isReached(leverC, leverR) && isReached(exitC, exitR),
+        valid: isReached(leverC, leverR) && isReached(exitC, exitR) && platformsValid,
         furthestReachableCol: maxReachableCol,
         visited
     };
@@ -374,6 +410,9 @@ function generateAttempt(options, forceAccept = false) {
         }
     }
 
+    // Fix 2.5: Ensure all platforms have at least 2 tiles of clear headroom above them
+    ensurePlatformClearances(grid, cols, rows);
+
     // Fix 3: BFS Reachability Validation & Patching
     let patches = 0;
     while (patches < 3) {
@@ -390,6 +429,7 @@ function generateAttempt(options, forceAccept = false) {
                 }
                 grid[baseFloorRow][c] = 1;
             }
+            ensurePlatformClearances(grid, cols, rows);
             patches++;
         }
     }

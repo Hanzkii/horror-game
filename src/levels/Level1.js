@@ -43,8 +43,8 @@ export const Level1 = {
         // Lower path (r: 13 to 15) leads to the locked gate
         carve(16, 12, 34, 15, 0);
         
-        // Upper climbing shaft (opens high up from r: 3 to 15)
-        carve(22, 3, 34, 15, 0);
+        // Upper climbing shaft (opens high up from r: 2 to 15)
+        carve(22, 2, 34, 15, 0);
         
         // One-way platforms to climb the vertical shaft
         grid[13][24] = 3; grid[13][25] = 3; grid[13][26] = 3;
@@ -60,16 +60,16 @@ export const Level1 = {
         }
         grid[5][42] = 3; grid[5][43] = 3; grid[5][44] = 3; // altar shelf
 
-        // 4. Chamber 4: The Spike Pit Trench (Lower level, c: 35 to 55, r: 13 to 18)
-        carve(35, 12, 55, 17, 0);
+        // 4. Chamber 4: The Spike Pit Trench (Lower level, c: 35 to 55, r: 9 to 18)
+        carve(35, 9, 55, 17, 0);
         for (let c = 38; c <= 50; c++) {
             grid[16][c] = 0; // deep pit hole
             grid[18][c] = 1; // pit bottom where spikes rest
         }
-        // Floating stepping stones across pit
-        grid[14][40] = 3; grid[14][41] = 3;
-        grid[13][44] = 3; grid[13][45] = 3;
-        grid[14][48] = 3; grid[14][49] = 3;
+        // Floating stepping stones across pit with ample headroom (rows 9-13 are open air)
+        grid[14][40] = 3; grid[14][41] = 3; grid[14][42] = 3;
+        grid[14][44] = 3; grid[14][45] = 3; grid[14][46] = 3;
+        grid[14][48] = 3; grid[14][49] = 3; grid[14][50] = 3;
 
         // 5. Chamber 5: The Stalker's Dark Hall (c: 56 to 78, r: 10 to 16)
         carve(56, 11, 78, 15, 0);

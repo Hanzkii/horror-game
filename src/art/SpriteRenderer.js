@@ -87,19 +87,19 @@ export default class SpriteRenderer {
         const hLegs = '#2a2a3a';
         
         const w = 12;
-        const h = 20;
+        const h = 17;
 
         // Breath animation
-        const breathScale = (state === 0) ? Math.sin(breathTimer * 2) * 0.5 : 0;
+        const breathScale = (state === 0) ? Math.sin(breathTimer * 2) * 0.4 : 0;
         
-        // Legs (bottom 8px, 4px wide, 4px gap)
-        let leftLegY = y + 12;
-        let rightLegY = y + 12;
-        let leftArmY = y + 5;
-        let rightArmY = y + 5;
+        // Legs (bottom 7px: y + 10 to y + 17)
+        let leftLegY = y + 10;
+        let rightLegY = y + 10;
+        let leftArmY = y + 4;
+        let rightArmY = y + 4;
         
         if (state === 1) { // WALKING
-            const legOffsets = [0, -2, 0, 2];
+            const legOffsets = [0, -1, 0, 1];
             leftLegY += legOffsets[frame];
             rightLegY += legOffsets[(frame + 2) % 4];
             leftArmY += legOffsets[(frame + 2) % 4]; // Arms opposite to legs
@@ -107,8 +107,8 @@ export default class SpriteRenderer {
         } else if (state === 2) { // JUMPING
             leftLegY -= 2;
             rightLegY -= 2;
-            leftArmY -= 3;
-            rightArmY -= 3;
+            leftArmY -= 2;
+            rightArmY -= 2;
         } else if (state === 3) { // FALLING
             leftLegY -= 1;
             rightLegY -= 1;
@@ -117,32 +117,32 @@ export default class SpriteRenderer {
         } else if (state === 4) { // WALL_SLIDING
             leftLegY -= 1;
             rightLegY -= 1;
-            leftArmY -= 2;
-            rightArmY -= 4; // one arm up
+            leftArmY -= 1;
+            rightArmY -= 3; // one arm up
         }
 
         // Draw left arm (behind)
-        renderer.drawRect(x + 1, leftArmY - breathScale, 2, 6, '#2d3a48');
+        renderer.drawRect(x + 1, leftArmY - breathScale, 2, 5, '#2d3a48');
 
         // Draw legs
-        renderer.drawRect(x + 2, leftLegY, 4, 8, hLegs);
-        renderer.drawRect(x + 6, rightLegY, 4, 8, hLegs);
+        renderer.drawRect(x + 2, leftLegY, 4, 7, hLegs);
+        renderer.drawRect(x + 6, rightLegY, 4, 7, hLegs);
 
         // Draw torso
-        renderer.drawRect(x + 2, y + 5 - breathScale, 8, 7 + breathScale, hTorso);
+        renderer.drawRect(x + 2, y + 4 - breathScale, 8, 6 + breathScale, hTorso);
         
         // Draw right arm (front)
-        renderer.drawRect(x + 9, rightArmY - breathScale, 2, 6, '#2d3a48');
+        renderer.drawRect(x + 9, rightArmY - breathScale, 2, 5, '#2d3a48');
 
         // Head
-        renderer.drawRect(x + 3, y - breathScale, 6, 5, hSkin);
+        renderer.drawRect(x + 3, y - breathScale, 6, 4, hSkin);
         
         // Hood part
-        renderer.drawRect(x + 2, y - 1 - breathScale, 8, 5, hTorso);
+        renderer.drawRect(x + 2, y - 1 - breathScale, 8, 4, hTorso);
         renderer.drawRect(x + 3, y - breathScale, 6, 2, hTorso); // hood peak
         
         // Face/Skin visible area
-        renderer.drawRect(x + (facingRight ? 4 : 3), y + 1 - breathScale, 5, 4, hSkin);
+        renderer.drawRect(x + (facingRight ? 4 : 3), y + 1 - breathScale, 5, 3, hSkin);
 
         // Eyes
         if (!isBlinking) {

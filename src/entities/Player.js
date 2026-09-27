@@ -11,7 +11,7 @@ export const PLAYER_STATES = {
 
 export class Player extends Entity {
     constructor(x, y) {
-        super(x, y, 12, 20);
+        super(x, y, 12, 17);
         this.type = 'player';
         
         // Store spawn point for respawning
@@ -214,8 +214,8 @@ export class Player extends Entity {
                 } else if (tile === 3) { // one-way semi-solid platform
                     if (movingDown) {
                         const platTop = r * tileSize;
-                        // Only land if previous bottom was at or above platform top
-                        if (prevY + this.height <= platTop + 4) {
+                        // Only land if previous bottom was at or above platform top (with 8px tolerance)
+                        if (prevY + this.height <= platTop + 8) {
                             this.y = platTop - this.height;
                             this.vy = 0;
                             this.grounded = true;
