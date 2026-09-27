@@ -15,9 +15,22 @@ export default class Input {
             'left': ['KeyA', 'ArrowLeft'],
             'right': ['KeyD', 'ArrowRight'],
             'jump': ['Space', 'KeyW', 'ArrowUp'],
-            'interact': ['KeyE', 'Enter', 'NumpadEnter'],
+            'interact': ['KeyE'],
+            'confirm': ['Enter', 'NumpadEnter', 'Space'],
             'pause': ['Escape']
         };
+
+        // Mouse tracking
+        this.mouse = {
+            x: -999,
+            y: -999,
+            isDown: false,
+            wasDown: false,
+            isClicked: false
+        };
+        this.targetCanvas = null;
+        this.gameWidth = 480;
+        this.gameHeight = 270;
         
         // Event listeners with preventDefault on game keys to prevent page scrolling
         window.addEventListener('keydown', (e) => {
@@ -55,7 +68,58 @@ export default class Input {
         // Reset keys on window blur to avoid stuck inputs
         window.addEventListener('blur', () => {
             this.keys = {};
+            this.mouse.isDown = false;
         });
+    }
+
+    /**
+     * Attaches mouse coordinate scaling to the game canvas.
+     * @param {HTMLCanvasElement} canvas
+     * @param {number} width
+     * @param {number} height
+     */
+    attachCanvas(canvas, width = 480, height = 270) {
+        this.targetCanvas = canvas;
+        this.gameWidth = width;
+        this.gameHeight = height;
+
+        const updatePos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                const scaleX = width / rect.width;
+                const scaleY = height / rect.height;
+                this.mouse.x = (e.clientX - rect.left) * scaleX;
+                this.mouse.y = (e.clientY - rect.top) * scaleY;
+            }
+        };
+
+        window.addEventListener('mousemove', updatePos);
+
+        window.addEventListener('mousedown', (e) => {
+            updatePos(e);
+            if (e.button === 0) {
+                this.mouse.isDown = true;
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            updatePos(e);
+            if (e.button === 0) {
+                this.mouse.isDown = false;
+            }
+        });
+    }
+
+    isMouseClicked() {
+        return this.mouse.isClicked;
+    }
+
+    isMouseDown() {
+        return this.mouse.isDown;
+    }
+
+    getMousePos() {
+        return { x: this.mouse.x, y: this.mouse.y };
     }
     
     /**
@@ -63,6 +127,8 @@ export default class Input {
      */
     update() {
         this.prevKeys = { ...this.keys };
+        this.mouse.isClicked = this.mouse.isDown && !this.mouse.wasDown;
+        this.mouse.wasDown = this.mouse.isDown;
     }
     
     /**

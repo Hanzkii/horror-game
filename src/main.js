@@ -54,6 +54,7 @@ async function init() {
 
     // Initialize core engine systems
     const input = new Input();
+    input.attachCanvas(canvas, GAME_WIDTH, GAME_HEIGHT);
     const audio = new AudioManager();
     const renderer = new Renderer(canvas, GAME_WIDTH, GAME_HEIGHT);
     const gameState = new GameState();
@@ -61,7 +62,7 @@ async function init() {
     const ctx = renderer.bctx; // Offscreen buffer context
     const postProcessing = new PostProcessing(ctx, GAME_WIDTH, GAME_HEIGHT);
     const hud = new HUD(ctx, GAME_WIDTH, GAME_HEIGHT);
-    const mainMenu = new MainMenu(ctx, GAME_WIDTH, GAME_HEIGHT);
+    const mainMenu = new MainMenu(ctx, GAME_WIDTH, GAME_HEIGHT, audio, canvas);
 
     const scene = new Scene();
 
