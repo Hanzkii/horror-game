@@ -171,6 +171,7 @@ export class Player extends Entity {
         
         // --- 2. VERTICAL MOVEMENT & COLLISION RESOLUTION ---
         const prevY = this.y;
+        const movingDown = this.vy >= 0;
         this.y += this.vy * dt;
         this.grounded = false;
         
@@ -182,20 +183,20 @@ export class Player extends Entity {
         for (let r = topRow; r <= bottomRow; r++) {
             for (let c = leftCol; c <= rightCol; c++) {
                 const tile = scene.getTile(c, r);
-                if (tile === 1 || tile === 2) { // solid block
-                    if (this.vy >= 0) {
+                if (tile === 1 || tile === 2) { // solid stone or brick
+                    if (movingDown) {
                         // Landing on floor
                         this.y = r * tileSize - this.height;
                         this.vy = 0;
                         this.grounded = true;
-                    } else if (this.vy < 0) {
-                        // Bumping ceiling
+                    } else {
+                        // Bumping ceiling when jumping upward
                         this.y = (r + 1) * tileSize;
                         this.vy = 0;
                         this.jumpTimer = 0;
                     }
                 } else if (tile === 3) { // one-way semi-solid platform
-                    if (this.vy >= 0) {
+                    if (movingDown) {
                         const platTop = r * tileSize;
                         // Only land if previous bottom was at or above platform top
                         if (prevY + this.height <= platTop + 4) {

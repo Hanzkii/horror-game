@@ -1,6 +1,6 @@
 /**
  * @file LevelEditor.js
- * @description Interactive visual level editor with procedural generation controls, tile palette, entity placement, and live playtesting.
+ * @description Interactive visual level editor with high-contrast UI, Undo/Redo history, tooltips, procedural generation controls, and live playtesting.
  */
 
 import { generateProceduralLevel } from '../generator/LevelGenerator.js';
@@ -17,13 +17,19 @@ export default class LevelEditor {
         this.currentTool = 'tile_1'; // default stone
         this.currentLevelData = null;
 
-        // Editor camera offset and pan
+        // Undo / Redo history stacks
+        this.undoStack = [];
+        this.redoStack = [];
+        this.maxHistory = 35;
+
+        // Editor camera pan
         this.cameraX = 0;
         this.cameraY = 0;
         this.isPanning = false;
         this.panStartX = 0;
         this.panStartY = 0;
         this.isPainting = false;
+        this.hasPaintedInStroke = false;
 
         // Generator parameters
         this.genParams = {
@@ -31,8 +37,8 @@ export default class LevelEditor {
             width: 75,
             height: 20,
             roomCount: 5,
-            hazardDensity: 0.4,
-            verticality: 0.5,
+            hazardDensity: 40,
+            verticality: 50,
             shadowCount: 1,
             noteCount: 2
         };
@@ -42,7 +48,7 @@ export default class LevelEditor {
     }
 
     /**
-     * Initializes the editor DOM overlay.
+     * Initializes the editor DOM overlay with clean typography and high contrast.
      */
     initUI() {
         const overlay = document.createElement('div');
@@ -55,118 +61,165 @@ export default class LevelEditor {
             height: 100vh;
             pointer-events: none;
             display: none;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
-            color: #ddd;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            color: #f0f6fc;
             z-index: 9000;
+            user-select: none;
         `;
 
         overlay.innerHTML = `
-            <!-- Top Bar -->
-            <div style="pointer-events: auto; background: rgba(14, 14, 22, 0.95); border-bottom: 1px solid #333; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="font-weight: 700; font-size: 15px; letter-spacing: 0.1rem; color: #ff5555;">[ECHO] LEVEL ARCHITECT</span>
-                    <span id="editor-level-name" style="color: #888; font-size: 12px;">Editing: The Awakening</span>
+            <!-- Top Navigation Bar -->
+            <div style="pointer-events: auto; background: rgba(13, 17, 23, 0.98); border-bottom: 1px solid #30363d; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 6px 20px rgba(0,0,0,0.6);">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <span style="font-weight: 800; font-size: 16px; letter-spacing: 0.08rem; color: #ff6b6b; display: flex; align-items: center; gap: 8px;">
+                        <span style="background: #ff4444; width: 10px; height: 10px; border-radius: 50%; display: inline-block;"></span>
+                        ECHO ARCHITECT
+                    </span>
+                    <span style="color: #6e7681; font-size: 13px;">|</span>
+                    <span id="editor-level-name" style="color: #8b949e; font-size: 13px; font-weight: 500;">Level: The Awakening</span>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    <button id="btn-play-level" style="background: #238636; border: 1px solid #2ea043; color: #fff; padding: 6px 14px; border-radius: 4px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+
+                <!-- Center: Undo / Redo Controls -->
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="btn-undo" data-tooltip="Undo last action (Ctrl+Z)" style="background: #21262d; border: 1px solid #363b42; color: #c9d1d9; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s;">
+                        <span>↩</span> Undo <span style="font-size: 10px; color: #8b949e;">[Ctrl+Z]</span>
+                    </button>
+                    <button id="btn-redo" data-tooltip="Redo last reverted action (Ctrl+Y)" style="background: #21262d; border: 1px solid #363b42; color: #c9d1d9; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s;">
+                        <span>↪</span> Redo <span style="font-size: 10px; color: #8b949e;">[Ctrl+Y]</span>
+                    </button>
+                </div>
+
+                <!-- Right: Action Buttons -->
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="btn-play-level" data-tooltip="Playtest this dungeon layout immediately" style="background: #238636; border: 1px solid #2ea043; color: #ffffff; padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(35,134,54,0.4); transition: all 0.15s;">
                         <span>▶</span> TEST LEVEL
                     </button>
-                    <button id="btn-close-editor" style="background: #30363d; border: 1px solid #444c56; color: #ccc; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                    <button id="btn-close-editor" data-tooltip="Exit editor back to game (TAB)" style="background: #30363d; border: 1px solid #444c56; color: #c9d1d9; padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;">
                         CLOSE [TAB]
                     </button>
                 </div>
             </div>
 
             <!-- Left Tool Palette -->
-            <div style="pointer-events: auto; position: absolute; left: 16px; top: 60px; width: 175px; background: rgba(18, 18, 28, 0.95); border: 1px solid #333; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 80px); overflow-y: auto;">
-                <div style="font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.05rem;">TILES</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;" id="tile-buttons">
-                    <button class="tool-btn" data-tool="tile_0" style="padding: 6px; font-size: 11px; background: #222; border: 1px solid #444; color: #fff; cursor: pointer; border-radius: 3px;">Air (0)</button>
-                    <button class="tool-btn active" data-tool="tile_1" style="padding: 6px; font-size: 11px; background: #1a1a2e; border: 1px solid #6688cc; color: #fff; cursor: pointer; border-radius: 3px;">Stone (1)</button>
-                    <button class="tool-btn" data-tool="tile_2" style="padding: 6px; font-size: 11px; background: #2a1a1a; border: 1px solid #444; color: #fff; cursor: pointer; border-radius: 3px;">Brick (2)</button>
-                    <button class="tool-btn" data-tool="tile_3" style="padding: 6px; font-size: 11px; background: #333344; border: 1px solid #444; color: #fff; cursor: pointer; border-radius: 3px;">Platform (3)</button>
-                    <button class="tool-btn" data-tool="tile_4" style="padding: 6px; font-size: 11px; background: #0d0d15; border: 1px solid #444; color: #fff; cursor: pointer; border-radius: 3px;">Backdrop (4)</button>
+            <div style="pointer-events: auto; position: absolute; left: 18px; top: 72px; width: 195px; background: rgba(13, 17, 23, 0.96); border: 1px solid #30363d; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 100px); overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+                <div>
+                    <div style="font-size: 12px; font-weight: 700; color: #8b949e; letter-spacing: 0.06rem; margin-bottom: 8px; text-transform: uppercase;">Tile Palette</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 7px;" id="tile-buttons">
+                        <button class="tool-btn" data-tool="tile_0" data-tooltip="Air (0) — Erases solid blocks to create open space" style="padding: 7px; font-size: 12px; font-weight: 500; background: #161b22; border: 1px solid #30363d; color: #c9d1d9; cursor: pointer; border-radius: 5px;">Air (0)</button>
+                        <button class="tool-btn active" data-tool="tile_1" data-tooltip="Stone (1) — Indestructible solid wall and floor stone" style="padding: 7px; font-size: 12px; font-weight: 600; background: #202035; border: 2px solid #58a6ff; color: #ffffff; cursor: pointer; border-radius: 5px;">Stone (1)</button>
+                        <button class="tool-btn" data-tool="tile_2" data-tooltip="Brick (2) — Ancient ruin stone blocks" style="padding: 7px; font-size: 12px; font-weight: 500; background: #382020; border: 1px solid #30363d; color: #ffaaaa; cursor: pointer; border-radius: 5px;">Brick (2)</button>
+                        <button class="tool-btn" data-tool="tile_3" data-tooltip="Platform (3) — Jump-through semi-solid shelf; land on top" style="padding: 7px; font-size: 12px; font-weight: 500; background: #334455; border: 1px solid #30363d; color: #aaddff; cursor: pointer; border-radius: 5px;">Platform (3)</button>
+                        <button class="tool-btn" data-tool="tile_4" data-tooltip="Backdrop (4) — Non-solid background pillars for visual depth" style="padding: 7px; font-size: 12px; font-weight: 500; background: #12121c; border: 1px solid #30363d; color: #8b949e; cursor: pointer; border-radius: 5px; grid-column: span 2;">Backdrop (4)</button>
+                    </div>
                 </div>
 
-                <div style="font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.05rem; margin-top: 6px;">ENTITIES</div>
-                <div style="display: flex; flex-direction: column; gap: 4px;" id="entity-buttons">
-                    <button class="tool-btn" data-tool="ent_player" style="padding: 6px; font-size: 11px; background: #222; border: 1px solid #444; color: #eee; cursor: pointer; border-radius: 3px; text-align: left;">👤 Player Start</button>
-                    <button class="tool-btn" data-tool="ent_spikes" style="padding: 6px; font-size: 11px; background: #222; border: 1px solid #444; color: #f77; cursor: pointer; border-radius: 3px; text-align: left;">⚠️ Spikes Hazard</button>
-                    <button class="tool-btn" data-tool="ent_falling" style="padding: 6px; font-size: 11px; background: #222; border: 1px solid #444; color: #f99; cursor: pointer; border-radius: 3px; text-align: left;">⬇️ Falling Trap</button>
-                    <button class="tool-btn" data-tool="ent_note" style="padding: 6px; font-size: 11px; background: #222; border: 1px solid #444; color: #dd4; cursor: pointer; border-radius: 3px; text-align: left;">📜 Lore Note</button>
-                    <button class="tool-btn" data-tool="ent_door" style="padding: 6px; font-size: 11px; background: #222; border: 1px solid #444; color: #a63; cursor: pointer; border-radius: 3px; text-align: left;">🚪 Exit Door</button>
-                    <button class="tool-btn" data-tool="ent_shadow" style="padding: 6px; font-size: 11px; background: #222; border: 1px solid #444; color: #88c; cursor: pointer; border-radius: 3px; text-align: left;">👤 Shadow Stalker</button>
-                    <button class="tool-btn" data-tool="ent_erase" style="padding: 6px; font-size: 11px; background: #331111; border: 1px solid #622; color: #fbb; cursor: pointer; border-radius: 3px; text-align: left;">❌ Erase Entity</button>
+                <div>
+                    <div style="font-size: 12px; font-weight: 700; color: #8b949e; letter-spacing: 0.06rem; margin-bottom: 8px; text-transform: uppercase;">Entity Spawners</div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;" id="entity-buttons">
+                        <button class="tool-btn" data-tool="ent_player" data-tooltip="Player Spawn — Place where the player awakens" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #7ee787; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>👤</span> Player Start
+                        </button>
+                        <button class="tool-btn" data-tool="ent_spikes" data-tooltip="Spikes Hazard — Deadly pit spikes; kills on touch" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #ff7b72; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>⚠️</span> Spikes Hazard
+                        </button>
+                        <button class="tool-btn" data-tool="ent_falling" data-tooltip="Falling Trap — Ceiling block that shivers and drops" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #ffa657; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>⬇️</span> Falling Trap
+                        </button>
+                        <button class="tool-btn" data-tool="ent_note" data-tooltip="Lore Note — Discoverable parchment with cryptic messages" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #f2cc60; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>📜</span> Lore Note
+                        </button>
+                        <button class="tool-btn" data-tool="ent_door" data-tooltip="Exit Door — Threshold unlocking deeper procedural floors" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #d2a8ff; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>🚪</span> Exit Door
+                        </button>
+                        <button class="tool-btn" data-tool="ent_shadow" data-tooltip="Shadow Stalker — Eerie entity that watches and drains sanity" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #a5d6ff; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>👻</span> Shadow Stalker
+                        </button>
+                        <button class="tool-btn" data-tool="ent_erase" data-tooltip="Erase Entity — Click near an entity to remove it" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #2d1818; border: 1px solid #6e2020; color: #ffaaaa; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>❌</span> Erase Entity
+                        </button>
+                    </div>
                 </div>
 
-                <div style="font-size: 10px; color: #666; margin-top: 8px;">
+                <div style="font-size: 11px; color: #8b949e; line-height: 1.4; border-top: 1px solid #30363d; padding-top: 10px;">
+                    <b style="color: #c9d1d9;">Shortcuts:</b><br>
                     Left-Click: Paint<br>
                     Right-Click/Drag: Pan<br>
+                    Ctrl+Z / Ctrl+Y: Undo/Redo<br>
                     TAB: Toggle Editor
                 </div>
             </div>
 
             <!-- Right Procedural Generator Panel -->
-            <div style="pointer-events: auto; position: absolute; right: 16px; top: 60px; width: 240px; background: rgba(18, 18, 28, 0.95); border: 1px solid #333; border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
-                <div style="font-size: 12px; font-weight: 700; color: #ffaa55; letter-spacing: 0.05rem;">PROCEDURAL GENERATOR</div>
-
-                <div>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 2px;">
-                        <span>Seed:</span>
-                        <button id="btn-random-seed" style="background: none; border: none; color: #66aaff; cursor: pointer; font-size: 10px;">🎲 Randomize</button>
-                    </div>
-                    <input type="number" id="gen-seed" style="width: 100%; box-sizing: border-box; background: #0f0f18; border: 1px solid #444; color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 11px;">
+            <div style="pointer-events: auto; position: absolute; right: 18px; top: 72px; width: 280px; background: rgba(13, 17, 23, 0.96); border: 1px solid #30363d; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+                <div style="font-size: 13px; font-weight: 800; color: #f0883e; letter-spacing: 0.05rem; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Procedural Generator</span>
+                    <span style="font-size: 11px; font-weight: 600; color: #58a6ff; background: rgba(88,166,255,0.15); padding: 2px 6px; border-radius: 4px;">v2.0</span>
                 </div>
 
                 <div>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa;">
-                        <span>Chambers:</span>
-                        <span id="lbl-rooms">5</span>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #c9d1d9; margin-bottom: 4px; font-weight: 500;">
+                        <span>Dungeon Seed:</span>
+                        <button id="btn-random-seed" data-tooltip="Generate a completely new random numeric seed" style="background: none; border: none; color: #58a6ff; cursor: pointer; font-size: 12px; font-weight: 600;">🎲 Randomize</button>
                     </div>
-                    <input type="range" id="gen-rooms" min="3" max="8" value="5" style="width: 100%;">
+                    <input type="number" id="gen-seed" style="width: 100%; box-sizing: border-box; background: #0d1117; border: 1px solid #30363d; color: #f0f6fc; padding: 6px 10px; border-radius: 5px; font-size: 13px; font-family: monospace;">
                 </div>
 
                 <div>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #c9d1d9; margin-bottom: 4px; font-weight: 500;">
+                        <span>Chambers & Length:</span>
+                        <span id="lbl-rooms" style="font-weight: 700; color: #58a6ff;">5</span>
+                    </div>
+                    <input type="range" id="gen-rooms" min="3" max="8" value="5" data-tooltip="Number of interconnected architectural rooms and halls" style="width: 100%; accent-color: #58a6ff; cursor: pointer;">
+                </div>
+
+                <div>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #c9d1d9; margin-bottom: 4px; font-weight: 500;">
                         <span>Hazard Danger:</span>
-                        <span id="lbl-hazards">40%</span>
+                        <span id="lbl-hazards" style="font-weight: 700; color: #ff7b72;">40%</span>
                     </div>
-                    <input type="range" id="gen-hazards" min="0" max="100" value="40" style="width: 100%;">
+                    <input type="range" id="gen-hazards" min="0" max="100" value="40" data-tooltip="Density of deadly floor spikes and falling ceiling stones" style="width: 100%; accent-color: #ff7b72; cursor: pointer;">
                 </div>
 
                 <div>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #c9d1d9; margin-bottom: 4px; font-weight: 500;">
                         <span>Verticality / Platforms:</span>
-                        <span id="lbl-vert">50%</span>
+                        <span id="lbl-vert" style="font-weight: 700; color: #a5d6ff;">50%</span>
                     </div>
-                    <input type="range" id="gen-vert" min="0" max="100" value="50" style="width: 100%;">
+                    <input type="range" id="gen-vert" min="0" max="100" value="50" data-tooltip="Frequency of high-ceiling climbing shafts and jump-through shelves" style="width: 100%; accent-color: #a5d6ff; cursor: pointer;">
                 </div>
 
                 <div>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #c9d1d9; margin-bottom: 4px; font-weight: 500;">
                         <span>Shadow Stalkers:</span>
-                        <span id="lbl-shadows">1</span>
+                        <span id="lbl-shadows" style="font-weight: 700; color: #d2a8ff;">1</span>
                     </div>
-                    <input type="range" id="gen-shadows" min="0" max="3" value="1" style="width: 100%;">
+                    <input type="range" id="gen-shadows" min="0" max="3" value="1" data-tooltip="Number of horror entities stalking the dark halls" style="width: 100%; accent-color: #d2a8ff; cursor: pointer;">
                 </div>
 
-                <button id="btn-generate-now" style="background: #6e40c9; border: 1px solid #8957e5; color: #fff; padding: 8px; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 4px;">
-                    ✨ GENERATE PROCEDURAL LEVEL
+                <button id="btn-generate-now" data-tooltip="Generate a brand new dungeon layout using current slider settings" style="background: #8957e5; border: 1px solid #ab7df8; color: #ffffff; padding: 10px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(137,87,229,0.35); transition: all 0.15s; white-space: nowrap;">
+                    <span>✨</span> GENERATE PROCEDURAL LEVEL
                 </button>
 
-                <div style="border-top: 1px solid #333; margin-top: 6px; padding-top: 8px;">
-                    <div style="font-size: 11px; font-weight: 700; color: #888; margin-bottom: 6px;">PRESETS</div>
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <button class="preset-btn" data-preset="level1" style="padding: 4px 8px; font-size: 11px; background: #222; border: 1px solid #444; color: #bbb; cursor: pointer; text-align: left; border-radius: 3px;">The Awakening (Fixed Map)</button>
-                        <button class="preset-btn" data-preset="catacombs" style="padding: 4px 8px; font-size: 11px; background: #222; border: 1px solid #444; color: #bbb; cursor: pointer; text-align: left; border-radius: 3px;">The Crypt (Procedural)</button>
-                        <button class="preset-btn" data-preset="gauntlet" style="padding: 4px 8px; font-size: 11px; background: #222; border: 1px solid #444; color: #bbb; cursor: pointer; text-align: left; border-radius: 3px;">The Gauntlet (High Hazard)</button>
+                <div style="border-top: 1px solid #30363d; padding-top: 10px;">
+                    <div style="font-size: 12px; font-weight: 700; color: #8b949e; margin-bottom: 8px; text-transform: uppercase;">Dungeon Presets</div>
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <button class="preset-btn" data-preset="level1" data-tooltip="Handcrafted intro map with crypt, shaft, and spike room" style="padding: 6px 10px; font-size: 12px; background: #161b22; border: 1px solid #30363d; color: #c9d1d9; cursor: pointer; text-align: left; border-radius: 5px; font-weight: 500;">The Awakening (Original)</button>
+                        <button class="preset-btn" data-preset="catacombs" data-tooltip="Moderate labyrinth with climbing towers and lore notes" style="padding: 6px 10px; font-size: 12px; background: #161b22; border: 1px solid #30363d; color: #c9d1d9; cursor: pointer; text-align: left; border-radius: 5px; font-weight: 500;">The Catacombs (Balanced)</button>
+                        <button class="preset-btn" data-preset="gauntlet" data-tooltip="High-danger nightmare filled with spikes and multiple shadows" style="padding: 6px 10px; font-size: 12px; background: #161b22; border: 1px solid #30363d; color: #ffaaaa; cursor: pointer; text-align: left; border-radius: 5px; font-weight: 500;">The Gauntlet (Extreme)</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Bottom Floating Status -->
-            <div id="editor-tile-info" style="pointer-events: none; position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 4px; font-size: 11px; color: #888;">
-                Tile [X: 0, Y: 0]
+            <!-- Bottom Floating Status & Dynamic Tooltip Bar -->
+            <div style="pointer-events: auto; position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; align-items: center;">
+                <!-- Live Tooltip Message -->
+                <div id="editor-tooltip-msg" style="background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; padding: 6px 16px; border-radius: 6px; font-size: 12px; color: #e6edf3; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 500px; text-align: center; white-space: nowrap;">
+                    Hover over elements to see tooltips & shortcuts
+                </div>
+                <!-- Coordinates -->
+                <div id="editor-tile-info" style="background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; padding: 6px 14px; border-radius: 6px; font-size: 12px; color: #8b949e; font-family: monospace; box-shadow: 0 4px 12px rgba(0,0,0,0.5); white-space: nowrap;">
+                    Tile [Col: 0, Row: 0]
+                </div>
             </div>
         `;
 
@@ -176,48 +229,203 @@ export default class LevelEditor {
         // Floating trigger button on top-right during gameplay
         const triggerBtn = document.createElement('button');
         triggerBtn.id = 'btn-open-editor';
-        triggerBtn.innerText = '🛠️ LEVEL ARCHITECT';
+        triggerBtn.innerHTML = '🛠️ <span style="font-weight: 700;">LEVEL ARCHITECT</span>';
         triggerBtn.style.cssText = `
             position: fixed;
-            top: 12px;
-            right: 12px;
-            background: rgba(25, 25, 35, 0.85);
-            border: 1px solid #444;
-            color: #ddd;
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-family: monospace;
+            top: 14px;
+            right: 14px;
+            background: rgba(22, 27, 34, 0.9);
+            border: 1px solid #30363d;
+            color: #f0f6fc;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: system-ui, sans-serif;
             cursor: pointer;
             z-index: 8000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             transition: all 0.2s ease;
         `;
         triggerBtn.addEventListener('mouseenter', () => {
             triggerBtn.style.background = '#30363d';
-            triggerBtn.style.borderColor = '#ff5555';
+            triggerBtn.style.borderColor = '#58a6ff';
         });
         triggerBtn.addEventListener('mouseleave', () => {
-            triggerBtn.style.background = 'rgba(25, 25, 35, 0.85)';
-            triggerBtn.style.borderColor = '#444';
+            triggerBtn.style.background = 'rgba(22, 27, 34, 0.9)';
+            triggerBtn.style.borderColor = '#30363d';
         });
         triggerBtn.addEventListener('click', () => this.toggle());
         document.body.appendChild(triggerBtn);
     }
 
     /**
-     * Binds all editor DOM and Canvas interactions.
+     * Captures a snapshot of current level state for Undo history.
+     */
+    saveSnapshot() {
+        if (!this.currentLevelData) return;
+
+        const snapshot = {
+            name: this.currentLevelData.name,
+            seed: this.currentLevelData.seed,
+            width: this.currentLevelData.width,
+            height: this.currentLevelData.height,
+            tileSize: this.currentLevelData.tileSize || 16,
+            playerStart: { ...this.currentLevelData.playerStart },
+            backgroundColor: this.currentLevelData.backgroundColor,
+            ambientTrack: this.currentLevelData.ambientTrack,
+            tiles: this.currentLevelData.tiles.map(row => [...row]),
+            entities: this.currentLevelData.entities.map(ent => ({
+                ...ent,
+                properties: { ...(ent.properties || {}) }
+            }))
+        };
+
+        this.undoStack.push(snapshot);
+        if (this.undoStack.length > this.maxHistory) {
+            this.undoStack.shift();
+        }
+        // New edit clears redo stack
+        this.redoStack = [];
+        this.updateUndoRedoButtons();
+    }
+
+    /**
+     * Undoes the last action.
+     */
+    undo() {
+        if (this.undoStack.length === 0) return;
+
+        // Push current state to redo
+        const currentSnapshot = {
+            name: this.currentLevelData.name,
+            seed: this.currentLevelData.seed,
+            width: this.currentLevelData.width,
+            height: this.currentLevelData.height,
+            tileSize: this.currentLevelData.tileSize || 16,
+            playerStart: { ...this.currentLevelData.playerStart },
+            backgroundColor: this.currentLevelData.backgroundColor,
+            ambientTrack: this.currentLevelData.ambientTrack,
+            tiles: this.currentLevelData.tiles.map(row => [...row]),
+            entities: this.currentLevelData.entities.map(ent => ({
+                ...ent,
+                properties: { ...(ent.properties || {}) }
+            }))
+        };
+        this.redoStack.push(currentSnapshot);
+
+        const previousState = this.undoStack.pop();
+        this.loadSnapshot(previousState);
+        this.updateUndoRedoButtons();
+        this.showTooltipMsg('↩ Undid last change');
+    }
+
+    /**
+     * Redoes the last undone action.
+     */
+    redo() {
+        if (this.redoStack.length === 0) return;
+
+        const currentSnapshot = {
+            name: this.currentLevelData.name,
+            seed: this.currentLevelData.seed,
+            width: this.currentLevelData.width,
+            height: this.currentLevelData.height,
+            tileSize: this.currentLevelData.tileSize || 16,
+            playerStart: { ...this.currentLevelData.playerStart },
+            backgroundColor: this.currentLevelData.backgroundColor,
+            ambientTrack: this.currentLevelData.ambientTrack,
+            tiles: this.currentLevelData.tiles.map(row => [...row]),
+            entities: this.currentLevelData.entities.map(ent => ({
+                ...ent,
+                properties: { ...(ent.properties || {}) }
+            }))
+        };
+        this.undoStack.push(currentSnapshot);
+
+        const nextState = this.redoStack.pop();
+        this.loadSnapshot(nextState);
+        this.updateUndoRedoButtons();
+        this.showTooltipMsg('↪ Redid change');
+    }
+
+    loadSnapshot(state) {
+        this.currentLevelData = {
+            name: state.name,
+            seed: state.seed,
+            width: state.width,
+            height: state.height,
+            tileSize: state.tileSize,
+            playerStart: { ...state.playerStart },
+            backgroundColor: state.backgroundColor,
+            ambientTrack: state.ambientTrack,
+            tiles: state.tiles.map(row => [...row]),
+            entities: state.entities.map(ent => ({
+                ...ent,
+                properties: { ...(ent.properties || {}) }
+            }))
+        };
+        this.dom.querySelector('#editor-level-name').innerText = `Level: ${this.currentLevelData.name}`;
+    }
+
+    updateUndoRedoButtons() {
+        const btnUndo = this.dom.querySelector('#btn-undo');
+        const btnRedo = this.dom.querySelector('#btn-redo');
+
+        if (this.undoStack.length === 0) {
+            btnUndo.style.opacity = '0.4';
+            btnUndo.style.cursor = 'default';
+        } else {
+            btnUndo.style.opacity = '1';
+            btnUndo.style.cursor = 'pointer';
+        }
+
+        if (this.redoStack.length === 0) {
+            btnRedo.style.opacity = '0.4';
+            btnRedo.style.cursor = 'default';
+        } else {
+            btnRedo.style.opacity = '1';
+            btnRedo.style.cursor = 'pointer';
+        }
+    }
+
+    showTooltipMsg(text) {
+        const el = this.dom.querySelector('#editor-tooltip-msg');
+        if (el) el.innerText = text;
+    }
+
+    /**
+     * Binds all DOM and Canvas events.
      */
     setupEvents() {
-        // Toggle on TAB key
+        // Toggle editor on TAB
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Tab') {
                 e.preventDefault();
                 this.toggle();
             }
+
+            // Undo / Redo keyboard shortcuts
+            if (this.isOpen && (e.ctrlKey || e.metaKey)) {
+                if (e.key.toLowerCase() === 'z') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        this.redo();
+                    } else {
+                        this.undo();
+                    }
+                } else if (e.key.toLowerCase() === 'y') {
+                    e.preventDefault();
+                    this.redo();
+                }
+            }
         });
 
         // Close button
         this.dom.querySelector('#btn-close-editor').addEventListener('click', () => this.toggle(false));
+
+        // Undo & Redo buttons
+        this.dom.querySelector('#btn-undo').addEventListener('click', () => this.undo());
+        this.dom.querySelector('#btn-redo').addEventListener('click', () => this.redo());
 
         // Play level button
         this.dom.querySelector('#btn-play-level').addEventListener('click', () => {
@@ -227,16 +435,28 @@ export default class LevelEditor {
             }
         });
 
-        // Tool buttons
+        // Dynamic Tooltip binding on all interactive elements
+        this.dom.querySelectorAll('[data-tooltip]').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                this.showTooltipMsg(el.dataset.tooltip);
+            });
+            el.addEventListener('mouseleave', () => {
+                this.showTooltipMsg('Hover over elements to see tooltips & shortcuts');
+            });
+        });
+
+        // Tool buttons selection
         const toolBtns = this.dom.querySelectorAll('.tool-btn');
         toolBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 toolBtns.forEach(b => {
                     b.classList.remove('active');
-                    b.style.borderColor = '#444';
+                    b.style.borderWidth = '1px';
+                    b.style.borderColor = '#30363d';
                 });
                 btn.classList.add('active');
-                btn.style.borderColor = '#66aaff';
+                btn.style.borderWidth = '2px';
+                btn.style.borderColor = '#58a6ff';
                 this.currentTool = btn.dataset.tool;
             });
         });
@@ -270,23 +490,27 @@ export default class LevelEditor {
 
         // Generate Now Button
         this.dom.querySelector('#btn-generate-now').addEventListener('click', () => {
+            this.saveSnapshot();
             this.generateNewLevel();
+            this.showTooltipMsg('✨ Generated new procedural dungeon');
         });
 
         // Presets
         this.dom.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                this.saveSnapshot();
                 const preset = btn.dataset.preset;
                 if (preset === 'level1') {
                     this.loadLevel(Level1);
                 } else if (preset === 'catacombs') {
-                    this.genParams.hazardDensity = 0.3;
-                    this.genParams.verticality = 0.6;
+                    this.genParams.hazardDensity = 30;
+                    this.genParams.verticality = 60;
                     this.generateNewLevel('The Catacombs');
                 } else if (preset === 'gauntlet') {
-                    this.genParams.hazardDensity = 0.8;
-                    this.genParams.verticality = 0.8;
-                    this.generateNewLevel('The Gauntlet');
+                    this.genParams.hazardDensity = 85;
+                    this.genParams.verticality = 80;
+                    this.genParams.shadowCount = 3;
+                    this.generateNewLevel('The Gauntlet (Extreme)');
                 }
             });
         });
@@ -303,6 +527,7 @@ export default class LevelEditor {
                 e.preventDefault();
             } else if (e.button === 0) {
                 // Left click: paint
+                this.saveSnapshot();
                 this.isPainting = true;
                 this.applyToolAtMouse(e);
             }
@@ -326,7 +551,7 @@ export default class LevelEditor {
             const pos = this.getGridCoordFromMouse(e);
             if (pos && this.currentLevelData) {
                 this.dom.querySelector('#editor-tile-info').innerText = 
-                    `Tile [Col: ${pos.col}, Row: ${pos.row}] | World [${pos.col * 16}px, ${pos.row * 16}px]`;
+                    `Tile [Col: ${pos.col}, Row: ${pos.row}] | Pos [${pos.col * 16}px, ${pos.row * 16}px]`;
             }
         });
 
@@ -338,6 +563,8 @@ export default class LevelEditor {
         this.canvas.addEventListener('contextmenu', (e) => {
             if (this.isOpen) e.preventDefault();
         });
+
+        this.updateUndoRedoButtons();
     }
 
     /**
@@ -369,7 +596,7 @@ export default class LevelEditor {
         const coord = this.getGridCoordFromMouse(e);
         if (!coord || !this.currentLevelData) return;
 
-        const { col, row, worldX, worldY } = coord;
+        const { col, row } = coord;
         const rows = this.currentLevelData.height;
         const cols = this.currentLevelData.width;
 
@@ -446,7 +673,7 @@ export default class LevelEditor {
             verticality: this.genParams.verticality / 100,
             shadowCount: this.genParams.shadowCount,
             noteCount: this.genParams.noteCount,
-            name: customName || `Procedural Catacombs (Seed ${this.genParams.seed})`
+            name: customName || `Catacombs (Seed ${this.genParams.seed})`
         });
 
         this.loadLevel(level);
@@ -456,7 +683,6 @@ export default class LevelEditor {
      * Loads level data into editor state.
      */
     loadLevel(levelData) {
-        // Deep copy tile grid
         const tilesCopy = typeof levelData.tiles === 'function' ? levelData.tiles() : levelData.tiles;
         this.currentLevelData = {
             name: levelData.name,
@@ -474,11 +700,13 @@ export default class LevelEditor {
             }))
         };
 
-        this.dom.querySelector('#editor-level-name').innerText = `Editing: ${this.currentLevelData.name}`;
+        this.dom.querySelector('#editor-level-name').innerText = `Level: ${this.currentLevelData.name}`;
 
         // Reset editor camera to player start
         this.cameraX = Math.max(0, this.currentLevelData.playerStart.x - this.renderer.width / 2);
         this.cameraY = Math.max(0, this.currentLevelData.playerStart.y - this.renderer.height / 2);
+
+        this.updateUndoRedoButtons();
     }
 
     /**
@@ -489,7 +717,6 @@ export default class LevelEditor {
         this.dom.style.display = this.isOpen ? 'block' : 'none';
 
         if (this.isOpen) {
-            // If opening editor and no level loaded, load current scene map
             if (!this.currentLevelData) {
                 this.loadLevel(Level1);
             }
@@ -497,7 +724,7 @@ export default class LevelEditor {
     }
 
     /**
-     * Renders the editor view (tiles, entities, grid lines, and badges) onto the canvas buffer.
+     * Renders the editor view (tiles, grid lines, and high-contrast graphical glyph badges).
      */
     render() {
         if (!this.isOpen || !this.currentLevelData) return;
@@ -509,7 +736,7 @@ export default class LevelEditor {
         const rows = this.currentLevelData.height;
         const cols = this.currentLevelData.width;
 
-        // Clear with background
+        // Clear background
         ctx.fillStyle = this.currentLevelData.backgroundColor || '#07070b';
         ctx.fillRect(0, 0, width, height);
 
@@ -521,11 +748,11 @@ export default class LevelEditor {
             for (let c = 0; c < cols; c++) {
                 const tileId = this.currentLevelData.tiles[r][c];
                 if (tileId > 0) {
-                    let color = '#1a1a2e';
+                    let color = '#202035';
                     switch (tileId) {
                         case 1: color = '#202035'; break; // stone
                         case 2: color = '#382020'; break; // brick
-                        case 3: color = '#445566'; break; // platform
+                        case 3: color = '#3d5266'; break; // platform
                         case 4: color = '#101018'; break; // backdrop
                     }
                     ctx.fillStyle = color;
@@ -534,8 +761,8 @@ export default class LevelEditor {
             }
         }
 
-        // 2. Draw Subtle Grid Lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        // 2. Draw Grid Lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
         ctx.lineWidth = 1;
         for (let r = 0; r <= rows; r++) {
             ctx.beginPath();
@@ -550,52 +777,77 @@ export default class LevelEditor {
             ctx.stroke();
         }
 
-        // 3. Draw Level Boundary Outline
-        ctx.strokeStyle = '#ff5555';
+        // 3. Draw Level Perimeter Outline
+        ctx.strokeStyle = '#ff4444';
         ctx.lineWidth = 2;
         ctx.strokeRect(0, 0, cols * tileSize, rows * tileSize);
 
-        // 4. Draw Entities with clear badges
+        // 4. Draw Entities with sharp, high-contrast graphical glyph badges
         for (const ent of this.currentLevelData.entities) {
             ctx.save();
             if (ent.type === 'hazard') {
-                ctx.fillStyle = '#ff2222';
-                ctx.fillRect(ent.x, ent.y, ent.properties?.width || 16, ent.properties?.height || 16);
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '8px monospace';
-                ctx.fillText(ent.properties?.hazardType === 1 ? '⬇️ TRAP' : '⚠️ SPIKES', ent.x + 2, ent.y - 2);
+                const w = ent.properties?.width || 16;
+                const h = ent.properties?.height || 16;
+                if (ent.properties?.hazardType === 1) {
+                    // Falling block
+                    ctx.fillStyle = '#ff5533';
+                    ctx.fillRect(ent.x, ent.y, w, h);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(ent.x + 4, ent.y + 4, w - 8, 3);
+                    ctx.fillRect(ent.x + w / 2 - 2, ent.y + 7, 4, 5);
+                } else {
+                    // Spikes
+                    ctx.fillStyle = '#ff2222';
+                    ctx.fillRect(ent.x, ent.y + h - 6, w, 6);
+                    // Draw sharp triangle spike teeth
+                    ctx.beginPath();
+                    for (let x = 0; x < w; x += 8) {
+                        ctx.moveTo(ent.x + x, ent.y + h - 6);
+                        ctx.lineTo(ent.x + x + 4, ent.y);
+                        ctx.lineTo(ent.x + x + 8, ent.y + h - 6);
+                    }
+                    ctx.fill();
+                }
             } else if (ent.type === 'interactable') {
                 if (ent.properties?.interactType === 1) {
-                    ctx.fillStyle = '#aa6622';
+                    // Exit Door
+                    ctx.fillStyle = '#8b5a2b';
                     ctx.fillRect(ent.x, ent.y - 16, 16, 32);
-                    ctx.fillStyle = '#ffdd88';
-                    ctx.font = '8px monospace';
-                    ctx.fillText('🚪 EXIT', ent.x, ent.y - 18);
+                    ctx.fillStyle = '#ffdd44';
+                    ctx.fillRect(ent.x + 12, ent.y - 4, 2, 4); // brass handle
+                    ctx.strokeStyle = '#5a3d1c';
+                    ctx.strokeRect(ent.x, ent.y - 16, 16, 32);
                 } else {
-                    ctx.fillStyle = '#ddcc44';
-                    ctx.fillRect(ent.x + 4, ent.y + 4, 8, 8);
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = '8px monospace';
-                    ctx.fillText('📜 NOTE', ent.x, ent.y - 2);
+                    // Lore Note
+                    ctx.fillStyle = '#eedd66';
+                    ctx.fillRect(ent.x + 2, ent.y + 2, 12, 12);
+                    ctx.fillStyle = '#aa8822';
+                    ctx.fillRect(ent.x + 4, ent.y + 5, 8, 1);
+                    ctx.fillRect(ent.x + 4, ent.y + 8, 8, 1);
+                    ctx.fillRect(ent.x + 4, ent.y + 11, 5, 1);
                 }
             } else if (ent.type === 'shadow') {
-                ctx.fillStyle = 'rgba(100, 100, 255, 0.7)';
+                // Shadow Stalker
+                ctx.fillStyle = 'rgba(70, 70, 160, 0.85)';
                 ctx.fillRect(ent.x, ent.y, 16, 32);
-                ctx.fillStyle = '#88aaff';
-                ctx.font = '8px monospace';
-                ctx.fillText('👻 SHADOW', ent.x - 4, ent.y - 4);
+                ctx.fillStyle = '#cc88ff';
+                ctx.fillRect(ent.x + 4, ent.y + 6, 2, 2); // glowing eyes
+                ctx.fillRect(ent.x + 10, ent.y + 6, 2, 2);
             }
             ctx.restore();
         }
 
-        // 5. Draw Player Spawn Point
+        // 5. Draw Player Start
         const ps = this.currentLevelData.playerStart;
         if (ps) {
+            ctx.save();
             ctx.fillStyle = '#00ff88';
             ctx.fillRect(ps.x, ps.y, 12, 20);
-            ctx.fillStyle = '#00ff88';
-            ctx.font = '9px monospace';
-            ctx.fillText('👤 START', ps.x - 8, ps.y - 4);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(ps.x + 8, ps.y + 4, 3, 3); // eye dot
+            ctx.strokeStyle = '#00bb55';
+            ctx.strokeRect(ps.x - 1, ps.y - 1, 14, 22);
+            ctx.restore();
         }
 
         ctx.restore();

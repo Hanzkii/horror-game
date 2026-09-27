@@ -43,9 +43,11 @@ export const Level1 = {
         }
         
         // 3. Section 1: Starting Crypt (c: 1 to 14)
-        // Ceiling at row 8, Floor at row 14
+        // Solid rock ceiling filling rows 0 to 8, floor at row 14
         for (let c = 1; c <= 14; c++) {
-            grid[8][c] = 1;  // ceiling
+            for (let r = 0; r <= 8; r++) {
+                grid[r][c] = 1;  // solid ceiling rock
+            }
             grid[14][c] = 1; // solid stone floor
             // Background stone pillars
             for (let r = 9; r < 14; r++) {
