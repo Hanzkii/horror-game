@@ -16,6 +16,7 @@ import { Level1 } from './levels/Level1.js';
 import { GameState } from './game/GameState.js';
 import { generateProceduralLevel } from './generator/LevelGenerator.js';
 import LevelEditor from './editor/LevelEditor.js';
+import SoundStudio from './audio/SoundStudio.js';
 
 // Import visual systems
 import PostProcessing from './effects/PostProcessing.js';
@@ -65,6 +66,9 @@ async function init() {
     // Initial level load: Level 1
     loadLevel(scene, Level1, gameState, renderer);
 
+    // Initialize Procedural Sound Studio & Ambient Generator
+    const soundStudio = new SoundStudio(audio);
+
     // Handler for descending deeper when unlocking exit doors
     scene.onNextLevel = () => {
         currentFloorIndex++;
@@ -85,6 +89,7 @@ async function init() {
         loadLevel(scene, customLevel, gameState, renderer);
         hud.fadeIn(0.5);
     });
+    editor.onOpenSoundStudio = () => soundStudio.toggle(true);
     editor.loadLevel(Level1);
 
     let lastTime = 0;
@@ -113,8 +118,9 @@ async function init() {
         }
 
         if (!gameState.isPaused && !gameState.activeNote) {
-            // Reset per-frame interaction state
+            // Reset per-frame interaction state and light emitters
             gameState.canInteract = false;
+            scene.lights = [];
 
             // Update systems
             scene.update(dt, input, gameState);
@@ -135,7 +141,7 @@ async function init() {
         // Render world (tiles + entities) through the renderer's camera system
         scene.render(renderer);
 
-        // Post Processing (darkness light cone around player, vignette, scanlines)
+        // Post Processing (darkness light cone around player, torches, vignette, scanlines)
         const playerScreenPos = scene.player
             ? {
                 x: scene.player.x + scene.player.width / 2 - renderer.camera.x,
@@ -143,9 +149,17 @@ async function init() {
             }
             : { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 };
 
+        // Transform world lights into screen space
+        const screenLights = (scene.lights || []).map(l => ({
+            x: l.x - renderer.camera.x,
+            y: l.y - renderer.camera.y,
+            radius: l.radius,
+            color: l.color
+        }));
+
         // Normalize sanity to 0-1 range for effects
         const sanityNormalized = gameState.sanity / gameState.maxSanity;
-        postProcessing.render(playerScreenPos, sanityNormalized);
+        postProcessing.render(playerScreenPos, sanityNormalized, screenLights);
 
         // UI
         hud.render(gameState);

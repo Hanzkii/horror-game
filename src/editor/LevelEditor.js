@@ -91,6 +91,9 @@ export default class LevelEditor {
 
                 <!-- Right: Action Buttons -->
                 <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="btn-editor-open-sound" data-tooltip="Open Sound Design Studio & Audio Synthesizer" style="background: #6e40c9; border: 1px solid #8957e5; color: #ffffff; padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(110,64,201,0.4); transition: all 0.15s;">
+                        <span>🎵</span> SOUND STUDIO
+                    </button>
                     <button id="btn-play-level" data-tooltip="Playtest this dungeon layout immediately" style="background: #238636; border: 1px solid #2ea043; color: #ffffff; padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(35,134,54,0.4); transition: all 0.15s;">
                         <span>▶</span> TEST LEVEL
                     </button>
@@ -119,19 +122,25 @@ export default class LevelEditor {
                         <button class="tool-btn" data-tool="ent_player" data-tooltip="Player Spawn — Place where the player awakens" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #7ee787; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
                             <span>👤</span> Player Start
                         </button>
+                        <button class="tool-btn" data-tool="ent_torch" data-tooltip="Wall Torch — Dynamic warm light source that illuminates jumping paths" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #ffaa44; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>🕯️</span> Wall Torch (Light)
+                        </button>
+                        <button class="tool-btn" data-tool="ent_switch" data-tooltip="Ancient Lever — Mechanical switch that opens locked gates" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #f0883e; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>⚙️</span> Ancient Lever
+                        </button>
+                        <button class="tool-btn" data-tool="ent_door" data-tooltip="Exit Door / Gate — Requires Ancient Lever to unlock" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #d2a8ff; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>🚪</span> Sealed Door / Gate
+                        </button>
+                        <button class="tool-btn" data-tool="ent_note" data-tooltip="Lore Note — Discoverable parchment with cryptic messages" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #f2cc60; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                            <span>📜</span> Lore Note
+                        </button>
                         <button class="tool-btn" data-tool="ent_spikes" data-tooltip="Spikes Hazard — Deadly pit spikes; kills on touch" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #ff7b72; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
                             <span>⚠️</span> Spikes Hazard
                         </button>
                         <button class="tool-btn" data-tool="ent_falling" data-tooltip="Falling Trap — Ceiling block that shivers and drops" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #ffa657; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
                             <span>⬇️</span> Falling Trap
                         </button>
-                        <button class="tool-btn" data-tool="ent_note" data-tooltip="Lore Note — Discoverable parchment with cryptic messages" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #f2cc60; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
-                            <span>📜</span> Lore Note
-                        </button>
-                        <button class="tool-btn" data-tool="ent_door" data-tooltip="Exit Door — Threshold unlocking deeper procedural floors" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #d2a8ff; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
-                            <span>🚪</span> Exit Door
-                        </button>
-                        <button class="tool-btn" data-tool="ent_shadow" data-tooltip="Shadow Stalker — Eerie entity that watches and drains sanity" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #a5d6ff; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
+                        <button class="tool-btn" data-tool="ent_shadow" data-tooltip="Shadow Stalker — Eerie entity with spectral eyes that stalks and drains sanity" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #161b22; border: 1px solid #30363d; color: #a5d6ff; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
                             <span>👻</span> Shadow Stalker
                         </button>
                         <button class="tool-btn" data-tool="ent_erase" data-tooltip="Erase Entity — Click near an entity to remove it" style="padding: 7px 10px; font-size: 12px; font-weight: 600; background: #2d1818; border: 1px solid #6e2020; color: #ffaaaa; cursor: pointer; border-radius: 5px; text-align: left; display: flex; align-items: center; gap: 8px;">
@@ -423,6 +432,14 @@ export default class LevelEditor {
         // Close button
         this.dom.querySelector('#btn-close-editor').addEventListener('click', () => this.toggle(false));
 
+        // Open Sound Studio from Editor
+        const btnOpenSound = this.dom.querySelector('#btn-editor-open-sound');
+        if (btnOpenSound) {
+            btnOpenSound.addEventListener('click', () => {
+                if (this.onOpenSoundStudio) this.onOpenSoundStudio();
+            });
+        }
+
         // Undo & Redo buttons
         this.dom.querySelector('#btn-undo').addEventListener('click', () => this.undo());
         this.dom.querySelector('#btn-redo').addEventListener('click', () => this.redo());
@@ -643,6 +660,26 @@ export default class LevelEditor {
                 y: row * 16,
                 properties: { interactType: 1, id: 'exit_door' }
             });
+        } else if (this.currentTool === 'ent_switch') {
+            this.currentLevelData.entities.push({
+                type: 'interactable',
+                x: col * 16,
+                y: row * 16,
+                properties: {
+                    interactType: 2,
+                    id: `lever_${Date.now()}`,
+                    flag: 'gate_unlocked'
+                }
+            });
+        } else if (this.currentTool === 'ent_torch') {
+            this.currentLevelData.entities.push({
+                type: 'interactable',
+                x: col * 16,
+                y: row * 16,
+                properties: {
+                    interactType: 3 // Torch
+                }
+            });
         } else if (this.currentTool === 'ent_shadow') {
             this.currentLevelData.entities.push({
                 type: 'shadow',
@@ -810,13 +847,29 @@ export default class LevelEditor {
                 }
             } else if (ent.type === 'interactable') {
                 if (ent.properties?.interactType === 1) {
-                    // Exit Door
-                    ctx.fillStyle = '#8b5a2b';
+                    // Exit Door / Sealed Gate
+                    ctx.fillStyle = '#4d2d18';
                     ctx.fillRect(ent.x, ent.y - 16, 16, 32);
                     ctx.fillStyle = '#ffdd44';
                     ctx.fillRect(ent.x + 12, ent.y - 4, 2, 4); // brass handle
-                    ctx.strokeStyle = '#5a3d1c';
+                    ctx.strokeStyle = '#2a1a0f';
                     ctx.strokeRect(ent.x, ent.y - 16, 16, 32);
+                } else if (ent.properties?.interactType === 2) {
+                    // Ancient Lever
+                    ctx.fillStyle = '#444455';
+                    ctx.fillRect(ent.x + 3, ent.y + 10, 10, 6);
+                    ctx.fillStyle = '#ff5533';
+                    ctx.fillRect(ent.x + 5, ent.y + 3, 3, 8);
+                    ctx.fillStyle = '#ffff88';
+                    ctx.fillRect(ent.x + 4, ent.y + 1, 5, 3);
+                } else if (ent.properties?.interactType === 3) {
+                    // Wall Torch
+                    ctx.fillStyle = '#666677';
+                    ctx.fillRect(ent.x + 6, ent.y + 8, 4, 8);
+                    ctx.fillStyle = '#ff7722';
+                    ctx.fillRect(ent.x + 5, ent.y + 3, 6, 6);
+                    ctx.fillStyle = '#ffea66';
+                    ctx.fillRect(ent.x + 6, ent.y + 4, 4, 3);
                 } else {
                     // Lore Note
                     ctx.fillStyle = '#eedd66';

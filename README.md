@@ -16,9 +16,10 @@ A browser-based psychological horror platformer built from scratch with a custom
 | --- | --- |
 | `A` / `D` or `Left` / `Right` | Move Left / Right |
 | `Space` / `W` / `Up` | Jump (hold for variable height) |
-| `E` | Interact (read notes, unlock doors) |
+| `E` | Interact (read notes, pull ancient levers, unlock gates) |
 | `Escape` | Pause / Dismiss note |
 | `Tab` or Top-Right Button | **Toggle Level Architect / Editor** |
+| Top-Right `🎵 SOUND STUDIO` | **Open Procedural Sound Studio** |
 
 ## Play the Game
 
@@ -33,6 +34,23 @@ Then open `http://localhost:8000` in your web browser. Click or press any key to
 
 ---
 
+## 🎵 Sound Design Studio & Audio Synthesizer
+
+Click the **`🎵 SOUND STUDIO`** button in the top-right header (or open it from within the Level Architect) to customize the horror audio environment in real time:
+
+- **Sub-Drone Synthesizer**: Adjust root pitch (35 Hz to 110 Hz), dual-oscillator detuning, volume, and breathing LFO swell frequency.
+- **Horror Chimes & Tension**: Real-time generative horror music playing eerie minor-second and diminished-fifth chimes at customizable intervals.
+- **Heartbeat Rhythm**: Dual-thump heartbeat synthesizer ("lub-dub") with adjustable tempo (40 to 140 BPM) that speeds up when sanity drops.
+- **Cavern Wind**: Filtered pink-noise wind howling through stone shafts.
+- **Soundscape Presets**:
+  - 🌑 *The Silent Crypt* (subtle drone, distant echoes, slow breathing)
+  - 🩸 *Stalker's Breath* (tense minor-second bells, racing pulse, menacing harmonics)
+  - 🌪️ *Abyssal Winds* (howling cavern winds, deep sub-bass resonance)
+  - ⚡ *Sanity Collapse* (chaotic detuned harmonics, pounding rapid heartbeat, panic distortion)
+- **Live SFX Tester**: Interactive trigger pads to preview and test footstep taps, stone thuds, cave rumbles, iron door creaks, lever clanks, and stalker dissonance cries.
+
+---
+
 ## 🛠️ Level Architect: Procedural Generator & Editor
 
 Press **`Tab`** or click **`🛠️ LEVEL ARCHITECT`** in the top-right corner to open the in-game editor:
@@ -44,16 +62,20 @@ Press **`Tab`** or click **`🛠️ LEVEL ARCHITECT`** in the top-right corner t
   - **Hazard Danger**: Control the density of spikes and falling ceiling stones (0% - 100%).
   - **Verticality**: Adjust the frequency of vertical climbing shafts and one-way platforms (0% - 100%).
   - **Shadow Stalkers**: Set the number of stalking horror entities (0 - 3).
-- **Guaranteed Solvability**: The generator ensures step heights never exceed jump limits and places one-way platforms to climb vertical gaps.
+- **Non-Linear Exploration & Gate Unlocking**:
+  - The exit door is sealed shut by an **Iron Gate**.
+  - Following glowing wall torches up vertical shafts leads to the **Ancient Lever** hidden at the apex of the ruins.
+  - Pulling the lever grinds heavy gears and unlocks passage to deeper floors!
 
 ### 2. Live Canvas Painting & Editing
 - **Tile Palette**: Paint Stone (1), Ancient Brick (2), One-way Platforms (3), and Background Pillars (4) with the mouse.
-- **Entity Placement**: Position Player Spawns, Spikes, Falling Traps, Lore Notes, Shadows, and Exit Doors.
+- **Entity Placement**: Position Player Spawns, Wall Torches (Light Sources), Ancient Levers, Sealed Gates, Spikes, Falling Traps, Lore Notes, and Shadow Stalkers.
 - **Controls**:
   - **Left-Click**: Paint selected tile / place entity.
   - **Right-Click & Drag** (or **Alt+Click**): Pan the editor camera across the map.
+  - **Undo / Redo**: `Ctrl+Z` / `Ctrl+Y` (up to 35 steps of history).
   - **[▶ TEST LEVEL]**: Instantly jump straight into gameplay testing your level!
-- **Presets**: Quick-load "The Awakening" (handcrafted map), "The Crypt" (procedural), or "The Gauntlet" (high hazard).
+- **Presets**: Quick-load "The Awakening" (handcrafted non-linear map), "The Catacombs" (balanced procedural), or "The Gauntlet" (high hazard).
 
 ---
 

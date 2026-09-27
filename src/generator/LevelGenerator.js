@@ -92,7 +92,13 @@ export function generateProceduralLevel(options = {}) {
                 y: (baseFloorRow - 1) * tileSize - 4
             };
 
-            // Start room lore note
+            // Start room torch & lore note
+            entities.push({
+                type: 'interactable',
+                x: (startCol + 2) * tileSize,
+                y: (baseFloorRow - 3) * tileSize,
+                properties: { interactType: 3 } // Wall Torch
+            });
             entities.push({
                 type: 'interactable',
                 x: (startCol + 4) * tileSize,
@@ -100,7 +106,7 @@ export function generateProceduralLevel(options = {}) {
                 properties: {
                     interactType: 0,
                     id: `note_seed_${seed}_start`,
-                    text: `Seed #${seed}:\n${CREEPY_NOTES[Math.floor(rng() * CREEPY_NOTES.length)]}`
+                    text: `Seed #${seed}:\n${CREEPY_NOTES[Math.floor(rng() * CREEPY_NOTES.length)]}\n\nThe Sealed Gate ahead requires the ancient lever in the climbing shafts.`
                 }
             });
 
@@ -114,7 +120,13 @@ export function generateProceduralLevel(options = {}) {
                 grid[baseFloorRow][c] = 2; // ancient brick floor
             }
 
-            // Exit door
+            // Exit door & guiding torch
+            entities.push({
+                type: 'interactable',
+                x: (endCol - 4) * tileSize,
+                y: (baseFloorRow - 3) * tileSize,
+                properties: { interactType: 3 } // Wall Torch illuminating gate
+            });
             entities.push({
                 type: 'interactable',
                 x: (endCol - 2) * tileSize,
@@ -122,6 +134,7 @@ export function generateProceduralLevel(options = {}) {
                 properties: {
                     interactType: 1, // door
                     id: `door_${seed}`,
+                    requiresFlag: 'lever_dungeon_unlocked',
                     targetScene: 'NextFloor'
                 }
             });
@@ -145,6 +158,9 @@ export function generateProceduralLevel(options = {}) {
                 // Place climbable one-way platforms spaced 2-3 tiles apart
                 let platY = deepFloor - 2;
                 let toggleSide = 0;
+                let highestPlatCol = startCol + 2;
+                let highestPlatY = platY;
+
                 while (platY > highCeiling + 2) {
                     const pColStart = toggleSide === 0 ? startCol + 2 : startCol + Math.floor(roomWidth / 2);
                     for (let pc = 0; pc < 3; pc++) {
@@ -152,9 +168,34 @@ export function generateProceduralLevel(options = {}) {
                             grid[platY][pColStart + pc] = 3; // one-way platform
                         }
                     }
+                    highestPlatCol = pColStart + 1;
+                    highestPlatY = platY;
+
+                    // Place a guiding torch on every second platform
+                    if (platY % 4 === 0) {
+                        entities.push({
+                            type: 'interactable',
+                            x: (pColStart + 1) * tileSize,
+                            y: (platY - 2) * tileSize,
+                            properties: { interactType: 3 } // Torch
+                        });
+                    }
+
                     toggleSide = 1 - toggleSide;
                     platY -= Math.floor(2 + rng() * 2);
                 }
+
+                // Place the Ancient Lever at the apex of the climb!
+                entities.push({
+                    type: 'interactable',
+                    x: highestPlatCol * tileSize,
+                    y: (highestPlatY - 1) * tileSize,
+                    properties: {
+                        interactType: 2, // Ancient Lever
+                        id: `lever_${seed}`,
+                        flag: 'lever_dungeon_unlocked'
+                    }
+                });
 
                 // Spikes on pit floor if hazard density is high
                 if (hazardDensity > 0.3) {
