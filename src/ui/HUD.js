@@ -43,7 +43,7 @@ export default class HUD {
         this.fadeSpeed = speed;
     }
 
-    render(gameState, input = null) {
+    render(gameState, input = null, player = null) {
         const { ctx, width, height } = this;
 
         // Sanity indicator
@@ -106,6 +106,48 @@ export default class HUD {
             ctx.font = '10px monospace';
             ctx.textAlign = 'right';
             ctx.fillText('[TEST LEVEL MODE]', width - 62, 16);
+        } else if (gameState.isTutorialLevel) {
+            ctx.fillStyle = '#58f0c0';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText('[TUTORIAL TRIAL]', width - 62, 16);
+
+            // Contextual floating guidance banner in tutorial level
+            if (player) {
+                let guideMsg = '';
+                if (player.x < 220) {
+                    guideMsg = '[ A / D ] Walk across the chamber';
+                } else if (player.x < 460) {
+                    guideMsg = '[ SPACE ] or [ W ] Leap across the chasm';
+                } else if (player.x < 740) {
+                    const flag = gameState.getFlag('tutorial_gate');
+                    guideMsg = flag 
+                        ? 'Gate Unlocked! Proceed through the archway'
+                        : 'Climb the steps & press [ E ] on the Lever';
+                } else if (player.x < 980) {
+                    guideMsg = 'Darkness drains Sanity! Stand in Torchlight to stay calm';
+                } else {
+                    guideMsg = 'A Lurker stirs! Do NOT fight — lure it into the Torch flame!';
+                }
+
+                if (guideMsg) {
+                    ctx.font = '9px monospace';
+                    const tw = ctx.measureText(guideMsg).width;
+                    const pw = Math.round(tw + 20);
+                    const px = Math.round(width / 2 - pw / 2);
+                    const py = 24;
+
+                    ctx.fillStyle = 'rgba(6, 12, 22, 0.9)';
+                    ctx.fillRect(px, py, pw, 17);
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(px, py, pw, 17);
+
+                    ctx.fillStyle = '#e0f2fe';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(guideMsg, width / 2, py + 12);
+                }
+            }
         } else if (gameState.currentLevel && gameState.floorIndex) {
             ctx.fillStyle = gameState.isPublishedMap ? '#58a6ff' : 'rgba(255, 255, 255, 0.6)';
             ctx.font = '10px monospace';

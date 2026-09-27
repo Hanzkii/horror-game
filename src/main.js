@@ -13,6 +13,7 @@ import { Shadow } from './entities/Shadow.js';
 
 // Import Content & Tools
 import { Level1 } from './levels/Level1.js';
+import { TutorialLevel } from './levels/TutorialLevel.js';
 import { GameState } from './game/GameState.js';
 import { generateProceduralLevel } from './generator/LevelGenerator.js';
 import LevelEditor from './editor/LevelEditor.js';
@@ -125,6 +126,16 @@ async function init() {
             return;
         }
 
+        if (gameState.isTutorialLevel) {
+            // Tutorial chamber completed!
+            if (audio) audio.play('stinger_sharp');
+            gameState.isTutorialLevel = false;
+            currentState = GAME_STATES.MENU;
+            adaptiveAudio.stopAmbient();
+            gameState.activeNote = "TRIAL COMPLETED!\n\nYou have mastered ancient movement, mechanisms, and banishing shadows with holy flame.\n\nYou are ready to descend into the abyss.";
+            return;
+        }
+
         gameState.floorIndex = (gameState.floorIndex || 1) + 1;
         const nextLevel = getNextDungeonLevel(gameState.floorIndex);
         loadLevel(scene, nextLevel, gameState, renderer);
@@ -179,11 +190,20 @@ async function init() {
                     currentState = GAME_STATES.STORY; 
                     isTestLevelMode = false;
                     gameState.isTestLevel = false;
-                    if (!gameState.currentLevel) {
+                    gameState.isTutorialLevel = false;
+                    if (!gameState.currentLevel || gameState.currentLevel.includes('TUTORIAL')) {
                         gameState.floorIndex = 1;
                         gameState.isPublishedMap = false;
                         loadLevel(scene, Level1, gameState, renderer);
                     }
+                    adaptiveAudio.startAmbient();
+                } else if (sel === 'tutorial') {
+                    currentState = GAME_STATES.STORY;
+                    isTestLevelMode = false;
+                    gameState.isTestLevel = false;
+                    gameState.isTutorialLevel = true;
+                    gameState.floorIndex = 0;
+                    loadLevel(scene, TutorialLevel, gameState, renderer);
                     adaptiveAudio.startAmbient();
                 } else if (sel === 'design_level') {
                     currentState = GAME_STATES.DESIGN_LEVEL;
@@ -372,7 +392,7 @@ async function init() {
                 // Mouse cursor hidden during gameplay (shown only in menus and active note screens)
                 canvas.style.cursor = (gameState.activeNote || gameState.isPaused) ? 'default' : 'none';
 
-                hud.render(gameState, input);
+                hud.render(gameState, input, scene.player);
                 renderer.present();
 
                 if (hud.getRequestedPause()) {

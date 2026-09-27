@@ -15,11 +15,11 @@ export default class MainMenu {
         this.audio = audio;
         this.canvas = canvas;
         
-        this.mode = 'main'; // 'main', 'designSubMenu', 'characterDesign', 'settings', 'tutorial', 'controls'
+        this.mode = 'main'; // 'main', 'designSubMenu', 'characterDesign', 'settings', 'controls'
         
-        // Main menu has DESCEND, TUTORIAL, CHARACTER DESIGN, SETTINGS, and DESIGN STUDIO [DEV]
-        this.options = ['DESCEND', 'TUTORIAL', 'CHARACTER DESIGN', 'SETTINGS', 'DESIGN STUDIO [DEV]'];
-        this.tutorialReturnMode = 'main';
+        // Redesigned menu with dedicated Tutorial Level and separate Controls guide
+        this.options = ['DESCEND', 'TUTORIAL LEVEL', 'CHARACTER DESIGN', 'CONTROLS', 'SETTINGS', 'DESIGN STUDIO [DEV]'];
+        this.controlsReturnMode = 'main';
         this.settingsReturnMode = 'main';
         this.charReturnMode = 'main';
         
@@ -27,7 +27,7 @@ export default class MainMenu {
         this.designOptions = [
             'LEVEL ARCHITECT',
             'SOUND STUDIO',
-            'SURVIVAL GUIDE',
+            'CONTROLS GUIDE',
             '< BACK TO TITLE'
         ];
 
@@ -112,15 +112,16 @@ export default class MainMenu {
         // Interactive bounding boxes for mouse hover/click
         this.hitboxes = [];
         
-        // Fog particles
-        for (let i = 0; i < 60; i++) {
+        // Atmospheric embers and floating subterranean soul motes
+        for (let i = 0; i < 50; i++) {
             this.particles.push({
                 x: Math.random() * width,
                 y: Math.random() * height,
-                vx: (Math.random() - 0.5) * 8,
-                vy: (Math.random() - 0.5) * 4,
-                size: Math.random() * 2 + 1,
-                alpha: Math.random() * 0.4 + 0.1
+                vx: (Math.random() - 0.5) * 5,
+                vy: -Math.random() * 8 - 2, // gentle upward drift
+                size: Math.random() > 0.8 ? 2 : 1,
+                alpha: Math.random() * 0.5 + 0.2,
+                color: Math.random() > 0.35 ? 'rgba(160, 210, 255,' : 'rgba(255, 200, 130,'
             });
         }
         
@@ -227,18 +228,20 @@ export default class MainMenu {
                 if (this.selectedIndex === 0) {
                     this.selection = 'story';
                 } else if (this.selectedIndex === 1) {
-                    this.mode = 'tutorial';
-                    this.tutorialReturnMode = 'main';
-                    this.selectedIndex = 0;
+                    this.selection = 'tutorial';
                 } else if (this.selectedIndex === 2) {
                     this.mode = 'characterDesign';
                     this.charReturnMode = 'main';
                     this.selectedIndex = 0;
                 } else if (this.selectedIndex === 3) {
+                    this.mode = 'controls';
+                    this.controlsReturnMode = 'main';
+                    this.selectedIndex = 0;
+                } else if (this.selectedIndex === 4) {
                     this.mode = 'settings';
                     this.settingsReturnMode = 'main';
                     this.selectedIndex = 0;
-                } else if (this.selectedIndex === 4) {
+                } else if (this.selectedIndex === 5) {
                     this.mode = 'designSubMenu';
                     this.selectedIndex = 0;
                 }
@@ -268,14 +271,14 @@ export default class MainMenu {
                     case 1: // SOUND STUDIO
                         this.selection = 'design_sound';
                         break;
-                    case 2: // SURVIVAL GUIDE & CONTROLS
-                        this.mode = 'tutorial';
-                        this.tutorialReturnMode = 'designSubMenu';
+                    case 2: // CONTROLS GUIDE
+                        this.mode = 'controls';
+                        this.controlsReturnMode = 'designSubMenu';
                         this.selectedIndex = 0;
                         break;
                     case 3: // BACK TO TITLE
                         this.mode = 'main';
-                        this.selectedIndex = 4;
+                        this.selectedIndex = 5;
                         break;
                 }
             }
@@ -283,7 +286,7 @@ export default class MainMenu {
             if (input.isJustPressed('pause')) {
                 this.playSfx('click');
                 this.mode = 'main';
-                this.selectedIndex = 4;
+                this.selectedIndex = 5;
             }
         }
         // --- 3. CHARACTER DESIGN STUDIO ---
@@ -377,24 +380,24 @@ export default class MainMenu {
                 } else if (this.selectedIndex === 4) {
                     this.playSfx('click');
                     this.mode = this.settingsReturnMode || 'main';
-                    this.selectedIndex = (this.settingsReturnMode === 'main') ? 3 : 3;
+                    this.selectedIndex = (this.settingsReturnMode === 'main') ? 4 : 3;
                 }
             }
 
             if (input.isJustPressed('pause')) {
                 this.playSfx('click');
                 this.mode = this.settingsReturnMode || 'main';
-                this.selectedIndex = (this.settingsReturnMode === 'main') ? 3 : 3;
+                this.selectedIndex = (this.settingsReturnMode === 'main') ? 4 : 3;
             }
         }
-        // --- 5. TUTORIAL & SURVIVAL GUIDE ---
-        else if (this.mode === 'tutorial' || this.mode === 'controls') {
+        // --- 5. CONTROLS GUIDE ---
+        else if (this.mode === 'controls' || this.mode === 'tutorial') {
             const backClicked = (isClicked && isOverHitbox) || input.isJustPressed('pause') || input.isJustPressed('confirm') || input.isJustPressed('interact') || input.isJustPressed('jump');
             if (backClicked) {
                 this.playSfx('click');
-                const returnTarget = this.tutorialReturnMode || 'main';
+                const returnTarget = this.controlsReturnMode || 'main';
                 this.mode = returnTarget;
-                this.selectedIndex = (returnTarget === 'main') ? 1 : 2;
+                this.selectedIndex = (returnTarget === 'main') ? 3 : 2;
             }
         }
     }
@@ -441,15 +444,59 @@ export default class MainMenu {
     render() {
         const { ctx, width, height } = this;
         
-        // Background
-        ctx.fillStyle = '#06060a';
+        // --- 1. ATMOSPHERIC CAVERN BACKGROUND (Hollow Knight / Limbo style) ---
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+        bgGrad.addColorStop(0, '#06070e');
+        bgGrad.addColorStop(0.5, '#0b101c');
+        bgGrad.addColorStop(1, '#040508');
+        ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, width, height);
-        
-        // Fog particles
+
+        // Soft vertical abyssal light shaft from top center
+        const lightGrad = ctx.createRadialGradient(width / 2, -10, 10, width / 2, height * 0.45, width * 0.55);
+        lightGrad.addColorStop(0, 'rgba(80, 140, 225, 0.16)');
+        lightGrad.addColorStop(0.45, 'rgba(40, 80, 160, 0.07)');
+        lightGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = lightGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Subterranean Silhouette Arches framing the left and right sides
+        ctx.fillStyle = '#070a12';
+        // Left pillar & arch silhouette
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(44, 0);
+        ctx.quadraticCurveTo(24, height * 0.45, 38, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#152033';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Right pillar & arch silhouette
+        ctx.beginPath();
+        ctx.moveTo(width, 0);
+        ctx.lineTo(width - 44, 0);
+        ctx.quadraticCurveTo(width - 24, height * 0.45, width - 38, height);
+        ctx.lineTo(width, height);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Luminous floating soul motes & embers drifting upward
         this.particles.forEach(p => {
-            ctx.fillStyle = `rgba(180, 190, 210, ${p.alpha})`;
+            const flicker = Math.sin(this.timer * 4 + p.x) * 0.15;
+            ctx.fillStyle = `${p.color} ${Math.max(0.08, p.alpha + flicker)})`;
             ctx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size);
         });
+
+        // Soft floor mist bank across bottom
+        const mistGrad = ctx.createLinearGradient(0, height - 35, 0, height);
+        mistGrad.addColorStop(0, 'rgba(10, 16, 28, 0)');
+        mistGrad.addColorStop(1, 'rgba(14, 22, 38, 0.65)');
+        ctx.fillStyle = mistGrad;
+        ctx.fillRect(0, height - 35, width, 35);
 
         // Distant red specter eyes flickering in darkness
         if (Math.random() < 0.015) {
@@ -463,29 +510,42 @@ export default class MainMenu {
         // Reset hitboxes each frame
         this.hitboxes = [];
         
-        // --- 1. MAIN MENU SCREEN ---
+        // --- 2. MAIN MENU SCREEN (Minimalist, elegant, high contrast) ---
         if (this.mode === 'main') {
             ctx.textAlign = 'center';
-            ctx.fillStyle = `rgba(240, 240, 255, ${this.titleAlpha})`;
-            ctx.font = '34px monospace';
-            ctx.fillText('ECHO', width / 2, 50);
-            
-            ctx.fillStyle = 'rgba(200, 210, 230, 0.4)';
-            ctx.font = '10px monospace';
-            ctx.fillText('A Psychological Horror Experience', width / 2, 66);
-            
-            ctx.font = '11px monospace';
-            const startY = 92;
-            const itemH = 26;
+
+            // Ethereal Title Glow
+            const pulse = Math.sin(this.timer * 2.5) * 0.08;
+            ctx.fillStyle = `rgba(160, 205, 255, ${0.14 + pulse})`;
+            ctx.font = 'bold 36px monospace';
+            ctx.fillText('E  C  H  O', width / 2, 45);
+
+            // Crisp Title
+            ctx.fillStyle = `rgba(240, 246, 255, ${this.titleAlpha})`;
+            ctx.font = 'bold 34px monospace';
+            ctx.fillText('E  C  H  O', width / 2, 44);
+
+            // Subtitle & Rune Divider
+            ctx.fillStyle = 'rgba(150, 180, 220, 0.65)';
+            ctx.font = '8px monospace';
+            ctx.fillText('A  S U B T E R R A N E A N  H O R R O R', width / 2, 57);
+
+            ctx.fillStyle = 'rgba(100, 170, 255, 0.45)';
+            ctx.fillText('─────  ◆  ─────', width / 2, 67);
+
+            // Sleek, high-contrast, uncluttered menu list
+            const startY = 86;
+            const itemH = 24;
 
             this.options.forEach((opt, i) => {
                 const y = startY + i * itemH;
                 const isSelected = (i === this.selectedIndex);
 
-                const boxW = 220;
-                const boxH = 21;
+                const boxW = 240;
+                const boxH = 20;
                 const bx = width / 2 - boxW / 2;
                 const by = y - 14;
+
                 this.hitboxes.push({
                     index: i,
                     x: bx,
@@ -497,27 +557,33 @@ export default class MainMenu {
                 const isDevBtn = opt.includes('[DEV]');
 
                 if (isSelected) {
-                    ctx.fillStyle = isDevBtn ? 'rgba(110, 64, 201, 0.25)' : 'rgba(255, 255, 255, 0.12)';
-                    ctx.fillRect(bx, by, boxW, boxH);
-                    ctx.strokeStyle = isDevBtn ? '#ab7df8' : '#99aacc';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(bx, by, boxW, boxH);
-                    ctx.fillStyle = isDevBtn ? '#d2a8ff' : '#ffffff';
-                    ctx.fillText(`>  ${opt}  <`, width / 2, y);
+                    // Radiant pill backdrop highlight
+                    const glowBg = isDevBtn 
+                        ? 'rgba(150, 80, 240, 0.16)' 
+                        : 'rgba(80, 160, 255, 0.13)';
+                    ctx.fillStyle = glowBg;
+                    ctx.fillRect(bx + 10, by, boxW - 20, boxH);
+
+                    // Delicate accent line on bottom
+                    ctx.fillStyle = isDevBtn ? '#c29bf0' : '#70b8ff';
+                    ctx.fillRect(bx + 15, by + boxH - 1, boxW - 30, 1);
+
+                    // High contrast selected text
+                    ctx.font = 'bold 12px monospace';
+                    ctx.fillStyle = isDevBtn ? '#eeddff' : '#ffffff';
+                    ctx.fillText(`◆   ${opt}   ◆`, width / 2, y);
                 } else {
-                    ctx.fillStyle = isDevBtn ? 'rgba(25, 18, 38, 0.65)' : 'rgba(20, 22, 30, 0.6)';
-                    ctx.fillRect(bx, by, boxW, boxH);
-                    ctx.strokeStyle = isDevBtn ? '#442c6b' : '#303444';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(bx, by, boxW, boxH);
-                    ctx.fillStyle = isDevBtn ? '#b392f0' : '#888899';
+                    // Clean, readable soft silver
+                    ctx.font = '11px monospace';
+                    ctx.fillStyle = isDevBtn ? '#9f78db' : '#94a7c5';
                     ctx.fillText(opt, width / 2, y);
                 }
             });
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            // Clean, minimalist footer
+            ctx.fillStyle = 'rgba(140, 160, 195, 0.55)';
             ctx.font = '9px monospace';
-            ctx.fillText('[MOUSE CLICK] Select  •  [W/S] Move  •  [ENTER] Confirm', width / 2, height - 12);
+            ctx.fillText('[ W / S ] Navigate   •   [ ENTER / CLICK ] Confirm', width / 2, height - 12);
         }
         // --- 2. DESIGN STUDIO [DEV] SUB-MENU ---
         else if (this.mode === 'designSubMenu') {
@@ -793,118 +859,118 @@ export default class MainMenu {
             ctx.font = '9px monospace';
             ctx.fillText('[A/D] or [CLICK] Adjust • [ESC] Return', width / 2, height - 12);
         }
-        // --- 5. TUTORIAL & SURVIVAL GUIDE ---
-        else if (this.mode === 'tutorial' || this.mode === 'controls') {
-            const boxX = 14;
-            const boxY = 8;
-            const boxW = width - 28;
-            const boxH = height - 16;
+        // --- 5. CONTROLS & SURVIVAL PROTOCOLS ---
+        else if (this.mode === 'controls' || this.mode === 'tutorial') {
+            const boxX = 22;
+            const boxY = 12;
+            const boxW = width - 44;
+            const boxH = height - 24;
 
-            // Deep horror parchment background
-            ctx.fillStyle = 'rgba(8, 10, 16, 0.96)';
+            // Deep slate card background
+            ctx.fillStyle = 'rgba(8, 12, 20, 0.96)';
             ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#32374b';
+            ctx.strokeStyle = '#283852';
             ctx.lineWidth = 1;
             ctx.strokeRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#1a1d29';
+            ctx.strokeStyle = '#121826';
             ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
-            
+
             // Header
             ctx.textAlign = 'center';
-            ctx.fillStyle = '#ffeedd';
-            ctx.font = 'bold 13px monospace';
-            ctx.fillText('SURVIVAL GUIDE & CONTROLS', width / 2, boxY + 18);
-            
-            ctx.fillStyle = 'rgba(255, 175, 95, 0.75)';
-            ctx.font = '8px monospace';
-            ctx.fillText('— Read carefully before descending into the abyss —', width / 2, boxY + 29);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 14px monospace';
+            ctx.fillText('C O N T R O L S', width / 2, boxY + 19);
 
-            // Left Column: KEYBOARD CONTROLS (IN-GAME)
-            const col1X = boxX + 12;
-            const colW = Math.floor((boxW - 32) / 2);
-            const col2X = col1X + colW + 8;
+            ctx.fillStyle = 'rgba(130, 180, 255, 0.7)';
+            ctx.font = '8px monospace';
+            ctx.fillText('— Master the ancient mechanics to survive the abyss —', width / 2, boxY + 30);
+
+            // Two Columns
+            const col1X = boxX + 16;
+            const colW = Math.floor((boxW - 42) / 2);
+            const col2X = col1X + colW + 12;
             const contentStartY = boxY + 44;
 
+            // Left: KEYBOARD BINDINGS
             ctx.textAlign = 'left';
             ctx.fillStyle = '#7ee787';
-            ctx.font = 'bold 9px monospace';
-            ctx.fillText('KEYBOARD CONTROLS', col1X, contentStartY);
-            
-            ctx.strokeStyle = 'rgba(126, 231, 135, 0.3)';
+            ctx.font = 'bold 10px monospace';
+            ctx.fillText('KEYBOARD BINDINGS', col1X, contentStartY);
+
+            ctx.strokeStyle = 'rgba(126, 231, 135, 0.35)';
             ctx.beginPath();
             ctx.moveTo(col1X, contentStartY + 3);
-            ctx.lineTo(col1X + colW - 8, contentStartY + 3);
+            ctx.lineTo(col1X + colW - 6, contentStartY + 3);
             ctx.stroke();
 
-            const keyControls = [
+            const bindings = [
                 ['A / D  or  ← / →', 'Move Character'],
-                ['SPACE or W or ↑', 'Jump / Vault'],
+                ['SPACE or W',       'Jump / Vault'],
                 ['E',                 'Interact (at objects)'],
                 ['E / SPACE / ESC',  'Dismiss Lore Notes'],
-                ['ESC',              'Pause / Settings Menu']
+                ['ESC',              'Pause / Options']
             ];
 
-            keyControls.forEach((item, idx) => {
-                const py = contentStartY + 16 + idx * 14;
+            bindings.forEach((item, idx) => {
+                const py = contentStartY + 17 + idx * 15;
                 ctx.fillStyle = '#7ee787';
                 ctx.font = '9px monospace';
                 ctx.fillText(item[0], col1X, py);
-                ctx.fillStyle = '#a8b2c4';
+                ctx.fillStyle = '#c5d0e2';
                 ctx.fillText(item[1], col1X + 105, py);
             });
 
-            // Note on Mouse in dungeon
-            const noteY = contentStartY + 90;
-            ctx.fillStyle = 'rgba(240, 180, 80, 0.12)';
-            ctx.fillRect(col1X, noteY, colW - 8, 43);
-            ctx.strokeStyle = 'rgba(240, 180, 80, 0.4)';
-            ctx.strokeRect(col1X, noteY, colW - 8, 43);
-            
-            ctx.fillStyle = '#ffcf70';
-            ctx.font = 'bold 8px monospace';
-            ctx.fillText('MOUSE USAGE NOTICE:', col1X + 6, noteY + 11);
-            ctx.fillStyle = '#c5ccd6';
-            ctx.font = '8px monospace';
-            ctx.fillText('• Mouse is hidden during gameplay.', col1X + 6, noteY + 21);
-            ctx.fillText('• Used only in menus & editors.', col1X + 6, noteY + 30);
-            ctx.fillText('• Approach pulsing dots to press E.', col1X + 6, noteY + 39);
+            // Notice Box
+            const noteY = contentStartY + 96;
+            ctx.fillStyle = 'rgba(80, 160, 255, 0.1)';
+            ctx.fillRect(col1X, noteY, colW - 6, 38);
+            ctx.strokeStyle = 'rgba(80, 160, 255, 0.35)';
+            ctx.strokeRect(col1X, noteY, colW - 6, 38);
 
-            // Right Column: SURVIVAL PROTOCOLS
+            ctx.fillStyle = '#9fd2ff';
+            ctx.font = 'bold 8px monospace';
+            ctx.fillText('IMMERSION NOTICE:', col1X + 6, noteY + 11);
+            ctx.fillStyle = '#b8c6dc';
+            ctx.font = '8px monospace';
+            ctx.fillText('• Mouse is hidden in gameplay.', col1X + 6, noteY + 22);
+            ctx.fillText('• Walk to objects & press E to interact.', col1X + 6, noteY + 32);
+
+            // Right: SURVIVAL PROTOCOLS
             ctx.textAlign = 'left';
             ctx.fillStyle = '#f0883e';
-            ctx.font = 'bold 9px monospace';
-            ctx.fillText('SURVIVAL PROTOCOLS', col2X, contentStartY);
+            ctx.font = 'bold 10px monospace';
+            ctx.fillText('SURVIVAL RULES', col2X, contentStartY);
 
-            ctx.strokeStyle = 'rgba(240, 136, 62, 0.3)';
+            ctx.strokeStyle = 'rgba(240, 136, 62, 0.35)';
             ctx.beginPath();
             ctx.moveTo(col2X, contentStartY + 3);
             ctx.lineTo(col2X + colW, contentStartY + 3);
             ctx.stroke();
 
-            const protocols = [
-                { title: 'LIGHT & SANITY:', desc: 'Darkness drains sanity. Panic distorts sight & sound.' },
-                { title: 'SAFE HAVENS:', desc: 'Wall torches replenish your mind and keep you alive.' },
-                { title: 'SHADOW LURKERS:', desc: 'Awakened by puzzle interactions. Stalk when backs turn!' },
-                { title: 'BANISHMENT:', desc: 'Cannot be killed by hands. LURE THEM TO TORCH FIRE!' },
-                { title: 'DEATH RESETS:', desc: 'Perishing in darkness resets levers and mechanisms.' }
+            const rules = [
+                { t: '◆ SANITY & VOID', d: 'Darkness drains sanity. Panic distorts senses.' },
+                { t: '◆ TORCH SANCTUARIES', d: 'Lit torches calm your mind and keep you alive.' },
+                { t: '◆ SHADOW STALKERS', d: 'Awoken by puzzle triggers. Hunt from behind!' },
+                { t: '◆ FLAME BANISHMENT', d: 'Lure shadows into torch flames to destroy them.' },
+                { t: '◆ DEATH RESETS', d: 'Dying resets levers and traps in that chamber.' }
             ];
 
-            protocols.forEach((rule, idx) => {
-                const py = contentStartY + 14 + idx * 23;
-                ctx.fillStyle = '#ffaa77';
+            rules.forEach((rule, idx) => {
+                const py = contentStartY + 15 + idx * 23;
+                ctx.fillStyle = '#ffb27d';
                 ctx.font = 'bold 8px monospace';
-                ctx.fillText(rule.title, col2X, py);
-                ctx.fillStyle = '#8b949e';
+                ctx.fillText(rule.t, col2X, py);
+                ctx.fillStyle = '#9fb0c8';
                 ctx.font = '8px monospace';
-                ctx.fillText(rule.desc, col2X, py + 9);
+                ctx.fillText(rule.d, col2X, py + 10);
             });
 
             // Back button at bottom
             const backY = boxY + boxH - 22;
-            const btnW = 150;
+            const btnW = 140;
             const btnH = 17;
             const btnX = Math.round(width / 2 - btnW / 2);
-            
+
             this.hitboxes.push({
                 index: 0,
                 x: btnX,
@@ -915,19 +981,19 @@ export default class MainMenu {
             });
 
             ctx.textAlign = 'center';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
             ctx.fillRect(btnX, backY - 3, btnW, btnH);
-            ctx.strokeStyle = '#58607a';
+            ctx.strokeStyle = '#5a78a2';
             ctx.lineWidth = 1;
             ctx.strokeRect(btnX, backY - 3, btnW, btnH);
 
             ctx.fillStyle = '#ffffff';
-            ctx.font = '10px monospace';
+            ctx.font = 'bold 10px monospace';
             ctx.fillText('< BACK TO TITLE', width / 2, backY + 9);
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillStyle = 'rgba(160, 185, 220, 0.4)';
             ctx.font = '8px monospace';
-            ctx.fillText('[CLICK OR PRESS ESC / E / SPACE / ENTER TO RETURN]', width / 2, boxY + boxH - 2);
+            ctx.fillText('[ CLICK OR PRESS ESC / SPACE / ENTER TO RETURN ]', width / 2, boxY + boxH - 3);
         }
     }
     
