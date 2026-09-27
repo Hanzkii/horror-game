@@ -127,23 +127,40 @@ async function init() {
         requestAnimationFrame(loop);
     }
 
-    // Hide loading screen and start
+    // Title screen awakening and input focus management
     const loadingOverlay = document.getElementById('loading-overlay');
-    loadingOverlay.classList.add('hidden');
-    setTimeout(() => {
+    let gameStarted = false;
+
+    function startGame() {
+        if (gameStarted) return;
+        gameStarted = true;
+
+        loadingOverlay.classList.add('hidden');
+        window.focus();
+
+        // Unlock browser Web Audio
+        if (audio.context.state === 'suspended') {
+            audio.context.resume();
+        }
+        startAmbientDrone(audio);
         hud.fadeIn(0.5);
         requestAnimationFrame(loop);
+    }
 
-        // Resume AudioContext (requires user gesture in modern browsers)
-        const unlockAudio = () => {
-            if (audio.context.state === 'suspended') {
-                audio.context.resume();
-            }
-        };
-        window.addEventListener('click', unlockAudio);
-        window.addEventListener('keydown', unlockAudio);
-        startAmbientDrone(audio);
-    }, 2000);
+    // Awaken on explicit click or keypress
+    loadingOverlay.addEventListener('click', startGame);
+    window.addEventListener('click', () => {
+        window.focus();
+        if (!gameStarted) startGame();
+    });
+    window.addEventListener('keydown', () => {
+        if (!gameStarted) startGame();
+    });
+
+    // Fallback auto-start after 3.5 seconds
+    setTimeout(() => {
+        if (!gameStarted) startGame();
+    }, 3500);
 }
 
 function loadLevel(scene, levelData, gameState) {

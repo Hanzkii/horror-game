@@ -19,13 +19,13 @@ export class Player extends Entity {
         
         // Physics constants
         this.gravity = 980; // px/s^2
-        this.maxFallSpeed = 400; // px/s
-        this.maxSpeed = 120; // px/s
-        this.accel = 600; // px/s^2
-        this.decel = 800; // px/s^2
-        this.jumpForce = -250; // initial burst
-        this.jumpHoldForce = -400; // continued force while holding
-        this.wallSlideSpeed = 50; // max fall speed while sliding
+        this.maxFallSpeed = 380; // px/s
+        this.maxSpeed = 125; // px/s
+        this.accel = 700; // px/s^2
+        this.decel = 850; // px/s^2
+        this.jumpForce = -320; // responsive initial jump impulse (clears ~3.5 tiles)
+        this.jumpHoldForce = -350; // continued lift while holding jump
+        this.wallSlideSpeed = 60; // max fall speed while sliding
         
         // State
         this.state = PLAYER_STATES.IDLE;
@@ -33,8 +33,14 @@ export class Player extends Entity {
         this.grounded = false;
         this.touchingWallLeft = false;
         this.touchingWallRight = false;
+        
+        // Jump timers (variable jump height, coyote time, and jump buffering)
         this.jumpTimer = 0;
-        this.maxJumpHoldTime = 0.2; // seconds
+        this.maxJumpHoldTime = 0.18; // seconds
+        this.coyoteTimer = 0; // grace period after stepping off a ledge
+        this.coyoteDuration = 0.12;
+        this.jumpBufferTimer = 0; // buffer jump press before touching ground
+        this.jumpBufferDuration = 0.12;
         
         // Visuals
         this.lightRadius = 150; // pixels
@@ -42,23 +48,35 @@ export class Player extends Entity {
         
         // Sound & Interaction
         this.footstepTimer = 0;
-        this.footstepInterval = 0.4; // seconds
-        this.interactRadius = 30; // pixels
+        this.footstepInterval = 0.38; // seconds
+        this.interactRadius = 32; // pixels
     }
     
     update(dt, input, scene) {
         if (!input) return;
         this.breathTimer += dt;
         
+        // Coyote time & Jump buffer timers
+        if (this.grounded) {
+            this.coyoteTimer = this.coyoteDuration;
+        } else {
+            this.coyoteTimer = Math.max(0, this.coyoteTimer - dt);
+        }
+        
+        if (input.isJustPressed('jump')) {
+            this.jumpBufferTimer = this.jumpBufferDuration;
+        } else {
+            this.jumpBufferTimer = Math.max(0, this.jumpBufferTimer - dt);
+        }
+        
         this.handleInput(dt, input, scene);
-        this.applyPhysics(dt);
-        this.resolveCollisions(scene);
+        this.applyPhysicsAndCollision(dt, scene);
         this.updateState();
         this.handleSounds(dt, scene);
     }
     
     handleInput(dt, input, scene) {
-        // Horizontal Movement — use lowercase action names matching Input.js mappings
+        // Horizontal Movement
         if (input.isPressed('left')) {
             this.vx -= this.accel * dt;
             this.facingRight = false;
@@ -66,7 +84,7 @@ export class Player extends Entity {
             this.vx += this.accel * dt;
             this.facingRight = true;
         } else {
-            // Decelerate
+            // Decelerate smoothly
             if (this.vx > 0) {
                 this.vx = Math.max(0, this.vx - this.decel * dt);
             } else if (this.vx < 0) {
@@ -77,13 +95,19 @@ export class Player extends Entity {
         // Clamp speed
         this.vx = Math.max(-this.maxSpeed, Math.min(this.maxSpeed, this.vx));
         
-        // Jumping
-        if (input.isJustPressed('jump') && this.grounded) {
+        // Jumping (can trigger if grounded, within coyote time, or if buffered)
+        const canJump = this.grounded || this.coyoteTimer > 0;
+        if (canJump && this.jumpBufferTimer > 0) {
             this.vy = this.jumpForce;
             this.grounded = false;
+            this.coyoteTimer = 0;
+            this.jumpBufferTimer = 0;
             this.jumpTimer = this.maxJumpHoldTime;
+            if (scene && scene.audio) {
+                scene.audio.play('footstep');
+            }
         } else if (input.isPressed('jump') && this.jumpTimer > 0) {
-            // Variable jump height
+            // Sustained variable jump height
             this.vy += this.jumpHoldForce * dt;
             this.jumpTimer -= dt;
         } else {
@@ -96,10 +120,13 @@ export class Player extends Entity {
         }
     }
     
-    applyPhysics(dt) {
+    applyPhysicsAndCollision(dt, scene) {
+        if (!scene) return;
+        const tileSize = scene.tileSize || 16;
+        
         // Apply Gravity
         if (this.state === PLAYER_STATES.WALL_SLIDING) {
-            this.vy += this.gravity * 0.5 * dt;
+            this.vy += this.gravity * 0.4 * dt;
             if (this.vy > this.wallSlideSpeed) {
                 this.vy = this.wallSlideSpeed;
             }
@@ -110,58 +137,67 @@ export class Player extends Entity {
             }
         }
         
-        // Apply velocities
+        // --- 1. HORIZONTAL MOVEMENT & COLLISION RESOLUTION ---
         this.x += this.vx * dt;
-        this.y += this.vy * dt;
-    }
-    
-    resolveCollisions(scene) {
-        if (!scene || !scene.getTile) return;
-        
-        this.grounded = false;
         this.touchingWallLeft = false;
         this.touchingWallRight = false;
         
-        const tileSize = scene.tileSize || 16;
-        
-        // Get overlapping tiles
-        const leftCol = Math.floor(this.x / tileSize);
-        const rightCol = Math.floor((this.x + this.width - 1) / tileSize);
-        const topRow = Math.floor(this.y / tileSize);
-        const bottomRow = Math.floor((this.y + this.height - 1) / tileSize);
+        let leftCol = Math.floor(this.x / tileSize);
+        let rightCol = Math.floor((this.x + this.width - 0.001) / tileSize);
+        let topRow = Math.floor(this.y / tileSize);
+        let bottomRow = Math.floor((this.y + this.height - 0.001) / tileSize);
         
         for (let r = topRow; r <= bottomRow; r++) {
             for (let c = leftCol; c <= rightCol; c++) {
                 const tile = scene.getTile(c, r);
-                if (tile === 1 || tile === 2) { // solid tiles
-                    
-                    const tileX = c * tileSize;
-                    const tileY = r * tileSize;
-                    
-                    // AABB overlap amounts
-                    const overlapLeft = (this.x + this.width) - tileX;
-                    const overlapRight = (tileX + tileSize) - this.x;
-                    const overlapTop = (this.y + this.height) - tileY;
-                    const overlapBottom = (tileY + tileSize) - this.y;
-                    
-                    // Find min overlap for resolution
-                    const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
-                    
-                    if (minOverlap === overlapTop && this.vy >= 0) {
-                        this.y = tileY - this.height;
-                        this.vy = 0;
-                        this.grounded = true;
-                    } else if (minOverlap === overlapBottom && this.vy <= 0) {
-                        this.y = tileY + tileSize;
-                        this.vy = 0;
-                    } else if (minOverlap === overlapLeft) {
-                        this.x = tileX - this.width;
+                if (tile === 1 || tile === 2) { // solid stone or brick wall
+                    if (this.vx > 0) {
+                        this.x = c * tileSize - this.width;
                         this.vx = 0;
                         this.touchingWallRight = true;
-                    } else if (minOverlap === overlapRight) {
-                        this.x = tileX + tileSize;
+                    } else if (this.vx < 0) {
+                        this.x = (c + 1) * tileSize;
                         this.vx = 0;
                         this.touchingWallLeft = true;
+                    }
+                }
+            }
+        }
+        
+        // --- 2. VERTICAL MOVEMENT & COLLISION RESOLUTION ---
+        const prevY = this.y;
+        this.y += this.vy * dt;
+        this.grounded = false;
+        
+        leftCol = Math.floor(this.x / tileSize);
+        rightCol = Math.floor((this.x + this.width - 0.001) / tileSize);
+        topRow = Math.floor(this.y / tileSize);
+        bottomRow = Math.floor((this.y + this.height - 0.001) / tileSize);
+        
+        for (let r = topRow; r <= bottomRow; r++) {
+            for (let c = leftCol; c <= rightCol; c++) {
+                const tile = scene.getTile(c, r);
+                if (tile === 1 || tile === 2) { // solid block
+                    if (this.vy >= 0) {
+                        // Landing on floor
+                        this.y = r * tileSize - this.height;
+                        this.vy = 0;
+                        this.grounded = true;
+                    } else if (this.vy < 0) {
+                        // Bumping ceiling
+                        this.y = (r + 1) * tileSize;
+                        this.vy = 0;
+                        this.jumpTimer = 0;
+                    }
+                } else if (tile === 3) { // one-way semi-solid platform
+                    if (this.vy >= 0) {
+                        const platTop = r * tileSize;
+                        // Only land if previous bottom was at or above platform top
+                        if (prevY + this.height <= platTop + 4) {
+                            this.y = platTop - this.height;
+                            this.vy = 0;
+                            this.grounded = true;
+                        }
                     }
                 }
             }
@@ -170,7 +206,7 @@ export class Player extends Entity {
     
     updateState() {
         if (this.grounded) {
-            if (Math.abs(this.vx) > 5) {
+            if (Math.abs(this.vx) > 8) {
                 this.state = PLAYER_STATES.WALKING;
             } else {
                 this.state = PLAYER_STATES.IDLE;
@@ -224,10 +260,10 @@ export class Player extends Entity {
         const renderHeight = this.height * breathScale;
         const yOffset = this.height - renderHeight;
         
-        // Player body — pale glowing rectangle
+        // Player body — pale glowing figure
         renderer.drawRect(this.x, this.y + yOffset, this.width, renderHeight, '#e0e0e0');
         
-        // Draw facing indicator (eye)
+        // Draw facing indicator
         if (this.facingRight) {
             renderer.drawRect(this.x + this.width - 4, this.y + 4 + yOffset, 3, 3, '#999999');
         } else {
