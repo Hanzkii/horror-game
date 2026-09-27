@@ -46,6 +46,14 @@ export default class HUD {
             ctx.fillRect(0, 0, width, height);
         }
 
+        // Floor indicator
+        if (gameState.currentLevel && gameState.floorIndex) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(`FLOOR B${gameState.floorIndex}`, width - 10, 15);
+        }
+
         // Interaction Prompt
         if (gameState.canInteract) {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';

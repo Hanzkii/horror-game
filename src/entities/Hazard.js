@@ -1,4 +1,5 @@
 import Entity from '../engine/Entity.js';
+import SpriteRenderer from '../art/SpriteRenderer.js';
 
 export const HAZARD_TYPES = {
     SPIKES: 0,
@@ -105,21 +106,11 @@ export class Hazard extends Entity {
     render(renderer) {
         if (this.dead) return;
         
-        let renderX = this.x;
-        let renderY = this.y;
-        
         if (this.hazardType === HAZARD_TYPES.FALLING_BLOCK) {
-            if (this.triggered && !this.isFalling) {
-                renderX += (Math.random() - 0.5) * 4;
-            }
-            renderer.drawRect(renderX, renderY, this.width, this.height, '#8a0f0f');
+            const isShaking = this.triggered && !this.isFalling;
+            SpriteRenderer.drawFallingBlock(renderer, this.x, this.y, this.width, this.height, isShaking);
         } else if (this.hazardType === HAZARD_TYPES.SPIKES) {
-            // Draw spikes as dark red rectangles for simplicity
-            renderer.drawRect(renderX, renderY + this.height * 0.5, this.width, this.height * 0.5, '#8a0f0f');
-            // Spike tips
-            for (let i = 0; i < this.width; i += 8) {
-                renderer.drawRect(renderX + i + 2, renderY, 4, this.height * 0.6, '#6a0a0a');
-            }
+            SpriteRenderer.drawSpikes(renderer, this.x, this.y, this.width, this.height);
         }
     }
 }

@@ -523,5 +523,8 @@ export default class SoundStudio {
     toggle(forceState) {
         this.isOpen = (forceState !== undefined) ? forceState : !this.isOpen;
         this.dom.style.display = this.isOpen ? 'block' : 'none';
+        if (!this.isOpen && this.onClose) {
+            this.onClose();
+        }
     }
 }

@@ -3,6 +3,8 @@
  * @description Manages entities, tilemaps, collisions, and scene transitions.
  */
 
+import SpriteRenderer from '../art/SpriteRenderer.js';
+
 export default class Scene {
     constructor() {
         this.entities = [];
@@ -212,24 +214,31 @@ export default class Scene {
     render(renderer) {
         renderer.beginCamera();
         
-        // Render Tilemap — use colored rectangles since we have no tileset image
+        // Render Tilemap — use SpriteRenderer
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.columns; c++) {
                 const tileId = this.mapData[r][c];
                 if (tileId > 0) {
-                    let color;
+                    const x = c * this.tileSize;
+                    const y = r * this.tileSize;
+                    const seed = c * 1000 + r;
+                    
                     switch (tileId) {
-                        case 1: color = '#1a1a2e'; break; // stone — dark blue-grey
-                        case 2: color = '#2a1a1a'; break; // brick — dark reddish
-                        case 3: color = '#333344'; break; // platform — slightly lighter
-                        case 4: color = '#0d0d15'; break; // background detail — very dark
-                        default: color = '#1a1a2e';
+                        case 1: 
+                            SpriteRenderer.drawStone(renderer, x, y, this.tileSize, seed);
+                            break;
+                        case 2: 
+                            SpriteRenderer.drawBrick(renderer, x, y, this.tileSize, seed);
+                            break;
+                        case 3: 
+                            SpriteRenderer.drawPlatform(renderer, x, y, this.tileSize, seed);
+                            break;
+                        case 4: 
+                            SpriteRenderer.drawBackdrop(renderer, x, y, this.tileSize, seed);
+                            break;
+                        default: 
+                            SpriteRenderer.drawStone(renderer, x, y, this.tileSize, seed);
                     }
-                    renderer.drawRect(
-                        c * this.tileSize, r * this.tileSize,
-                        this.tileSize, this.tileSize,
-                        color
-                    );
                 }
             }
         }

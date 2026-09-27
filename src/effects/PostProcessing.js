@@ -39,13 +39,17 @@ export default class PostProcessing {
         return { x: offsetX, y: offsetY };
     }
 
-    render(playerPos, sanityLevel, additionalLights = []) {
+    render(playerPos, sanityLevel, additionalLights = [], shadowDistance = Infinity) {
         // Darkness and dynamic multi-light sources
-        this.renderDarkness(playerPos, sanityLevel, additionalLights);
+        this.renderDarkness(playerPos, sanityLevel, additionalLights, shadowDistance);
 
         // Sanity degradation visual noise and chromatic flashes
         if (sanityLevel < 0.75) {
             this.renderSanityEffects(sanityLevel);
+        }
+
+        if (shadowDistance < 200) {
+            this.renderShadowProximity(shadowDistance);
         }
 
         // Vignette
@@ -55,7 +59,62 @@ export default class PostProcessing {
         this.renderScanlines();
     }
 
-    renderDarkness(playerPos, sanityLevel, additionalLights = []) {
+    renderShadowProximity(distance) {
+        const { ctx, width, height } = this;
+        
+        // Chromatic aberration
+        const intensity = (200 - distance) / 200; 
+        const offset = distance < 60 ? 3 + Math.random() : 1 + Math.random();
+
+        ctx.globalCompositeOperation = 'screen';
+        for (let i = 0; i < 5 + intensity * 15; i++) {
+            const y = Math.random() * height;
+            const h = 1 + Math.random() * 4;
+            ctx.fillStyle = `rgba(255, 0, 0, ${0.1 * intensity})`;
+            ctx.fillRect(offset, y, width, h);
+            ctx.fillStyle = `rgba(0, 0, 255, ${0.1 * intensity})`;
+            ctx.fillRect(-offset, y, width, h);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+
+        if (distance < 120) {
+            // Screen tear
+            const numTears = distance < 60 ? 4 + Math.random() * 3 : 2 + Math.random();
+            for (let i = 0; i < numTears; i++) {
+                const y = Math.random() * height;
+                const h = 3 + Math.random() * 5;
+                const shift = (Math.random() < 0.5 ? 1 : -1) * (2 + Math.random() * 4);
+                
+                ctx.drawImage(ctx.canvas, 0, y, width, h, shift, y, width, h);
+                
+                ctx.fillStyle = 'rgba(0,0,0,1)';
+                if (shift > 0) {
+                    ctx.fillRect(0, y, shift, h);
+                } else {
+                    ctx.fillRect(width + shift, y, -shift, h);
+                }
+            }
+
+            // Static noise
+            const staticDots = distance < 60 ? 150 : 50;
+            for (let i = 0; i < staticDots; i++) {
+                ctx.fillStyle = Math.random() < 0.5 ? 'white' : `hsl(${Math.random()*360}, 100%, 50%)`;
+                ctx.fillRect(Math.random() * width, Math.random() * height, 1 + Math.random(), 1 + Math.random());
+            }
+        }
+
+        if (distance < 60) {
+            // Brief screen inversion flashes
+            if (Math.random() < 0.01) {
+                ctx.globalCompositeOperation = 'difference';
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, width, height);
+                ctx.globalCompositeOperation = 'source-over';
+            }
+        }
+    }
+
+    renderDarkness(playerPos, sanityLevel, additionalLights = [], shadowDistance = Infinity) {
         const dctx = this.darknessCtx;
         const { width, height } = this;
 
@@ -69,7 +128,10 @@ export default class PostProcessing {
 
         // Punch out Player's lantern cone
         const breathFlicker = Math.sin(this.time * 2.5) * 5;
-        const playerRadius = 150 + breathFlicker;
+        let playerRadius = 150 + breathFlicker;
+        if (shadowDistance < 60) {
+            playerRadius *= 0.7; // Shrink by 30%
+        }
         const playerGrad = dctx.createRadialGradient(
             playerPos.x, playerPos.y, 8,
             playerPos.x, playerPos.y, playerRadius

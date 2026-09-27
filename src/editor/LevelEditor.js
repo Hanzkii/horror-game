@@ -757,6 +757,8 @@ export default class LevelEditor {
             if (!this.currentLevelData) {
                 this.loadLevel(Level1);
             }
+        } else if (this.onClose) {
+            this.onClose();
         }
     }
 

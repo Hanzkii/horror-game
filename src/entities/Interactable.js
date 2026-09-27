@@ -4,6 +4,7 @@
  */
 
 import Entity from '../engine/Entity.js';
+import SpriteRenderer from '../art/SpriteRenderer.js';
 
 export const INTERACTABLE_TYPES = {
     NOTE: 0,
@@ -50,6 +51,11 @@ export class Interactable extends Entity {
         
         if (this.showPrompt && scene.gameState) {
             scene.gameState.canInteract = true;
+        }
+        
+        if (this.interactType === INTERACTABLE_TYPES.DOOR) {
+            const requiresFlag = this.properties.requiresFlag;
+            this.isLocked = requiresFlag && scene.gameState && !scene.gameState.getFlag(requiresFlag);
         }
     }
     
@@ -103,41 +109,13 @@ export class Interactable extends Entity {
     
     render(renderer) {
         if (this.interactType === INTERACTABLE_TYPES.NOTE) {
-            // Parchment Note
-            renderer.drawRect(this.x + 3, this.y + 3, 10, 10, '#eedd66');
-            renderer.drawRect(this.x + 4, this.y + 5, 8, 1, '#aa8822');
-            renderer.drawRect(this.x + 4, this.y + 8, 8, 1, '#aa8822');
-            
+            SpriteRenderer.drawNote(renderer, this.x, this.y);
         } else if (this.interactType === INTERACTABLE_TYPES.DOOR) {
-            // Arched Door / Gate
-            renderer.drawRect(this.x, this.y - 16, 16, 32, '#4d2d18');
-            renderer.drawRect(this.x + 1, this.y - 15, 14, 30, '#381e0f');
-            // Iron banding or brass handle
-            renderer.drawRect(this.x + 12, this.y - 2, 2, 4, '#ffdd44');
-            renderer.drawRect(this.x + 2, this.y - 8, 12, 1, '#666666');
-            renderer.drawRect(this.x + 2, this.y + 6, 12, 1, '#666666');
-            
+            SpriteRenderer.drawDoor(renderer, this.x, this.y, this.isLocked);
         } else if (this.interactType === INTERACTABLE_TYPES.SWITCH) {
-            // Lever Base
-            renderer.drawRect(this.x + 3, this.y + 10, 10, 6, '#444455');
-            // Lever Stick (angle depends on activation)
-            if (this.isActivated) {
-                renderer.drawRect(this.x + 8, this.y + 4, 6, 8, '#ff5533'); // pulled right
-                renderer.drawRect(this.x + 12, this.y + 2, 3, 3, '#ffff88');
-            } else {
-                renderer.drawRect(this.x + 4, this.y + 4, 3, 8, '#ff5533'); // upright left
-                renderer.drawRect(this.x + 3, this.y + 2, 3, 3, '#ffff88');
-            }
-            
+            SpriteRenderer.drawLever(renderer, this.x, this.y, this.isActivated);
         } else if (this.interactType === INTERACTABLE_TYPES.TORCH) {
-            // Sconce bracket
-            renderer.drawRect(this.x + 6, this.y + 8, 4, 8, '#555566');
-            renderer.drawRect(this.x + 5, this.y + 6, 6, 3, '#777788');
-            // Flickering flame
-            const flameW = 4 + Math.floor(Math.sin(this.timer * 12) * 1.5);
-            const flameH = 6 + Math.floor(Math.cos(this.timer * 15) * 1.5);
-            renderer.drawRect(this.x + 8 - flameW / 2, this.y + 6 - flameH, flameW, flameH, '#ff7722');
-            renderer.drawRect(this.x + 7, this.y + 6 - flameH + 2, 2, 3, '#ffdd44');
+            SpriteRenderer.drawTorch(renderer, this.x, this.y, this.timer);
         }
         
         // E interaction prompt

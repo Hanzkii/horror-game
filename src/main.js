@@ -21,12 +21,22 @@ import SoundStudio from './audio/SoundStudio.js';
 // Import visual systems
 import PostProcessing from './effects/PostProcessing.js';
 import HUD from './ui/HUD.js';
+import MainMenu from './ui/MainMenu.js';
+import AdaptiveAudio from './audio/AdaptiveAudio.js';
 
 // Configuration
 const GAME_WIDTH = 480;
 const GAME_HEIGHT = 270;
 
-let currentFloorIndex = 1;
+const GAME_STATES = {
+    LOADING: 'loading',
+    MENU: 'menu',
+    STORY: 'story',
+    DESIGN_LEVEL: 'design_level',
+    DESIGN_SOUND: 'design_sound',
+    PAUSED: 'paused'
+};
+let currentState = GAME_STATES.LOADING;
 
 async function init() {
     const canvas = document.getElementById('gameCanvas');
@@ -51,6 +61,7 @@ async function init() {
     const ctx = renderer.bctx; // Offscreen buffer context
     const postProcessing = new PostProcessing(ctx, GAME_WIDTH, GAME_HEIGHT);
     const hud = new HUD(ctx, GAME_WIDTH, GAME_HEIGHT);
+    const mainMenu = new MainMenu(ctx, GAME_WIDTH, GAME_HEIGHT);
 
     const scene = new Scene();
 
@@ -63,21 +74,19 @@ async function init() {
     // Procedural sound effects synthesizer
     setupProceduralAudio(audio);
 
-    // Initial level load: Level 1
-    loadLevel(scene, Level1, gameState, renderer);
-
     // Initialize Procedural Sound Studio & Ambient Generator
     const soundStudio = new SoundStudio(audio);
+    const adaptiveAudio = new AdaptiveAudio(audio, soundStudio);
 
     // Handler for descending deeper when unlocking exit doors
     scene.onNextLevel = () => {
-        currentFloorIndex++;
+        gameState.floorIndex = (gameState.floorIndex || 1) + 1;
         const nextLevel = generateProceduralLevel({
             seed: Math.floor(Math.random() * 999999),
-            roomCount: Math.min(8, 4 + currentFloorIndex),
-            hazardDensity: Math.min(0.75, 0.3 + currentFloorIndex * 0.08),
-            verticality: Math.min(0.75, 0.4 + currentFloorIndex * 0.08),
-            name: `Catacombs — Depth B${currentFloorIndex}`
+            roomCount: Math.min(8, 4 + gameState.floorIndex),
+            hazardDensity: Math.min(0.75, 0.3 + gameState.floorIndex * 0.08),
+            verticality: Math.min(0.75, 0.4 + gameState.floorIndex * 0.08),
+            name: `Catacombs — Depth B${gameState.floorIndex}`
         });
         loadLevel(scene, nextLevel, gameState, renderer);
         editor.loadLevel(nextLevel);
@@ -89,8 +98,22 @@ async function init() {
         loadLevel(scene, customLevel, gameState, renderer);
         hud.fadeIn(0.5);
     });
-    editor.onOpenSoundStudio = () => soundStudio.toggle(true);
-    editor.loadLevel(Level1);
+    
+    // Hide floating buttons — navigation is through menu now
+    const editorBtn = document.getElementById('btn-open-editor');
+    if (editorBtn) editorBtn.style.display = 'none';
+    const soundBtn = document.getElementById('btn-open-sound-studio');
+    if (soundBtn) soundBtn.style.display = 'none';
+
+    // Callbacks to go back to main menu
+    editor.onClose = () => {
+        currentState = GAME_STATES.MENU;
+        mainMenu.showDesignMenu();
+    };
+    soundStudio.onClose = () => {
+        currentState = GAME_STATES.MENU;
+        mainMenu.showDesignMenu();
+    };
 
     let lastTime = 0;
 
@@ -100,76 +123,148 @@ async function init() {
         const dt = Math.min((timestamp - lastTime) / 1000, 0.05); // cap at 50ms
         lastTime = timestamp;
 
-        // If Editor is open, render editor view and pause gameplay
-        if (editor.isOpen) {
-            editor.render();
-            renderer.present();
-            requestAnimationFrame(loop);
-            return;
+        switch (currentState) {
+            case GAME_STATES.MENU:
+                mainMenu.update(dt, input);
+                renderer.clear();
+                mainMenu.render();
+                renderer.present();
+                
+                const sel = mainMenu.getSelection();
+                if (sel === 'story') { 
+                    currentState = GAME_STATES.STORY; 
+                    if (!gameState.currentLevel) {
+                        gameState.floorIndex = 1;
+                        loadLevel(scene, Level1, gameState, renderer);
+                    }
+                    adaptiveAudio.startAmbient();
+                } else if (sel === 'design_level') {
+                    currentState = GAME_STATES.DESIGN_LEVEL;
+                    editor.toggle(true);
+                } else if (sel === 'design_sound') {
+                    currentState = GAME_STATES.DESIGN_SOUND;
+                    soundStudio.toggle(true);
+                }
+                break;
+                
+            case GAME_STATES.STORY:
+                if (input.isJustPressed('pause')) {
+                    if (gameState.activeNote) {
+                        gameState.activeNote = null;
+                    } else {
+                        currentState = GAME_STATES.PAUSED;
+                        gameState.isPaused = true;
+                    }
+                }
+
+                if (!gameState.isPaused && !gameState.activeNote) {
+                    // Reset per-frame interaction state and light emitters
+                    gameState.canInteract = false;
+                    scene.lights = [];
+
+                    // Update systems
+                    scene.update(dt, input, gameState);
+                    gameState.update(dt);
+                    postProcessing.update(dt);
+                    hud.update(dt);
+
+                    // Camera follow player with clamping to level bounds
+                    if (scene.player) {
+                        renderer.lookAt(scene.player.x + scene.player.width / 2, scene.player.y + scene.player.height / 2);
+                        renderer.updateCamera(dt);
+                    }
+                }
+
+                // Render pass
+                renderer.clear();
+                scene.render(renderer);
+
+                const playerScreenPos = scene.player
+                    ? {
+                        x: scene.player.x + scene.player.width / 2 - renderer.camera.x,
+                        y: scene.player.y + scene.player.height / 2 - renderer.camera.y
+                    }
+                    : { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 };
+
+                const screenLights = (scene.lights || []).map(l => ({
+                    x: l.x - renderer.camera.x,
+                    y: l.y - renderer.camera.y,
+                    radius: l.radius,
+                    color: l.color
+                }));
+
+                let shadowDistance = 9999;
+                let drawJumpscare = false;
+                for (const ent of scene.entities) {
+                    if (ent instanceof Shadow && scene.player) {
+                        const dist = Math.hypot(ent.x - scene.player.x, ent.y - scene.player.y);
+                        if (dist < shadowDistance) shadowDistance = dist;
+                        if (ent.jumpScareTimer > 0) drawJumpscare = true;
+                    }
+                }
+
+                adaptiveAudio.update(dt, gameState, shadowDistance, gameState.floorIndex || 1);
+
+                const sanityNormalized = gameState.sanity / gameState.maxSanity;
+                postProcessing.render(playerScreenPos, sanityNormalized, screenLights, shadowDistance);
+
+                if (drawJumpscare) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.ellipse(GAME_WIDTH/2 - 60, GAME_HEIGHT/2, 40, 20, 0, 0, Math.PI*2);
+                    ctx.ellipse(GAME_WIDTH/2 + 60, GAME_HEIGHT/2, 40, 20, 0, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.fillStyle = '#f00';
+                    ctx.beginPath();
+                    ctx.arc(GAME_WIDTH/2 - 60, GAME_HEIGHT/2, 10, 0, Math.PI*2);
+                    ctx.arc(GAME_WIDTH/2 + 60, GAME_HEIGHT/2, 10, 0, Math.PI*2);
+                    ctx.fill();
+                }
+
+                hud.render(gameState);
+                renderer.present();
+                break;
+                
+            case GAME_STATES.PAUSED:
+                renderer.clear();
+                scene.render(renderer);
+                hud.render(gameState);
+                renderer.present();
+                
+                if (input.isJustPressed('pause')) {
+                    gameState.isPaused = false;
+                    currentState = GAME_STATES.STORY;
+                } else if (input.keys['KeyQ']) {
+                    gameState.isPaused = false;
+                    adaptiveAudio.stopAmbient();
+                    currentState = GAME_STATES.MENU;
+                }
+                break;
+                
+            case GAME_STATES.DESIGN_LEVEL:
+                if (!editor.isOpen) {
+                    currentState = GAME_STATES.MENU;
+                    mainMenu.showDesignMenu();
+                } else {
+                    editor.render();
+                    renderer.present();
+                }
+                break;
+                
+            case GAME_STATES.DESIGN_SOUND:
+                if (!soundStudio.isOpen) {
+                    currentState = GAME_STATES.MENU;
+                    mainMenu.showDesignMenu();
+                } else {
+                    renderer.clear();
+                    renderer.present();
+                }
+                break;
         }
 
-        // Input handling for pausing and closing notes
-        if (input.isJustPressed('pause')) {
-            if (gameState.activeNote) {
-                gameState.activeNote = null;
-            } else {
-                gameState.isPaused = !gameState.isPaused;
-            }
-        }
-
-        if (!gameState.isPaused && !gameState.activeNote) {
-            // Reset per-frame interaction state and light emitters
-            gameState.canInteract = false;
-            scene.lights = [];
-
-            // Update systems
-            scene.update(dt, input, gameState);
-            gameState.update(dt);
-            postProcessing.update(dt);
-            hud.update(dt);
-
-            // Camera follow player with clamping to level bounds
-            if (scene.player) {
-                renderer.lookAt(scene.player.x + scene.player.width / 2, scene.player.y + scene.player.height / 2);
-                renderer.updateCamera(dt);
-            }
-        }
-
-        // Render pass
-        renderer.clear();
-
-        // Render world (tiles + entities) through the renderer's camera system
-        scene.render(renderer);
-
-        // Post Processing (darkness light cone around player, torches, vignette, scanlines)
-        const playerScreenPos = scene.player
-            ? {
-                x: scene.player.x + scene.player.width / 2 - renderer.camera.x,
-                y: scene.player.y + scene.player.height / 2 - renderer.camera.y
-            }
-            : { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 };
-
-        // Transform world lights into screen space
-        const screenLights = (scene.lights || []).map(l => ({
-            x: l.x - renderer.camera.x,
-            y: l.y - renderer.camera.y,
-            radius: l.radius,
-            color: l.color
-        }));
-
-        // Normalize sanity to 0-1 range for effects
-        const sanityNormalized = gameState.sanity / gameState.maxSanity;
-        postProcessing.render(playerScreenPos, sanityNormalized, screenLights);
-
-        // UI
-        hud.render(gameState);
-
-        // Present internal buffer to the canvas
-        renderer.present();
-
-        // Cycle input states at end of frame
         input.update();
-
         requestAnimationFrame(loop);
     }
 
@@ -188,8 +283,8 @@ async function init() {
         if (audio.context.state === 'suspended') {
             audio.context.resume();
         }
-        startAmbientDrone(audio);
-        hud.fadeIn(0.5);
+        
+        currentState = GAME_STATES.MENU;
         requestAnimationFrame(loop);
     }
 
@@ -202,11 +297,6 @@ async function init() {
     window.addEventListener('keydown', () => {
         if (!gameStarted) startGame();
     });
-
-    // Fallback auto-start after 3.5 seconds
-    setTimeout(() => {
-        if (!gameStarted) startGame();
-    }, 3500);
 }
 
 function loadLevel(scene, levelData, gameState, renderer) {
@@ -271,14 +361,66 @@ function setupProceduralAudio(audioManager) {
         return buffer;
     }
 
-    // Footstep: low muffled tap
-    const footstep = createBuffer(0.08, (t) => {
-        const env = Math.exp(-t * 50);
-        const noise = (Math.random() * 2 - 1) * 0.3;
-        const tone = Math.sin(2 * Math.PI * 90 * t);
-        return (tone * 0.7 + noise) * env * 0.35;
+    // Stinger: sharp dissonant chord burst
+    const stinger = createBuffer(0.3, (t) => {
+        const env = Math.exp(-t * 12);
+        const f1 = Math.sin(2 * Math.PI * 440 * t);      // A4
+        const f2 = Math.sin(2 * Math.PI * 466.16 * t);   // Bb4 (minor 2nd)
+        const f3 = Math.sin(2 * Math.PI * 622.25 * t);   // Eb5 (tritone)
+        const f4 = Math.sin(2 * Math.PI * 277.18 * t);   // C#4
+        return (f1 + f2 + f3 + f4) * 0.25 * env * 0.9;
     });
-    audioManager.buffers.set('footstep', footstep);
+    audioManager.buffers.set('stinger_sharp', stinger);
+
+    // Shadow scream: descending pitch sweep with noise
+    const scream = createBuffer(0.5, (t) => {
+        const env = Math.exp(-t * 6);
+        const freq = 800 * Math.exp(-t * 8) + 100;
+        const tone = Math.sin(2 * Math.PI * freq * t);
+        const noise = (Math.random() * 2 - 1) * 0.4;
+        return (tone * 0.6 + noise * 0.4) * env * 0.8;
+    });
+    audioManager.buffers.set('shadow_scream', scream);
+
+    // Breathing: rhythmic filtered noise
+    const breathing = createBuffer(1.5, (t) => {
+        const breathCycle = Math.sin(2 * Math.PI * 0.5 * t); // one full breath
+        const env = Math.max(0, breathCycle) * 0.7;
+        const noise = (Math.random() * 2 - 1);
+        const filtered = noise * Math.sin(2 * Math.PI * 200 * t) * 0.3;
+        return filtered * env * 0.5;
+    });
+    audioManager.buffers.set('breathing', breathing);
+
+    // Footstep variations
+    for (let i = 1; i <= 3; i++) {
+        const pitch = 80 + i * 15;
+        const step = createBuffer(0.08, (t) => {
+            const env = Math.exp(-t * (45 + i * 8));
+            const noise = (Math.random() * 2 - 1) * 0.3;
+            const tone = Math.sin(2 * Math.PI * pitch * t);
+            return (tone * 0.7 + noise) * env * 0.35;
+        });
+        audioManager.buffers.set(`footstep_${i}`, step);
+    }
+    audioManager.buffers.set('footstep', audioManager.buffers.get('footstep_1'));
+
+    // Environmental: water drip
+    const drip = createBuffer(0.15, (t) => {
+        const env = Math.exp(-t * 35);
+        const freq = 2200 * Math.exp(-t * 20) + 800;
+        return Math.sin(2 * Math.PI * freq * t) * env * 0.25;
+    });
+    audioManager.buffers.set('drip', drip);
+
+    // Static crackle
+    const crackle = createBuffer(0.4, (t) => {
+        const env = Math.sin((t / 0.4) * Math.PI);
+        const noise = (Math.random() * 2 - 1);
+        const gate = Math.random() > 0.5 ? 1 : 0;
+        return noise * gate * env * 0.3;
+    });
+    audioManager.buffers.set('static_crackle', crackle);
 
     // Rumble: low trembling drone
     const rumble = createBuffer(0.7, (t) => {
@@ -331,41 +473,6 @@ function setupProceduralAudio(audioManager) {
         return (f1 + f2 + f3) * (1 / 3) * env * 0.5;
     });
     audioManager.buffers.set('dissonance', dissonance);
-}
-
-function startAmbientDrone(audioManager) {
-    const ctx = audioManager.context;
-
-    // Low drone oscillator
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = 55; // Low drone
-
-    // Subtle LFO for breathing effect
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 0.2;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 5;
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc.frequency);
-
-    osc.connect(gain);
-    gain.connect(audioManager.masterGain);
-    gain.gain.value = 0.15;
-
-    osc.start();
-    lfo.start();
-
-    // Secondary eerie overtone
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'triangle';
-    osc2.frequency.value = 82.5; // Perfect fifth above drone
-    osc2.connect(gain2);
-    gain2.connect(audioManager.masterGain);
-    gain2.gain.value = 0.05;
-    osc2.start();
 }
 
 // Start once DOM is ready

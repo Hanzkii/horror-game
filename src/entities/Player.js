@@ -1,4 +1,5 @@
 import Entity from '../engine/Entity.js';
+import SpriteRenderer from '../art/SpriteRenderer.js';
 
 export const PLAYER_STATES = {
     IDLE: 0,
@@ -45,6 +46,10 @@ export class Player extends Entity {
         // Visuals
         this.lightRadius = 150; // pixels
         this.breathTimer = 0;
+        this.walkFrame = 0;
+        this.walkTimer = 0;
+        this.blinkTimer = 0;
+        this.isBlinking = false;
         
         // Sound & Interaction
         this.footstepTimer = 0;
@@ -55,6 +60,17 @@ export class Player extends Entity {
     update(dt, input, scene) {
         if (!input) return;
         this.breathTimer += dt;
+        
+        this.blinkTimer -= dt;
+        if (this.blinkTimer <= 0) {
+            if (this.isBlinking) {
+                this.isBlinking = false;
+                this.blinkTimer = 3 + Math.random() * 2;
+            } else {
+                this.isBlinking = true;
+                this.blinkTimer = 0.15;
+            }
+        }
         
         // Coyote time & Jump buffer timers
         if (this.grounded) {
@@ -71,7 +87,7 @@ export class Player extends Entity {
         
         this.handleInput(dt, input, scene);
         this.applyPhysicsAndCollision(dt, scene);
-        this.updateState();
+        this.updateState(dt);
         this.handleSounds(dt, scene);
 
         // Out of bounds respawn safety
@@ -210,12 +226,18 @@ export class Player extends Entity {
         }
     }
     
-    updateState() {
+    updateState(dt) {
         if (this.grounded) {
             if (Math.abs(this.vx) > 8) {
                 this.state = PLAYER_STATES.WALKING;
+                this.walkTimer += dt;
+                if (this.walkTimer >= 0.15) {
+                    this.walkTimer = 0;
+                    this.walkFrame = (this.walkFrame + 1) % 4;
+                }
             } else {
                 this.state = PLAYER_STATES.IDLE;
+                this.walkFrame = 0;
             }
         } else {
             if (this.vy < 0) {
@@ -234,7 +256,11 @@ export class Player extends Entity {
         if (this.state === PLAYER_STATES.WALKING && this.grounded) {
             this.footstepTimer -= dt;
             if (this.footstepTimer <= 0) {
-                if (scene && scene.audio) scene.audio.play('footstep');
+                if (scene && scene.audio) {
+                    const stepNum = Math.floor(Math.random() * 3) + 1;
+                    const soundName = scene.audio.buffers.has(`footstep_${stepNum}`) ? `footstep_${stepNum}` : 'footstep';
+                    scene.audio.play(soundName);
+                }
                 this.footstepTimer = this.footstepInterval;
             }
         } else {
@@ -261,19 +287,6 @@ export class Player extends Entity {
     }
     
     render(renderer) {
-        // Breathing animation: scale height slightly
-        const breathScale = 1 + Math.sin(this.breathTimer * 2) * 0.05;
-        const renderHeight = this.height * breathScale;
-        const yOffset = this.height - renderHeight;
-        
-        // Player body — pale glowing figure
-        renderer.drawRect(this.x, this.y + yOffset, this.width, renderHeight, '#e0e0e0');
-        
-        // Draw facing indicator
-        if (this.facingRight) {
-            renderer.drawRect(this.x + this.width - 4, this.y + 4 + yOffset, 3, 3, '#999999');
-        } else {
-            renderer.drawRect(this.x + 1, this.y + 4 + yOffset, 3, 3, '#999999');
-        }
+        SpriteRenderer.drawPlayer(renderer, this.x, this.y, this.state, this.walkFrame, this.facingRight, this.breathTimer, this.isBlinking);
     }
 }

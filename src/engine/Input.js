@@ -15,7 +15,7 @@ export default class Input {
             'left': ['KeyA', 'ArrowLeft'],
             'right': ['KeyD', 'ArrowRight'],
             'jump': ['Space', 'KeyW', 'ArrowUp'],
-            'interact': ['KeyE'],
+            'interact': ['KeyE', 'Enter', 'NumpadEnter'],
             'pause': ['Escape']
         };
         
@@ -29,6 +29,8 @@ export default class Input {
             if (e.key === 's' || e.key === 'S') this.keys['KeyS'] = true;
             if (e.key === 'd' || e.key === 'D') this.keys['KeyD'] = true;
             if (e.key === 'e' || e.key === 'E') this.keys['KeyE'] = true;
+            if (e.key === 'q' || e.key === 'Q') this.keys['KeyQ'] = true;
+            if (e.key === 'Enter') this.keys['Enter'] = true;
             if (e.key === 'Escape') this.keys['Escape'] = true;
 
             // Prevent space and arrow keys from scrolling the browser window
@@ -45,6 +47,8 @@ export default class Input {
             if (e.key === 's' || e.key === 'S') this.keys['KeyS'] = false;
             if (e.key === 'd' || e.key === 'D') this.keys['KeyD'] = false;
             if (e.key === 'e' || e.key === 'E') this.keys['KeyE'] = false;
+            if (e.key === 'q' || e.key === 'Q') this.keys['KeyQ'] = false;
+            if (e.key === 'Enter') this.keys['Enter'] = false;
             if (e.key === 'Escape') this.keys['Escape'] = false;
         });
 
