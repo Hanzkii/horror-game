@@ -168,9 +168,11 @@ async function init() {
                 }
 
                 if (!gameState.isPaused && !gameState.activeNote) {
-                    // Reset per-frame interaction state and light emitters
+                    // Reset per-frame interaction state
                     gameState.canInteract = false;
-                    scene.lights = [];
+                    
+                    // Pre-populate environmental torchlights before update
+                    scene.lights = scene.gatherLights ? scene.gatherLights() : [];
 
                     // Update systems
                     scene.update(dt, input, gameState);
@@ -243,18 +245,65 @@ async function init() {
                 postProcessing.render(playerScreenPos, sanityNormalized, screenLights, shadowDistance);
 
                 if (drawJumpscare) {
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                    // 1. Dark nightmare void
+                    ctx.fillStyle = 'rgba(6, 2, 8, 0.95)';
                     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-                    ctx.fillStyle = '#fff';
+
+                    // 2. Visceral blood trauma gradient
+                    const traumaGrad = ctx.createRadialGradient(
+                        GAME_WIDTH / 2, GAME_HEIGHT / 2, 20,
+                        GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH / 1.8
+                    );
+                    traumaGrad.addColorStop(0, 'rgba(160, 20, 20, 0.45)');
+                    traumaGrad.addColorStop(0.7, 'rgba(90, 0, 15, 0.85)');
+                    traumaGrad.addColorStop(1, 'rgba(20, 0, 5, 0.98)');
+                    ctx.fillStyle = traumaGrad;
+                    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+                    // 3. Slashing nightmare claws across screen
+                    ctx.strokeStyle = '#05020a';
+                    ctx.lineWidth = 6;
+                    ctx.lineCap = 'round';
+                    for (let c = 0; c < 4; c++) {
+                        const startX = GAME_WIDTH * 0.2 + c * 75;
+                        const startY = 15 + (c % 2) * 25;
+                        ctx.beginPath();
+                        ctx.moveTo(startX, startY);
+                        ctx.lineTo(startX - 65, startY + 190);
+                        ctx.stroke();
+                    }
+
+                    // 4. Eldritch Eyes tearing through reality
+                    const eyeY = GAME_HEIGHT * 0.44;
+                    const leftEyeX = GAME_WIDTH * 0.38;
+                    const rightEyeX = GAME_WIDTH * 0.62;
+
+                    // Black hollow sockets
+                    ctx.fillStyle = '#0a0005';
                     ctx.beginPath();
-                    ctx.ellipse(GAME_WIDTH/2 - 60, GAME_HEIGHT/2, 40, 20, 0, 0, Math.PI*2);
-                    ctx.ellipse(GAME_WIDTH/2 + 60, GAME_HEIGHT/2, 40, 20, 0, 0, Math.PI*2);
+                    ctx.ellipse(leftEyeX, eyeY, 34, 18, -0.15, 0, Math.PI * 2);
+                    ctx.ellipse(rightEyeX, eyeY, 34, 18, 0.15, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.fillStyle = '#f00';
+
+                    // Burning violet-white irises
+                    ctx.fillStyle = '#d4beff';
                     ctx.beginPath();
-                    ctx.arc(GAME_WIDTH/2 - 60, GAME_HEIGHT/2, 10, 0, Math.PI*2);
-                    ctx.arc(GAME_WIDTH/2 + 60, GAME_HEIGHT/2, 10, 0, Math.PI*2);
+                    ctx.ellipse(leftEyeX, eyeY, 20, 12, 0, 0, Math.PI * 2);
+                    ctx.ellipse(rightEyeX, eyeY, 20, 12, 0, 0, Math.PI * 2);
                     ctx.fill();
+
+                    // Narrow crimson demonic pupils
+                    ctx.fillStyle = '#ff0033';
+                    ctx.beginPath();
+                    ctx.ellipse(leftEyeX, eyeY, 5, 12, 0, 0, Math.PI * 2);
+                    ctx.ellipse(rightEyeX, eyeY, 5, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Glitch noise sparks
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+                    for (let n = 0; n < 35; n++) {
+                        ctx.fillRect(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, 2 + Math.random() * 5, 1);
+                    }
                 }
 
                 hud.render(gameState);
@@ -509,6 +558,33 @@ function setupProceduralAudio(audioManager) {
         return (f1 + f2 + f3) * (1 / 3) * env * 0.5;
     });
     audioManager.buffers.set('dissonance', dissonance);
+
+    // Shadow Hit: heavy visceral strike impact with low bass drop
+    const shadowHit = createBuffer(0.45, (t) => {
+        const env = Math.exp(-t * 12);
+        const sub = Math.sin(2 * Math.PI * (75 * Math.exp(-t * 8) + 25) * t);
+        const noise = (Math.random() * 2 - 1) * Math.exp(-t * 22);
+        return (sub * 0.7 + noise * 0.3) * env * 0.95;
+    });
+    audioManager.buffers.set('shadow_hit', shadowHit);
+
+    // Shadow Burn: searing steam hiss and burning embers
+    const shadowBurn = createBuffer(0.75, (t) => {
+        const env = Math.sin((t / 0.75) * Math.PI) * Math.exp(-t * 2);
+        const noise = (Math.random() * 2 - 1);
+        const hiss = Math.sin(2 * Math.PI * 3200 * t) * 0.3 + noise * 0.7;
+        return hiss * env * 0.65;
+    });
+    audioManager.buffers.set('shadow_burn', shadowBurn);
+
+    // Flame Flare: burst whoosh of torch flame
+    const flameFlare = createBuffer(0.5, (t) => {
+        const env = Math.sin((t / 0.5) * Math.PI);
+        const noise = (Math.random() * 2 - 1);
+        const tone = Math.sin(2 * Math.PI * (280 - t * 180) * t);
+        return (tone * 0.4 + noise * 0.6) * env * 0.7;
+    });
+    audioManager.buffers.set('flame_flare', flameFlare);
 }
 
 // Start once DOM is ready

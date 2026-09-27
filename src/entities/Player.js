@@ -55,6 +55,11 @@ export class Player extends Entity {
         this.footstepTimer = 0;
         this.footstepInterval = 0.38; // seconds
         this.interactRadius = 32; // pixels
+
+        // Horror trauma & combat response
+        this.stunTimer = 0;
+        this.invulnerableTimer = 0;
+        this.panicLightTimer = 0;
     }
     
     update(dt, input, scene) {
@@ -85,6 +90,17 @@ export class Player extends Entity {
             this.jumpBufferTimer = Math.max(0, this.jumpBufferTimer - dt);
         }
         
+        this.stunTimer = Math.max(0, this.stunTimer - dt);
+        this.invulnerableTimer = Math.max(0, this.invulnerableTimer - dt);
+        this.panicLightTimer = Math.max(0, this.panicLightTimer - dt);
+
+        // Suffocating darkness effect: light radius drops dramatically when attacked
+        if (this.panicLightTimer > 0) {
+            this.lightRadius = 65 + Math.random() * 12;
+        } else {
+            this.lightRadius = 150;
+        }
+        
         this.handleInput(dt, input, scene);
         this.applyPhysicsAndCollision(dt, scene);
         this.updateState(dt);
@@ -95,8 +111,29 @@ export class Player extends Entity {
             scene.respawnPlayer();
         }
     }
+
+    /**
+     * Called when the shadow stalker attacks the player.
+     * @param {number} dir - Direction to knock the player back (-1 or 1)
+     * @returns {boolean} Whether the hit was accepted
+     */
+    onShadowHit(dir) {
+        if (this.invulnerableTimer > 0) return false;
+        this.invulnerableTimer = 1.4;
+        this.stunTimer = 0.55;
+        this.vx = dir * 280;
+        this.vy = -180;
+        this.grounded = false;
+        this.panicLightTimer = 2.5;
+        return true;
+    }
     
     handleInput(dt, input, scene) {
+        // If stunned by attack, cannot move or jump
+        if (this.stunTimer > 0) {
+            return;
+        }
+
         // Horizontal Movement
         if (input.isPressed('left')) {
             this.vx -= this.accel * dt;
@@ -287,6 +324,11 @@ export class Player extends Entity {
     }
     
     render(renderer) {
+        // Flicker sprite when recovering from shadow attack
+        if (this.invulnerableTimer > 0 && Math.floor(this.invulnerableTimer * 20) % 2 === 0) {
+            return;
+        }
+
         const custom = this.customization || (typeof window !== 'undefined' ? window.gameCustomization : null);
         SpriteRenderer.drawPlayer(renderer, this.x, this.y, this.state, this.walkFrame, this.facingRight, this.breathTimer, this.isBlinking, custom);
     }

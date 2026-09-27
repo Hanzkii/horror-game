@@ -46,6 +46,46 @@ export default class HUD {
             ctx.fillRect(0, 0, width, height);
         }
 
+        // Survival HUD (Health & Sanity indicators)
+        if (gameState.health !== undefined) {
+            const maxHp = gameState.maxHealth || 100;
+            const hpNorm = Math.max(0, Math.min(1, gameState.health / maxHp));
+            
+            // Health bar container
+            ctx.fillStyle = 'rgba(10, 10, 15, 0.7)';
+            ctx.fillRect(10, 8, 62, 6);
+            ctx.strokeStyle = '#442222';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(10, 8, 62, 6);
+            
+            // Health fill
+            ctx.fillStyle = hpNorm < 0.35 ? '#ff2222' : '#cc3344';
+            ctx.fillRect(11, 9, Math.round(hpNorm * 60), 4);
+
+            // Sanity bar container
+            const maxSanity = gameState.maxSanity || 100;
+            const sanNorm = Math.max(0, Math.min(1, gameState.sanity / maxSanity));
+            ctx.fillStyle = 'rgba(10, 10, 15, 0.7)';
+            ctx.fillRect(10, 17, 62, 5);
+            ctx.strokeStyle = '#223344';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(10, 17, 62, 5);
+
+            // Sanity fill
+            ctx.fillStyle = '#6688cc';
+            ctx.fillRect(11, 18, Math.round(sanNorm * 60), 3);
+        }
+
+        // Sanctuary Banner
+        if (gameState.sanctuaryPromptTimer && gameState.sanctuaryPromptTimer > 0) {
+            gameState.sanctuaryPromptTimer = Math.max(0, gameState.sanctuaryPromptTimer - 0.016);
+            const bannerAlpha = Math.min(1.0, gameState.sanctuaryPromptTimer);
+            ctx.fillStyle = `rgba(255, 215, 110, ${bannerAlpha * 0.95})`;
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('SANCTUARY — The holy flame banished the shadow', width / 2, 28);
+        }
+
         // Floor indicator
         if (gameState.currentLevel && gameState.floorIndex) {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';

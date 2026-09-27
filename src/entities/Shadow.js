@@ -47,10 +47,66 @@ export class Shadow extends Entity {
         this.lastPlayerDist = Infinity;
         this.history = [];
         this.originalLights = null;
+        this.burnParticles = [];
     }
 
     getDistanceToPlayer() {
         return this.lastPlayerDist;
+    }
+
+    /**
+     * Sizzles, screeches, and completely despawns when entering or touching holy torchlight.
+     * @param {Scene} scene 
+     * @param {Object} light 
+     */
+    despawnInLight(scene, light) {
+        if (this.state === SHADOW_STATES.DORMANT) return;
+
+        // Spawn fiery burst of disintegrating shadow particles
+        for (let i = 0; i < 28; i++) {
+            this.burnParticles.push({
+                x: this.x + 8 + (Math.random() - 0.5) * 16,
+                y: this.y + 16 + (Math.random() - 0.5) * 24,
+                vx: (Math.random() - 0.5) * 150,
+                vy: -50 - Math.random() * 100,
+                life: 0.7 + Math.random() * 0.4,
+                maxLife: 1.1,
+                color: Math.random() < 0.65 ? '#ffaa33' : '#4a2060'
+            });
+        }
+
+        // Screech and burning sizzle sound
+        if (scene && scene.audio) {
+            scene.audio.play('shadow_burn');
+            scene.audio.play('shadow_scream');
+        }
+
+        // Camera trauma flash
+        if (scene && scene.postProcessing) {
+            scene.postProcessing.addTrauma(0.5);
+        }
+
+        // Notify HUD
+        if (scene && scene.gameState) {
+            scene.gameState.sanctuaryPromptTimer = 2.5;
+        }
+
+        // Restore any flickering torchlights
+        if (this.originalLights && scene && scene.lights) {
+            for (let i = 0; i < scene.lights.length; i++) {
+                if (this.originalLights[i] !== undefined && scene.lights[i]) {
+                    scene.lights[i].radius = this.originalLights[i];
+                }
+            }
+            this.originalLights = null;
+        }
+
+        // Instantly banish back to dormancy!
+        this.state = SHADOW_STATES.DORMANT;
+        this.alpha = 0;
+        this.lastPlayerDist = Infinity;
+        this.stalkTimer = 0;
+        this.escapeTimer = 0;
     }
 
     /**
@@ -125,6 +181,17 @@ export class Shadow extends Entity {
     }
     
     update(dt, input, scene) {
+        // Update burn / disintegrating particles
+        for (let i = this.burnParticles.length - 1; i >= 0; i--) {
+            const p = this.burnParticles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.life -= dt;
+            if (p.life <= 0) {
+                this.burnParticles.splice(i, 1);
+            }
+        }
+
         // 1. DORMANT: Completely quiet and hidden
         if (this.state === SHADOW_STATES.DORMANT) {
             this.alpha = 0;
@@ -210,16 +277,16 @@ export class Shadow extends Entity {
         // Floating hover motion
         this.y = this.homeY + Math.sin(this.timer * 2.5) * 4;
 
-        // --- ESCAPE MECHANIC 1: TORCHLIGHT SANCTUARY ---
-        // Shadows cannot enter bright torchlight!
+        // --- ESCAPE / DESPAWN MECHANIC 1: TORCHLIGHT SANCTUARY ---
+        // If the player entered sanctuary or shadow touched holy torchlight:
         if (scene.lights && scene.lights.length > 0) {
             for (const light of scene.lights) {
                 const distPlayerToTorch = Math.hypot(player.x - light.x, player.y - light.y);
                 const distShadowToTorch = Math.hypot(this.x - light.x, this.y - light.y);
                 
-                // If the player took sanctuary under a lit torch OR shadow is hit by torchlight:
-                if (distPlayerToTorch < light.radius * 0.75 || distShadowToTorch < light.radius * 0.7) {
-                    this.banish('light', scene);
+                // If player is under torch sanctuary OR shadow touched light:
+                if (distPlayerToTorch < light.radius * 0.95 || distShadowToTorch < light.radius * 1.05) {
+                    this.despawnInLight(scene, light);
                     return;
                 }
             }
@@ -301,41 +368,49 @@ export class Shadow extends Entity {
             }
             
             // CONFRONTATION: Caught the player!
-            if (dist < 35) {
-                this.jumpScareTimer = 0.15;
+            if (dist < 32) {
+                if (!player.invulnerableTimer || player.invulnerableTimer <= 0) {
+                    const knockDir = dx < 0 ? -1 : 1;
+                    if (typeof player.onShadowHit === 'function') {
+                        player.onShadowHit(knockDir);
+                    }
 
-                if (Math.random() < 0.2) {
-                    // Lunge
-                    const dir = Math.sign(dx);
-                    this.x += dir * 40;
-                    if (scene.audio) scene.audio.play('shadow_scream');
-                } else {
-                    if (scene.audio) scene.audio.play('stinger_sharp');
+                    if (scene.audio) {
+                        scene.audio.play('shadow_hit');
+                        scene.audio.play('shadow_scream');
+                    }
+
+                    if (scene.gameState) {
+                        scene.gameState.takeDamage(45);
+                        scene.gameState.drainSanity(35);
+
+                        // If lethal, respawn and reset all puzzles!
+                        if (scene.gameState.health <= 0) {
+                            scene.respawnPlayer();
+                            return;
+                        }
+                    }
+
+                    if (scene.postProcessing) {
+                        scene.postProcessing.addTrauma(1.0);
+                    }
+
+                    this.jumpScareTimer = 0.45;
                 }
 
-                if (scene.gameState) {
-                    scene.gameState.drainSanity(25);
-                }
-                if (scene.postProcessing) {
-                    scene.postProcessing.addTrauma(0.8);
-                }
+                this.banish('confrontation', scene);
+                return;
             }
         }
     }
     
     render(renderer) {
-        if (this.jumpScareTimer > 0) {
-            // Massive jump scare eyes
-            renderer.drawRect(0, 0, 480, 270, 'rgba(0, 0, 0, 0.9)');
-            const eyeColor = `rgba(170, 190, 255, 1.0)`;
-            const pupilColor = `rgba(220, 120, 255, 1.0)`;
-            renderer.drawRect(90, 80, 80, 80, eyeColor);
-            renderer.drawRect(120, 110, 20, 20, pupilColor);
-            renderer.drawRect(310, 80, 80, 80, eyeColor);
-            renderer.drawRect(340, 110, 20, 20, pupilColor);
-            return;
+        // Render burn / disintegrating particles in world coordinates
+        for (const p of this.burnParticles) {
+            renderer.drawRect(p.x, p.y, 2, 2, p.color);
         }
 
+        if (this.jumpScareTimer > 0) return;
         if (this.alpha <= 0.01) return;
         
         // Afterimage trail

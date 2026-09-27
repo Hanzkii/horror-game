@@ -23,6 +23,7 @@ export class Interactable extends Entity {
         this.showPrompt = false;
         this.isActivated = false;
         this.timer = Math.random() * 10;
+        this.flareTimer = 0;
     }
     
     update(dt, input, scene) {
@@ -30,17 +31,20 @@ export class Interactable extends Entity {
         const player = scene.getPlayer();
         if (!player) return;
         
-        // Torches register light source in the scene
+        // Torches provide passive sanctuary, and can be actively flared!
         if (this.interactType === INTERACTABLE_TYPES.TORCH) {
-            if (!scene.lights) scene.lights = [];
-            const flicker = Math.sin(this.timer * 7) * 4 + Math.sin(this.timer * 19) * 2;
-            scene.lights.push({
-                x: this.x + 8,
-                y: this.y + 6,
-                radius: 75 + flicker,
-                color: 'rgba(255, 170, 70, 0.8)'
-            });
-            return; // torches don't need 'E' prompt
+            if (this.flareTimer > 0) {
+                this.flareTimer -= dt;
+            }
+            const center = { x: this.x + this.width / 2, y: this.y + this.height / 2 };
+            const pCenter = { x: player.x + player.width / 2, y: player.y + player.height / 2 };
+            const distSq = Math.pow(center.x - pCenter.x, 2) + Math.pow(center.y - pCenter.y, 2);
+            
+            this.showPrompt = distSq <= Math.pow(38, 2);
+            if (this.showPrompt && scene.gameState) {
+                scene.gameState.canInteract = true;
+            }
+            return;
         }
         
         const center = { x: this.x + this.width / 2, y: this.y + this.height / 2 };
@@ -125,6 +129,23 @@ export class Interactable extends Entity {
                     }
                 }
             }
+        } else if (this.interactType === INTERACTABLE_TYPES.TORCH) {
+            // Flare torch with a holy blaze!
+            this.flareTimer = 3.5;
+            if (scene.audio) scene.audio.play('flame_flare');
+            if (scene.postProcessing) scene.postProcessing.addTrauma(0.35);
+
+            // Banish and disintegrate any shadow in 260px!
+            if (scene.entities) {
+                for (const ent of scene.entities) {
+                    if (ent.type === 'shadow' && typeof ent.despawnInLight === 'function') {
+                        const dist = Math.hypot(ent.x - (this.x + 8), ent.y - (this.y + 6));
+                        if (dist < 260) {
+                            ent.despawnInLight(scene, { x: this.x + 8, y: this.y + 6, radius: 150 });
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -141,8 +162,9 @@ export class Interactable extends Entity {
         
         // E interaction prompt
         if (this.showPrompt) {
-            renderer.drawText('[ E ]', this.x + this.width / 2, this.y - 10, {
-                color: '#ffffff',
+            const promptText = (this.interactType === INTERACTABLE_TYPES.TORCH) ? '[ E ] Flare Flame' : '[ E ]';
+            renderer.drawText(promptText, this.x + this.width / 2, this.y - 12, {
+                color: (this.interactType === INTERACTABLE_TYPES.TORCH) ? '#ffd080' : '#ffffff',
                 font: '9px monospace',
                 align: 'center'
             });

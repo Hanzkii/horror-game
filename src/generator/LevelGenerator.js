@@ -352,6 +352,14 @@ function generateAttempt(options, forceAccept = false) {
                     }
                 }
 
+                // Torch sanctuary near trench
+                entities.push({
+                    type: 'interactable',
+                    x: (startCol + 1) * tileSize,
+                    y: (baseFloorRow - 3) * tileSize,
+                    properties: { interactType: 3 }
+                });
+
             } else {
                 // Low ceiling corridor
                 const ceilingRow = Math.max(4, baseFloorRow - 4);
@@ -361,6 +369,14 @@ function generateAttempt(options, forceAccept = false) {
                     }
                     grid[baseFloorRow][c] = (rng() < 0.3) ? 2 : 1;
                 }
+
+                // Torch sanctuary in corridor
+                entities.push({
+                    type: 'interactable',
+                    x: (startCol + Math.floor(roomWidth / 2)) * tileSize,
+                    y: (ceilingRow + 1) * tileSize,
+                    properties: { interactType: 3 }
+                });
 
                 if (hazardDensity > 0.4) {
                     const trapCol = startCol + Math.floor(rng() * (roomWidth - 4)) + 2;

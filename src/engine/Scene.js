@@ -167,12 +167,42 @@ export default class Scene {
     }
     
     /**
+     * Gathers all environmental light sources from active entities.
+     * @returns {Array<{x: number, y: number, radius: number, color: string, flare: boolean}>}
+     */
+    gatherLights() {
+        const lights = [];
+        for (const ent of this.entities) {
+            if (!ent.active) continue;
+            const isTorch = ent.type === 'interactable' && (ent.interactType === 3 || ent.properties?.interactType === 3);
+            if (isTorch) {
+                const timer = ent.timer || 0;
+                const flicker = Math.sin(timer * 7) * 4 + Math.sin(timer * 19) * 2;
+                const isFlared = Boolean(ent.flareTimer && ent.flareTimer > 0);
+                const baseRad = isFlared ? 150 : 85;
+                lights.push({
+                    x: ent.x + 8,
+                    y: ent.y + 6,
+                    radius: baseRad + flicker,
+                    color: isFlared ? 'rgba(255, 230, 140, 0.95)' : 'rgba(255, 175, 75, 0.85)',
+                    flare: isFlared,
+                    entity: ent
+                });
+            }
+        }
+        return lights;
+    }
+
+    /**
      * Updates the scene and all entities.
      * @param {number} dt 
      * @param {Input} input - Input handler
      * @param {GameState} gameState - Game state
      */
     update(dt, input, gameState) {
+        // Collect all lights at frame start so all entities have access to sanctuary zones
+        this.lights = this.gatherLights();
+
         // Process additions and removals
         if (this.entitiesToAdd.length > 0) {
             this.entities.push(...this.entitiesToAdd);
