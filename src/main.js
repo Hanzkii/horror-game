@@ -204,15 +204,36 @@ async function init() {
 
                 let shadowDistance = 9999;
                 let drawJumpscare = false;
-                for (const ent of scene.entities) {
-                    if (ent instanceof Shadow && scene.player) {
+                let leverDist = 9999;
+                let doorDist = 9999;
+                let isLeverPulled = false;
+
+                if (scene.player) {
+                    for (const ent of scene.entities) {
                         const dist = Math.hypot(ent.x - scene.player.x, ent.y - scene.player.y);
-                        if (dist < shadowDistance) shadowDistance = dist;
-                        if (ent.jumpScareTimer > 0) drawJumpscare = true;
+                        if (ent instanceof Shadow) {
+                            if (dist < shadowDistance) shadowDistance = dist;
+                            if (ent.jumpScareTimer > 0) drawJumpscare = true;
+                        } else if (ent.type === 'interactable') {
+                            const iType = (ent.interactType !== undefined) ? ent.interactType : ent.properties?.interactType;
+                            if (iType === 2) { // Lever / Switch
+                                if (dist < leverDist) leverDist = dist;
+                                const flag = ent.properties?.flag || 'lever_dungeon_unlocked';
+                                if (ent.isActivated || (gameState && gameState.getFlag(flag))) {
+                                    isLeverPulled = true;
+                                }
+                            } else if (iType === 1) { // Exit Door / Gate
+                                if (dist < doorDist) doorDist = dist;
+                            }
+                        }
                     }
                 }
 
-                adaptiveAudio.update(dt, gameState, shadowDistance, gameState.floorIndex || 1);
+                adaptiveAudio.update(dt, gameState, shadowDistance, gameState.floorIndex || 1, {
+                    leverDist,
+                    doorDist,
+                    isLeverPulled
+                });
 
                 const sanityNormalized = gameState.sanity / gameState.maxSanity;
                 postProcessing.render(playerScreenPos, sanityNormalized, screenLights, shadowDistance);
