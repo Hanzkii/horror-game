@@ -6,6 +6,20 @@ export default class HUD {
         this.fadeAlpha = 1;
         this.fadeTarget = 0;
         this.fadeSpeed = 1;
+        this.pauseAction = null;
+        this.requestedPause = false;
+    }
+
+    getPauseAction() {
+        const action = this.pauseAction;
+        this.pauseAction = null;
+        return action;
+    }
+
+    getRequestedPause() {
+        const req = this.requestedPause;
+        this.requestedPause = false;
+        return req;
     }
 
     update(dt) {
@@ -29,7 +43,7 @@ export default class HUD {
         this.fadeSpeed = speed;
     }
 
-    render(gameState) {
+    render(gameState, input = null) {
         const { ctx, width, height } = this;
 
         // Sanity indicator
@@ -86,20 +100,45 @@ export default class HUD {
             ctx.fillText('SANCTUARY — The holy flame banished the shadow', width / 2, 28);
         }
 
-        // Floor indicator
+        // Floor indicator & Clickable Pause Button in top right
         if (gameState.currentLevel && gameState.floorIndex) {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
             ctx.font = '10px monospace';
             ctx.textAlign = 'right';
-            ctx.fillText(`FLOOR B${gameState.floorIndex}`, width - 10, 15);
+            ctx.fillText(`FLOOR B${gameState.floorIndex}`, width - 62, 16);
         }
+
+        // Clickable Pause Button in top right
+        const pauseBtnX = width - 54;
+        const pauseBtnY = 6;
+        const pauseBtnW = 44;
+        const pauseBtnH = 15;
+        let isHoverPause = false;
+        if (input) {
+            const m = input.getMousePos();
+            if (m.x >= pauseBtnX && m.x <= pauseBtnX + pauseBtnW && m.y >= pauseBtnY && m.y <= pauseBtnY + pauseBtnH) {
+                isHoverPause = true;
+                if (input.isMouseClicked && input.isMouseClicked()) {
+                    this.requestedPause = true;
+                }
+            }
+        }
+        ctx.fillStyle = isHoverPause ? 'rgba(255, 255, 255, 0.2)' : 'rgba(20, 20, 30, 0.6)';
+        ctx.fillRect(pauseBtnX, pauseBtnY, pauseBtnW, pauseBtnH);
+        ctx.strokeStyle = isHoverPause ? '#ffffff' : '#444455';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(pauseBtnX, pauseBtnY, pauseBtnW, pauseBtnH);
+        ctx.fillStyle = isHoverPause ? '#ffffff' : '#888899';
+        ctx.font = '9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('PAUSE', pauseBtnX + pauseBtnW / 2, pauseBtnY + 11);
 
         // Interaction Prompt - hidden when reading notes or paused
         if (gameState.canInteract && !gameState.activeNote && !gameState.isPaused) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
             ctx.font = '12px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText('[ E ] Interact', width / 2, height * 0.82);
+            ctx.fillText('[ CLICK ] or [ E ] Interact', width / 2, height * 0.82);
         }
 
         // Note Reading Overlay with responsive word-wrapping
@@ -179,20 +218,57 @@ export default class HUD {
             ctx.fillStyle = '#7a7065';
             ctx.font = '9px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText('[ E / ESC / SPACE ] Close', width / 2, boxY + boxH - 10);
+            ctx.fillText('[ CLICK / ESC / SPACE ] Close', width / 2, boxY + boxH - 10);
         }
 
-        // Pause Menu
+        // Pause Menu with full mouse interaction
         if (gameState.isPaused) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillStyle = 'rgba(6, 6, 10, 0.85)';
             ctx.fillRect(0, 0, width, height);
-            ctx.fillStyle = '#fff';
-            ctx.font = '20px monospace';
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '22px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText('PAUSED', width / 2, height * 0.4);
-            ctx.font = '12px monospace';
-            ctx.fillText('RESUME [ESC]', width / 2, height * 0.55);
-            ctx.fillText('QUIT [Q]', width / 2, height * 0.65);
+            ctx.fillText('PAUSED', width / 2, height * 0.35);
+
+            const m = input ? input.getMousePos() : { x: -999, y: -999 };
+            const isClick = input && input.isMouseClicked ? input.isMouseClicked() : false;
+
+            const btnW = 170;
+            const btnH = 22;
+            const btnX = width / 2 - btnW / 2;
+
+            // 1. Resume Button
+            const resumeY = height * 0.48;
+            const isHoverResume = m.x >= btnX && m.x <= btnX + btnW && m.y >= resumeY && m.y <= resumeY + btnH;
+            if (isHoverResume && isClick) {
+                this.pauseAction = 'resume';
+            }
+
+            ctx.fillStyle = isHoverResume ? 'rgba(255, 255, 255, 0.15)' : 'rgba(20, 24, 32, 0.7)';
+            ctx.fillRect(btnX, resumeY, btnW, btnH);
+            ctx.strokeStyle = isHoverResume ? '#ffffff' : '#444c66';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(btnX, resumeY, btnW, btnH);
+            ctx.fillStyle = isHoverResume ? '#ffffff' : '#99aacc';
+            ctx.font = '11px monospace';
+            ctx.fillText('RESUME [CLICK/ESC]', width / 2, resumeY + 15);
+
+            // 2. Quit Button
+            const quitY = height * 0.62;
+            const isHoverQuit = m.x >= btnX && m.x <= btnX + btnW && m.y >= quitY && m.y <= quitY + btnH;
+            if (isHoverQuit && isClick) {
+                this.pauseAction = 'quit';
+            }
+
+            ctx.fillStyle = isHoverQuit ? 'rgba(180, 40, 40, 0.25)' : 'rgba(20, 24, 32, 0.7)';
+            ctx.fillRect(btnX, quitY, btnW, btnH);
+            ctx.strokeStyle = isHoverQuit ? '#ff5555' : '#444c66';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(btnX, quitY, btnW, btnH);
+            ctx.fillStyle = isHoverQuit ? '#ff7777' : '#99aacc';
+            ctx.font = '11px monospace';
+            ctx.fillText('QUIT TO MENU [CLICK/Q]', width / 2, quitY + 15);
         }
 
         // Fade Overlay

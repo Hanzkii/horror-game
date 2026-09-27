@@ -160,9 +160,19 @@ export class Interactable extends Entity {
             SpriteRenderer.drawTorch(renderer, this.x, this.y, this.timer);
         }
         
-        // E interaction prompt
+        // Mouse/Keyboard interaction prompt
         if (this.showPrompt) {
-            const promptText = (this.interactType === INTERACTABLE_TYPES.TORCH) ? '[ E ] Flare Flame' : '[ E ]';
+            let promptText = '[ CLICK ]';
+            if (this.interactType === INTERACTABLE_TYPES.TORCH) {
+                promptText = '[ CLICK ] Flare Flame';
+            } else if (this.interactType === INTERACTABLE_TYPES.SWITCH) {
+                promptText = this.isActivated ? '[ CLICK ] Reset' : '[ CLICK ] Pull';
+            } else if (this.interactType === INTERACTABLE_TYPES.NOTE) {
+                promptText = '[ CLICK ] Read';
+            } else if (this.interactType === INTERACTABLE_TYPES.DOOR) {
+                promptText = this.isLocked ? '[ CLICK ] Inspect' : '[ CLICK ] Enter';
+            }
+
             renderer.drawText(promptText, this.x + this.width / 2, this.y - 12, {
                 color: (this.interactType === INTERACTABLE_TYPES.TORCH) ? '#ffd080' : '#ffffff',
                 font: '9px monospace',

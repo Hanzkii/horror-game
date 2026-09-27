@@ -17,8 +17,9 @@ export default class MainMenu {
         
         this.mode = 'main'; // 'main', 'designSubMenu', 'characterDesign', 'settings', 'controls'
         
-        // Main menu has only DESCEND and the DESIGN STUDIO sub-menu!
-        this.options = ['DESCEND', 'DESIGN STUDIO'];
+        // Main menu has DESCEND, DESIGN STUDIO, and SETTINGS
+        this.options = ['DESCEND', 'DESIGN STUDIO', 'SETTINGS'];
+        this.settingsReturnMode = 'main';
         
         // Everything lives inside DESIGN STUDIO
         this.designOptions = [
@@ -228,6 +229,10 @@ export default class MainMenu {
                 } else if (this.selectedIndex === 1) {
                     this.mode = 'designSubMenu';
                     this.selectedIndex = 0;
+                } else if (this.selectedIndex === 2) {
+                    this.mode = 'settings';
+                    this.settingsReturnMode = 'main';
+                    this.selectedIndex = 0;
                 }
             }
         }
@@ -261,6 +266,7 @@ export default class MainMenu {
                         break;
                     case 3: // SETTINGS & AUDIO
                         this.mode = 'settings';
+                        this.settingsReturnMode = 'designSubMenu';
                         this.selectedIndex = 0;
                         break;
                     case 4: // CONTROLS
@@ -370,15 +376,15 @@ export default class MainMenu {
                     this.toggleFullscreen();
                 } else if (this.selectedIndex === 4) {
                     this.playSfx('click');
-                    this.mode = 'designSubMenu';
-                    this.selectedIndex = 3;
+                    this.mode = this.settingsReturnMode || 'main';
+                    this.selectedIndex = (this.settingsReturnMode === 'main') ? 2 : 3;
                 }
             }
 
             if (input.isJustPressed('pause')) {
                 this.playSfx('click');
-                this.mode = 'designSubMenu';
-                this.selectedIndex = 3;
+                this.mode = this.settingsReturnMode || 'main';
+                this.selectedIndex = (this.settingsReturnMode === 'main') ? 2 : 3;
             }
         }
         // --- 5. CONTROLS GUIDE ---
@@ -467,38 +473,48 @@ export default class MainMenu {
             ctx.font = '11px monospace';
             ctx.fillText('A Psychological Horror Experience', width / 2, height / 3 + 20);
             
-            ctx.font = '14px monospace';
-            const startY = height / 2 + 18;
-            const itemH = 30;
+            ctx.font = '13px monospace';
+            const startY = height / 2 + 6;
+            const itemH = 26;
 
             this.options.forEach((opt, i) => {
                 const y = startY + i * itemH;
                 const isSelected = (i === this.selectedIndex);
 
-                const boxW = 200;
-                const boxH = 24;
+                const boxW = 210;
+                const boxH = 22;
+                const bx = width / 2 - boxW / 2;
+                const by = y - 15;
                 this.hitboxes.push({
                     index: i,
-                    x: width / 2 - boxW / 2,
-                    y: y - 16,
+                    x: bx,
+                    y: by,
                     w: boxW,
                     h: boxH
                 });
 
                 if (isSelected) {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-                    ctx.fillRect(width / 2 - boxW / 2, y - 16, boxW, boxH);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+                    ctx.fillRect(bx, by, boxW, boxH);
+                    ctx.strokeStyle = '#99aacc';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(bx, by, boxW, boxH);
                     ctx.fillStyle = '#ffffff';
                     ctx.fillText(`>  ${opt}  <`, width / 2, y);
                 } else {
-                    ctx.fillStyle = '#777788';
+                    ctx.fillStyle = 'rgba(20, 22, 30, 0.6)';
+                    ctx.fillRect(bx, by, boxW, boxH);
+                    ctx.strokeStyle = '#303444';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(bx, by, boxW, boxH);
+                    ctx.fillStyle = '#888899';
                     ctx.fillText(opt, width / 2, y);
                 }
             });
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
             ctx.font = '9px monospace';
-            ctx.fillText('[W/S] or [MOUSE] Select • [ENTER/SPACE/CLICK] Confirm', width / 2, height - 12);
+            ctx.fillText('[MOUSE CLICK] Select  •  [W/S] Move', width / 2, height - 12);
         }
         // --- 2. DESIGN STUDIO SUB-MENU ---
         else if (this.mode === 'designSubMenu') {
