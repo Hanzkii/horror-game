@@ -37,13 +37,26 @@ export default class Renderer {
             lerpSpeed: 5
         };
         
+        this.worldWidth = null;
+        this.worldHeight = null;
+
         // Lighting / Atmosphere
         this.fogDensity = 0;
         this.vignetteIntensity = 0.8;
     }
     
     /**
-     * Updates the camera position.
+     * Sets the boundaries of the world to clamp camera within.
+     * @param {number} width 
+     * @param {number} height 
+     */
+    setWorldBounds(width, height) {
+        this.worldWidth = width;
+        this.worldHeight = height;
+    }
+
+    /**
+     * Updates the camera position with clamping to world bounds.
      * @param {number} dt - Delta time in seconds
      */
     updateCamera(dt) {
@@ -51,11 +64,51 @@ export default class Renderer {
         this.camera.x += (this.camera.targetX - this.width / 2 - this.camera.x) * this.camera.lerpSpeed * dt;
         this.camera.y += (this.camera.targetY - this.height / 2 - this.camera.y) * this.camera.lerpSpeed * dt;
         
+        // Clamp camera within world bounds
+        if (this.worldWidth && this.worldHeight) {
+            if (this.worldWidth <= this.width) {
+                this.camera.x = -(this.width - this.worldWidth) / 2;
+            } else {
+                this.camera.x = Math.max(0, Math.min(this.worldWidth - this.width, this.camera.x));
+            }
+
+            if (this.worldHeight <= this.height) {
+                this.camera.y = -(this.height - this.worldHeight) / 2;
+            } else {
+                this.camera.y = Math.max(0, Math.min(this.worldHeight - this.height, this.camera.y));
+            }
+        }
+
         // Screen shake
         if (this.camera.shakeDuration > 0) {
             this.camera.shakeDuration -= dt;
         } else {
             this.camera.shakeIntensity = 0;
+        }
+    }
+
+    /**
+     * Instantly snaps the camera to a target position without lerping.
+     * @param {number} x
+     * @param {number} y
+     */
+    snapCamera(x, y) {
+        this.lookAt(x, y);
+        this.camera.x = this.camera.targetX - this.width / 2;
+        this.camera.y = this.camera.targetY - this.height / 2;
+
+        if (this.worldWidth && this.worldHeight) {
+            if (this.worldWidth <= this.width) {
+                this.camera.x = -(this.width - this.worldWidth) / 2;
+            } else {
+                this.camera.x = Math.max(0, Math.min(this.worldWidth - this.width, this.camera.x));
+            }
+
+            if (this.worldHeight <= this.height) {
+                this.camera.y = -(this.height - this.worldHeight) / 2;
+            } else {
+                this.camera.y = Math.max(0, Math.min(this.worldHeight - this.height, this.camera.y));
+            }
         }
     }
     

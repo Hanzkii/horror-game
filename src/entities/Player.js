@@ -73,6 +73,11 @@ export class Player extends Entity {
         this.applyPhysicsAndCollision(dt, scene);
         this.updateState();
         this.handleSounds(dt, scene);
+
+        // Out of bounds respawn safety
+        if (scene && scene.height && (this.y > scene.height + 32 || this.y < -200 || this.x < -100 || this.x > scene.width + 100)) {
+            scene.respawnPlayer();
+        }
     }
     
     handleInput(dt, input, scene) {

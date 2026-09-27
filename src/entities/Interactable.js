@@ -42,12 +42,11 @@ export class Interactable extends Entity {
             }
             if (scene.audio) scene.audio.play('paper');
         } else if (this.interactType === INTERACTABLE_TYPES.DOOR) {
-            if (this.properties.targetScene) {
-                if (scene.audio) scene.audio.play('door_creak');
-                // For prototype, just show a message
-                if (scene.gameState) {
-                    scene.gameState.activeNote = "The door leads somewhere... but not yet.\n\n[End of Prototype]";
-                }
+            if (scene.audio) scene.audio.play('door_creak');
+            if (scene.onNextLevel) {
+                scene.onNextLevel();
+            } else if (scene.gameState) {
+                scene.gameState.activeNote = "The heavy stone door unlocks...\nDescending deeper into the abyss.";
             }
         } else if (this.interactType === INTERACTABLE_TYPES.SWITCH) {
             if (scene.audio) scene.audio.play('click');

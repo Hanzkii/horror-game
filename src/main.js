@@ -11,11 +11,13 @@ import { Hazard } from './entities/Hazard.js';
 import { Interactable } from './entities/Interactable.js';
 import { Shadow } from './entities/Shadow.js';
 
-// Import Content
+// Import Content & Tools
 import { Level1 } from './levels/Level1.js';
 import { GameState } from './game/GameState.js';
+import { generateProceduralLevel } from './generator/LevelGenerator.js';
+import LevelEditor from './editor/LevelEditor.js';
 
-// Import local systems
+// Import visual systems
 import PostProcessing from './effects/PostProcessing.js';
 import HUD from './ui/HUD.js';
 
@@ -23,12 +25,14 @@ import HUD from './ui/HUD.js';
 const GAME_WIDTH = 480;
 const GAME_HEIGHT = 270;
 
+let currentFloorIndex = 1;
+
 async function init() {
     const canvas = document.getElementById('gameCanvas');
     canvas.width = GAME_WIDTH;
     canvas.height = GAME_HEIGHT;
 
-    // Resize handler to maintain aspect ratio
+    // Resize handler to maintain pixel aspect ratio
     function resize() {
         const scale = Math.min(window.innerWidth / GAME_WIDTH, window.innerHeight / GAME_HEIGHT);
         canvas.style.width = `${GAME_WIDTH * scale}px`;
@@ -37,13 +41,13 @@ async function init() {
     window.addEventListener('resize', resize);
     resize();
 
-    // Initialize core systems
+    // Initialize core engine systems
     const input = new Input();
     const audio = new AudioManager();
     const renderer = new Renderer(canvas, GAME_WIDTH, GAME_HEIGHT);
     const gameState = new GameState();
 
-    const ctx = renderer.bctx; // Use the renderer's internal buffer context for overlays
+    const ctx = renderer.bctx; // Offscreen buffer context
     const postProcessing = new PostProcessing(ctx, GAME_WIDTH, GAME_HEIGHT);
     const hud = new HUD(ctx, GAME_WIDTH, GAME_HEIGHT);
 
@@ -55,22 +59,51 @@ async function init() {
     scene.gameState = gameState;
     scene.input = input;
 
-    // Procedural Audio Generation (since we lack audio files)
+    // Procedural sound effects synthesizer
     setupProceduralAudio(audio);
 
-    // Load Level 1
-    loadLevel(scene, Level1, gameState);
+    // Initial level load: Level 1
+    loadLevel(scene, Level1, gameState, renderer);
+
+    // Handler for descending deeper when unlocking exit doors
+    scene.onNextLevel = () => {
+        currentFloorIndex++;
+        const nextLevel = generateProceduralLevel({
+            seed: Math.floor(Math.random() * 999999),
+            roomCount: Math.min(8, 4 + currentFloorIndex),
+            hazardDensity: Math.min(0.75, 0.3 + currentFloorIndex * 0.08),
+            verticality: Math.min(0.75, 0.4 + currentFloorIndex * 0.08),
+            name: `Catacombs — Depth B${currentFloorIndex}`
+        });
+        loadLevel(scene, nextLevel, gameState, renderer);
+        editor.loadLevel(nextLevel);
+        hud.fadeIn(0.5);
+    };
+
+    // Initialize Level Architect (Editor & Procedural Generator)
+    const editor = new LevelEditor(canvas, scene, renderer, (customLevel) => {
+        loadLevel(scene, customLevel, gameState, renderer);
+        hud.fadeIn(0.5);
+    });
+    editor.loadLevel(Level1);
 
     let lastTime = 0;
 
     // Main Game Loop
     function loop(timestamp) {
-        // Prevent huge dt on first frame
         if (lastTime === 0) lastTime = timestamp;
         const dt = Math.min((timestamp - lastTime) / 1000, 0.05); // cap at 50ms
         lastTime = timestamp;
 
-        // Input handling for pausing
+        // If Editor is open, render editor view and pause gameplay
+        if (editor.isOpen) {
+            editor.render();
+            renderer.present();
+            requestAnimationFrame(loop);
+            return;
+        }
+
+        // Input handling for pausing and closing notes
         if (input.isJustPressed('pause')) {
             if (gameState.activeNote) {
                 gameState.activeNote = null;
@@ -80,7 +113,7 @@ async function init() {
         }
 
         if (!gameState.isPaused && !gameState.activeNote) {
-            // Reset per-frame interaction state (Interactables set this when player is in range)
+            // Reset per-frame interaction state
             gameState.canInteract = false;
 
             // Update systems
@@ -89,7 +122,7 @@ async function init() {
             postProcessing.update(dt);
             hud.update(dt);
 
-            // Camera follow player
+            // Camera follow player with clamping to level bounds
             if (scene.player) {
                 renderer.lookAt(scene.player.x + scene.player.width / 2, scene.player.y + scene.player.height / 2);
                 renderer.updateCamera(dt);
@@ -102,8 +135,7 @@ async function init() {
         // Render world (tiles + entities) through the renderer's camera system
         scene.render(renderer);
 
-        // Post Processing (effects that rely on screen space)
-        // Transform player pos to screen space for light origin
+        // Post Processing (darkness light cone around player, vignette, scanlines)
         const playerScreenPos = scene.player
             ? {
                 x: scene.player.x + scene.player.width / 2 - renderer.camera.x,
@@ -118,7 +150,7 @@ async function init() {
         // UI
         hud.render(gameState);
 
-        // Present the internal buffer to the display canvas
+        // Present internal buffer to the canvas
         renderer.present();
 
         // Cycle input states at end of frame
@@ -163,18 +195,31 @@ async function init() {
     }, 3500);
 }
 
-function loadLevel(scene, levelData, gameState) {
-    // Load tilemap — no tileset image for prototype, we'll render colored rectangles
-    scene.loadMap(levelData.tiles, levelData.tileSize || 16, null);
+function loadLevel(scene, levelData, gameState, renderer) {
+    // Clear old entities
+    scene.entities = [];
+    scene.entitiesToAdd = [];
+    scene.entitiesToRemove = [];
 
-    // Store level dimensions for camera clamping
+    // Load tilemap
+    const tiles = typeof levelData.tiles === 'function' ? levelData.tiles() : levelData.tiles;
+    scene.loadMap(tiles, levelData.tileSize || 16, null);
+
+    // Set world dimensions and camera bounds
     scene.width = scene.columns * scene.tileSize;
     scene.height = scene.rows * scene.tileSize;
+    if (renderer) {
+        renderer.setWorldBounds(scene.width, scene.height);
+    }
 
     // Spawn player at level start
-    const ps = levelData.playerStart;
+    const ps = levelData.playerStart || { x: 48, y: 200 };
     scene.player = new Player(ps.x, ps.y);
     scene.add(scene.player);
+
+    if (renderer) {
+        renderer.snapCamera(ps.x, ps.y);
+    }
 
     // Spawn entities based on level data
     if (levelData.entities) {
@@ -230,7 +275,7 @@ function setupProceduralAudio(audioManager) {
     });
     audioManager.buffers.set('rumble', rumble);
 
-    // Thud: heavy impact
+    // Thud: heavy stone impact
     const thud = createBuffer(0.25, (t) => {
         const env = Math.exp(-t * 18);
         const freq = 120 * Math.exp(-t * 25) + 35;
@@ -309,5 +354,5 @@ function startAmbientDrone(audioManager) {
     osc2.start();
 }
 
-// Start everything once DOM is ready
+// Start once DOM is ready
 window.addEventListener('DOMContentLoaded', init);
