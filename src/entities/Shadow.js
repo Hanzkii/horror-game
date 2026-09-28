@@ -400,12 +400,25 @@ export class Shadow extends Entity {
         }
         
         // --- ACTIVE STALKING LOGIC ---
-        if (dist < 500) {
-            if (!facingShadow && dist > 60) {
-                // Player's back is turned: CREEP CLOSER!
+        // Sensory perception: Frantic sprinting/gasping noise draws the stalker from across the map;
+        // Holding breath in darkness collapses detection range down to 36px so it glides right past!
+        let detectionRange = 500;
+        if (player.isMakingLoudNoise) {
+            detectionRange = 750;
+        } else if (player.isHidingInShadows) {
+            detectionRange = 36;
+        }
+
+        if (dist < detectionRange) {
+            if (!facingShadow && dist > 55) {
+                // Player's back is turned or noise made: HUNT CLOSER!
                 const dir = Math.sign(dx);
                 let speed = this.stalkSpeed;
-                if (scene.gameState && scene.gameState.sanity < 0.5) speed = this.rushSpeed;
+                if (player.isMakingLoudNoise || (scene.gameState && scene.gameState.sanity < 0.5)) {
+                    speed = this.rushSpeed;
+                } else if (player.lanternOil !== undefined && player.lanternOil < 25) {
+                    speed = this.stalkSpeed * 1.35; // Emboldened by sputtering light
+                }
                 
                 this.x += dir * speed * dt;
                 this.eyeGlow = Math.min(1.0, this.eyeGlow + dt * 2);
@@ -418,8 +431,8 @@ export class Shadow extends Entity {
                 this.eyeGlow = 0.7 + Math.sin(this.timer * 8) * 0.3;
             }
 
-            // Unpredictable teleport behind
-            if (!facingShadow && this.teleportBehindTimer <= 0) {
+            // Unpredictable teleport behind (only if player is not holding breath in stealth)
+            if (!player.isHidingInShadows && !facingShadow && this.teleportBehindTimer <= 0) {
                 this.teleportBehindTimer = 15.0;
                 if (Math.random() < 0.4) {
                     this.x = player.x + (player.facingRight ? -80 : 80);
@@ -429,21 +442,23 @@ export class Shadow extends Entity {
                 this.teleportBehindTimer = 15.0;
             }
             
-            // Audio tension trigger when stalker gets close
-            if (dist < 180 && this.soundCooldown <= 0) {
-                if (scene.audio) scene.audio.play('dissonance');
-                this.soundCooldown = 4.0;
-            }
+            // Audio tension trigger when stalker gets close (silent if in stealth)
+            if (!player.isHidingInShadows) {
+                if (dist < 180 && this.soundCooldown <= 0) {
+                    if (scene.audio) scene.audio.play('dissonance');
+                    this.soundCooldown = 4.0;
+                }
 
-            if (dist < 100 && this.breathCooldown <= 0) {
-                if (scene.audio) scene.audio.play('breathing');
-                this.breathCooldown = 2.5;
-            }
-            
-            // Drain sanity proportional to proximity (only when stalker is actively hunting/near)
-            if (dist < 180 && scene.gameState) {
-                const drainMultiplier = (180 - dist) / 180;
-                scene.gameState.drainSanity(dt * (4 + drainMultiplier * 14));
+                if (dist < 100 && this.breathCooldown <= 0) {
+                    if (scene.audio) scene.audio.play('breathing');
+                    this.breathCooldown = 2.5;
+                }
+                
+                // Drain sanity proportional to proximity
+                if (dist < 180 && scene.gameState) {
+                    const drainMultiplier = (180 - dist) / 180;
+                    scene.gameState.drainSanity(dt * (4 + drainMultiplier * 14));
+                }
             }
             
             // CONFRONTATION: Caught the player!

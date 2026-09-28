@@ -55,6 +55,13 @@
             <p style="font-size: 0.8rem; color: #666; letter-spacing: 0.2rem; margin-top: 1rem;">CLICK OR PRESS ANY KEY TO AWAKEN</p>
         </div>
     </div>
+    <script>
+        window._userAwakened = false;
+        const triggerEarlyAwaken = () => { window._userAwakened = true; };
+        window.addEventListener('click', triggerEarlyAwaken, { once: true });
+        window.addEventListener('keydown', triggerEarlyAwaken, { once: true });
+        window.addEventListener('pointerdown', triggerEarlyAwaken, { once: true });
+    </script>
     <canvas id="gameCanvas" width="480" height="270"></canvas>
     <script type="module" src="./src/main.js"></script>
 </body>

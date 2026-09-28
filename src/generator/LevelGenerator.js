@@ -657,6 +657,30 @@ function generateAttempt(options, forceAccept = false) {
         });
     }
 
+    // === SURVIVAL: Place Lantern Oil Flasks across intermediate chambers ===
+    const flaskCount = Math.max(2, Math.min(4, Math.floor(roomCount * 0.55)));
+    for (let f = 0; f < flaskCount; f++) {
+        const segCol = Math.floor(cols * (0.2 + f * 0.22) + (rng() * 4 - 2));
+        const safeCol = Math.min(cols - 5, Math.max(12, segCol));
+        entities.push({
+            type: 'interactable',
+            interactType: 4, // OIL_FLASK
+            x: safeCol * tileSize,
+            y: (baseFloorRow - 1) * tileSize
+        });
+    }
+
+    // === PSYCHOLOGICAL HORROR: Place Doppelganger decoy on Depth B2 & B3 ===
+    if (floorIndex >= 2 && rng() < 0.85) {
+        const doppelCol = Math.min(cols - 8, Math.max(24, Math.floor(cols * 0.52 + (rng() * 8 - 4))));
+        entities.push({
+            type: 'doppelganger',
+            x: doppelCol * tileSize,
+            y: (baseFloorRow - 1) * tileSize,
+            facingRight: rng() > 0.5
+        });
+    }
+
     return {
         name: options.name || (FLOOR_NAMES[floorIndex] || `Catacombs Depth B${floorIndex}`),
         seed: seed,

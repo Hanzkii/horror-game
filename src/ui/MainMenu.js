@@ -444,6 +444,87 @@ export default class MainMenu {
         });
     }
 
+    renderControlsGuide(ctx, width, height) {
+        Typography.drawText(ctx, 'SURVIVAL CONTROLS & MECHANICS', width / 2, 60, {
+            font: FONT_STACKS.TITLE,
+            color: '#f8fafc',
+            align: 'center',
+            shadowColor: 'rgba(56, 189, 248, 0.4)',
+            shadowBlur: 10
+        });
+
+        Typography.drawText(ctx, 'Master movement, stealth, and light conservation to survive the catacombs', width / 2, 88, {
+            font: FONT_STACKS.CAPTION,
+            color: '#94a3b8',
+            align: 'center'
+        });
+
+        const panelW = Math.min(680, width * 0.88);
+        const panelH = height - 170;
+        const panelX = width / 2 - panelW / 2;
+        const panelY = 104;
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(panelX, panelY, panelW, panelH);
+
+        const controls = [
+            { key: '[ A / D ] or [ ← / → ]', name: 'WALK / BALANCE', desc: 'Navigate corridors and narrow stone ledges.' },
+            { key: '[ SPACE ] or [ W / ↑ ]', name: 'JUMP & WALL-SLIDE', desc: 'Hold for higher leap; press against shafts to wall-slide.' },
+            { key: '[ SHIFT ]', name: 'SPRINT (DANGER)', desc: 'Sprint at high speed, but drains stamina and alerts the Stalker!' },
+            { key: '[ C ] or [ CTRL ]', name: 'HOLD BREATH / CROUCH', desc: 'Conceals you in shadows. Stalker glides past silently, but lungs give out quickly.' },
+            { key: '[ E ]', name: 'INTERACT', desc: 'Pull ancient levers, read inscriptions, and gather Lantern Oil Flasks.' },
+            { key: '[ ESC ] or CLICK PAUSE', name: 'PAUSE & SETTINGS', desc: 'Fine-tune master/ambient audio, or test diagnostic soundboards.' }
+        ];
+
+        const rowH = (panelH - 24) / controls.length;
+        for (let i = 0; i < controls.length; i++) {
+            const c = controls[i];
+            const y = panelY + 14 + i * rowH;
+
+            // Key badge
+            const badgeW = 160;
+            ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
+            ctx.fillRect(panelX + 16, y + 2, badgeW, rowH - 8);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(panelX + 16, y + 2, badgeW, rowH - 8);
+
+            Typography.drawText(ctx, c.key, panelX + 16 + badgeW / 2, y + rowH / 2 + 1, {
+                font: FONT_STACKS.BODY_BOLD,
+                color: '#38bdf8',
+                align: 'center'
+            });
+
+            // Action name
+            Typography.drawText(ctx, c.name, panelX + badgeW + 30, y + rowH / 2 - 4, {
+                font: FONT_STACKS.BODY_BOLD,
+                color: '#f8fafc'
+            });
+
+            // Description
+            Typography.drawText(ctx, c.desc, panelX + badgeW + 30, y + rowH / 2 + 10, {
+                font: FONT_STACKS.CAPTION,
+                color: '#94a3b8'
+            });
+        }
+
+        // Back button
+        const backW = 160;
+        const backH = 40;
+        const backX = width / 2 - backW / 2;
+        const backY = height - 55;
+        this.hitboxes.push({
+            x: backX, y: backY, w: backW, h: backH,
+            action: () => { this.mode = 'main'; this.playSfx('click'); }
+        });
+        Typography.drawButton(ctx, '< BACK TO TITLE', backX, backY, backW, backH, {
+            font: FONT_STACKS.BODY_BOLD
+        });
+    }
+
     renderSoundDebug(ctx, width, height) {
         Typography.drawText(ctx, 'SOUND TEST & DEBUG SUITE', width / 2, 54, {
             font: FONT_STACKS.TITLE,

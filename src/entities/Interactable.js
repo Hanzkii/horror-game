@@ -10,7 +10,8 @@ export const INTERACTABLE_TYPES = {
     NOTE: 0,
     DOOR: 1,
     SWITCH: 2,
-    TORCH: 3
+    TORCH: 3,
+    OIL_FLASK: 4
 };
 
 export class Interactable extends Entity {
@@ -22,6 +23,7 @@ export class Interactable extends Entity {
         
         this.showPrompt = false;
         this.isActivated = false;
+        this.readCount = 0;
         this.timer = Math.random() * 10;
         this.flareTimer = 0;
         this.extinguishTimer = 0;
@@ -67,16 +69,40 @@ export class Interactable extends Entity {
     trigger(player, scene) {
         if (this.interactType === INTERACTABLE_TYPES.NOTE) {
             // Read lore note
+            this.readCount = (this.readCount || 0) + 1;
+            const currentSanity = (scene.gameState && scene.gameState.sanity !== undefined) ? scene.gameState.sanity : 100;
+            const isCorrupted = this.readCount > 1 || currentSanity < 50;
+
             if (scene.gameState) {
-                scene.gameState.activeNote = this.properties.text || "An unreadable scrap of paper...";
-                scene.gameState.activeNoteTitle = this.properties.title || "ANCIENT INSCRIPTION";
+                if (isCorrupted) {
+                    const hallucinatoryTexts = [
+                        "DID YOU FEEL THAT COLD BREATH ON YOUR NECK?\n\nIT WAS STANDING RIGHT BEHIND YOU.",
+                        "THE GATES ONLY OPEN FOR THOSE WHO INTEND TO DIE HERE.\n\nWHY DO YOU STILL RUN?",
+                        "YOUR LANTERN IS SPUTTERING.\n\nWHEN THE FLAME DIES, YOU BELONG TO THE ABYSS.",
+                        "DO NOT LOOK AT THE SILHOUETTE IN THE DARK.\n\nIT IS WEARING YOUR FACE.",
+                        "THERE WERE NEVER ANY STAIRS LEADING OUT.\n\nLOOK AT THE BONES BENEATH YOUR BOOTS."
+                    ];
+                    const seed = Math.abs(Math.floor(this.x * 7 + this.y * 13)) % hallucinatoryTexts.length;
+                    scene.gameState.activeNote = hallucinatoryTexts[seed];
+                    scene.gameState.activeNoteTitle = "CURSED INSCRIPTION";
+                    if (scene.audio) {
+                        scene.audio.play('phantom_whisper');
+                    }
+                    if (scene.postProcessing) {
+                        scene.postProcessing.addTrauma(0.3);
+                    }
+                    scene.gameState.drainSanity(6);
+                } else {
+                    scene.gameState.activeNote = this.properties.text || "An ancient inscription carved into stone...";
+                    scene.gameState.activeNoteTitle = this.properties.title || "ANCIENT INSCRIPTION";
+                    if (scene.audio) scene.audio.play('paper');
+                }
                 scene.gameState.collectNote(this.properties.id || 'note_generic');
             }
-            if (scene.audio) scene.audio.play('paper');
             
             // Surprise element: Awakening shadow upon disturbing cursed notes
             if (scene.entities) {
-                const isCursed = Math.random() < 0.4 || (this.properties.text && this.properties.text.toLowerCase().includes('shadow'));
+                const isCursed = Math.random() < 0.45 || (this.properties.text && this.properties.text.toLowerCase().includes('shadow')) || isCorrupted;
                 if (isCursed) {
                     for (const ent of scene.entities) {
                         if (ent.type === 'shadow' && typeof ent.awaken === 'function') {
@@ -86,6 +112,22 @@ export class Interactable extends Entity {
                 }
             }
             
+        } else if (this.interactType === INTERACTABLE_TYPES.OIL_FLASK) {
+            // Pick up oil flask: refills lantern oil
+            if (player) {
+                player.lanternOil = Math.min(player.maxOil || 100, (player.lanternOil || 100) + 45);
+            }
+            if (scene.audio) {
+                scene.audio.play('bottle_clink');
+            }
+            if (scene.gameState) {
+                scene.gameState.sanctuaryPromptTimer = 2.0;
+                scene.gameState.lastPromptText = "+45 LANTERN OIL — The flame burns bright";
+            }
+            if (scene.postProcessing) {
+                scene.postProcessing.addTrauma(0.1);
+            }
+            this.active = false;
         } else if (this.interactType === INTERACTABLE_TYPES.DOOR) {
             // Check if door requires one or more levers / conduit flags
             const reqFlags = this.properties.requiresFlags || 
@@ -168,6 +210,8 @@ export class Interactable extends Entity {
             SpriteRenderer.drawLever(renderer, this.x, this.y, this.isActivated);
         } else if (this.interactType === INTERACTABLE_TYPES.TORCH) {
             SpriteRenderer.drawTorch(renderer, this.x, this.y, this.timer, this.extinguishTimer > 0);
+        } else if (this.interactType === INTERACTABLE_TYPES.OIL_FLASK) {
+            SpriteRenderer.drawOilFlask(renderer, this.x, this.y, this.timer);
         }
         
         // In-world interaction glint (no floating text tooltips)

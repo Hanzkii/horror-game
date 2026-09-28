@@ -74,7 +74,8 @@ export default class SpriteRenderer {
         if (this.getRandom(seed) > 0.7) {
             renderer.drawRect(x + 2, y + 2, size - 4, size - 4, '#101018');
         }
-        
+    }
+
     static drawSurfaceGrass(renderer, x, y, size, seed) {
         // Vibrant rolling hill grass
         renderer.drawRect(x, y, size, size, '#255428'); // deep rich undergrowth
@@ -157,22 +158,29 @@ export default class SpriteRenderer {
         
         const isScared = options?.isScared ?? false;
         const isLookingBack = options?.isLookingBack ?? false;
+        const isCrouched = options?.isCrouched || options?.isHoldingBreath;
 
         // Fear Tremble / Shiver
         const shiverX = isScared ? (Math.sin(Date.now() * 0.05) * 0.6) : 0;
         const px = x + shiverX;
 
-        // Breath animation: rapid hyperventilation when scared, slow shallow breaths when calm
+        // Breath animation: held breath is dead calm; otherwise rapid hyperventilation when scared, slow shallow breaths when calm
         const breathSpeed = isScared ? 8.0 : 2.2;
-        const breathScale = (state === 0) ? Math.sin(breathTimer * breathSpeed) * (isScared ? 0.6 : 0.35) : 0;
+        const breathScale = isCrouched ? 0 : ((state === 0) ? Math.sin(breathTimer * breathSpeed) * (isScared ? 0.6 : 0.35) : 0);
         
+        // Crouch height offset
+        const crouchY = isCrouched ? 3 : 0;
+
         // Legs (bottom 7px: y + 10 to y + 17)
         let leftLegY = y + 10;
         let rightLegY = y + 10;
-        let leftArmY = y + 4;
-        let rightArmY = y + 4;
+        let leftArmY = y + 4 + crouchY;
+        let rightArmY = y + 4 + crouchY;
         
-        if (state === 1) { // WALKING
+        if (isCrouched) {
+            leftLegY += 2;
+            rightLegY += 2;
+        } else if (state === 1) { // WALKING
             const legOffsets = [0, -1, 0, 1];
             leftLegY += legOffsets[frame];
             rightLegY += legOffsets[(frame + 2) % 4];
@@ -196,43 +204,43 @@ export default class SpriteRenderer {
         }
 
         // Draw left arm (behind)
-        renderer.drawRect(px + 1, leftArmY - breathScale, 2, 5, '#1e232b');
+        renderer.drawRect(px + 1, leftArmY - breathScale, 2, isCrouched ? 4 : 5, '#1e232b');
 
         // Draw slender human legs & boots
-        renderer.drawRect(px + 2, leftLegY, 3, 5, hLegs);
-        renderer.drawRect(px + 6, rightLegY, 3, 5, hLegs);
-        renderer.drawRect(px + 2, leftLegY + 5, 3, 2, hBoots);
-        renderer.drawRect(px + 6, rightLegY + 5, 3, 2, hBoots);
+        renderer.drawRect(px + 2, leftLegY, 3, isCrouched ? 3 : 5, hLegs);
+        renderer.drawRect(px + 6, rightLegY, 3, isCrouched ? 3 : 5, hLegs);
+        renderer.drawRect(px + 2, leftLegY + (isCrouched ? 3 : 5), 3, 2, hBoots);
+        renderer.drawRect(px + 6, rightLegY + (isCrouched ? 3 : 5), 3, 2, hBoots);
 
         // Draw torso (slender tattered survivor jacket)
-        renderer.drawRect(px + 2, y + 4 - breathScale, 7, 6 + breathScale, hTorso);
-        renderer.drawRect(px + 3, y + 5 - breathScale, 5, 4, '#384150'); // jacket inner highlight
+        renderer.drawRect(px + 2, y + 4 + crouchY - breathScale, 7, (isCrouched ? 5 : 6) + breathScale, hTorso);
+        renderer.drawRect(px + 3, y + 5 + crouchY - breathScale, 5, isCrouched ? 3 : 4, '#384150'); // jacket inner highlight
         
         // Draw right arm (front) holding fragile lantern
-        renderer.drawRect(px + 8, rightArmY - breathScale, 2, 5, '#1e232b');
-        // Small handheld lantern
-        const lanternX = facingRight ? px + 9 : px - 1;
-        const lanternY = rightArmY + 3 - breathScale;
+        renderer.drawRect(px + 8, rightArmY - breathScale, 2, isCrouched ? 4 : 5, '#1e232b');
+        // Small handheld lantern (held lower and closer to body when crouching)
+        const lanternX = facingRight ? px + (isCrouched ? 7 : 9) : px + (isCrouched ? 1 : -1);
+        const lanternY = rightArmY + (isCrouched ? 1 : 3) - breathScale;
         renderer.drawRect(lanternX, lanternY, 2, 3, '#475569'); // iron cage
-        renderer.drawRect(lanternX + 0.5, lanternY + 1, 1, 1, '#f59e0b'); // amber wick flame
+        renderer.drawRect(lanternX + 0.5, lanternY + 1, 1, 1, isCrouched ? '#b45309' : '#f59e0b'); // amber wick flame
 
         // Fragile pale human head & tattered hood
-        renderer.drawRect(px + 2, y - 1 - breathScale, 7, 5, '#222731'); // hood back
-        renderer.drawRect(px + 3, y - 2 - breathScale, 5, 2, '#222731'); // hood top
+        renderer.drawRect(px + 2, y - 1 + crouchY - breathScale, 7, 5, '#222731'); // hood back
+        renderer.drawRect(px + 3, y - 2 + crouchY - breathScale, 5, 2, '#222731'); // hood top
         
         // Head / Skin
         const faceDir = isLookingBack ? !facingRight : facingRight;
         const faceX = faceDir ? px + 4 : px + 2;
-        renderer.drawRect(faceX, y + 1 - breathScale, 5, 3, hSkin);
+        renderer.drawRect(faceX, y + 1 + crouchY - breathScale, 5, 3, hSkin);
 
         // Wide, terrified eyes with dilated pupils
         if (!isBlinking) {
             const eyeX = faceDir ? px + 5 : px + 3;
             // White sclera
-            renderer.drawRect(eyeX, y + 1 - breathScale, 3, 2, '#ffffff');
+            renderer.drawRect(eyeX, y + 1 + crouchY - breathScale, 3, 2, '#ffffff');
             // Dilated dark pupil darting around
             const pupilOffset = isScared ? (Math.floor(Date.now() / 250) % 2) : 0;
-            renderer.drawRect(eyeX + pupilOffset, y + 1 - breathScale, 1, 2, '#0f172a');
+            renderer.drawRect(eyeX + pupilOffset, y + 1 + crouchY - breathScale, 1, 2, '#0f172a');
         }
     }
 
@@ -598,5 +606,56 @@ export default class SpriteRenderer {
             renderer.drawRect(x + Math.random() * w, y - Math.random() * 5, 1, 1, '#555566');
             renderer.drawRect(x + Math.random() * w, y + h + Math.random() * 5, 1, 1, '#555566');
         }
+    }
+
+    static drawOilFlask(renderer, x, y, timer) {
+        const floatY = y + Math.sin(timer * 3) * 1.5;
+        // Faint glowing aura
+        const auraAlpha = 0.15 + (Math.sin(timer * 4) + 1) * 0.1;
+        renderer.drawRect(x + 2, floatY + 6, 12, 11, `rgba(245, 158, 11, ${auraAlpha})`);
+        
+        // Cork stopper
+        renderer.drawRect(x + 7, floatY + 3, 2, 2, '#8d6e63');
+        // Glass neck & rim
+        renderer.drawRect(x + 6, floatY + 5, 4, 1, '#94a3b8');
+        renderer.drawRect(x + 7, floatY + 6, 2, 2, '#cbd5e1');
+        // Flask bulb / body
+        renderer.drawRect(x + 4, floatY + 8, 8, 7, '#64748b');
+        renderer.drawRect(x + 5, floatY + 9, 6, 5, '#f59e0b'); // Amber oil
+        renderer.drawRect(x + 5, floatY + 11, 6, 3, '#d97706'); // Deep warm oil base
+        // Highlight glint
+        renderer.drawRect(x + 5, floatY + 9, 1, 3, '#fef08a');
+        // Iron base & bracket
+        renderer.drawRect(x + 4, floatY + 14, 8, 1, '#334155');
+        renderer.drawRect(x + 7, floatY + 9, 2, 5, '#475569');
+    }
+
+    static drawDoppelganger(renderer, x, y, facingRight, timer) {
+        // Dark, distorted silhouette of the player with pinprick hollow white eyes
+        const jitter = Math.sin(timer * 20) * 0.8;
+        const px = x + jitter;
+        
+        // Faint void shroud
+        renderer.drawRect(px - 1, y - 2, 12, 19, 'rgba(10, 8, 16, 0.45)');
+        
+        // Torso & legs (dark charcoal / void)
+        renderer.drawRect(px + 2, y + 4, 7, 6, '#13141a');
+        renderer.drawRect(px + 3, y + 5, 5, 4, '#1e2029');
+        renderer.drawRect(px + 2, y + 10, 3, 7, '#0b0c10');
+        renderer.drawRect(px + 6, y + 10, 3, 7, '#0b0c10');
+        
+        // Twitched arms
+        const armWave = Math.sin(timer * 12) * 1.5;
+        renderer.drawRect(px + 1, y + 4 + armWave, 2, 5, '#13141a');
+        renderer.drawRect(px + 8, y + 4 - armWave, 2, 5, '#13141a');
+        
+        // Head & Hood
+        renderer.drawRect(px + 2, y - 1, 7, 5, '#0b0c10');
+        renderer.drawRect(px + 3, y - 2, 5, 2, '#0b0c10');
+        
+        // Hollow, unblinking eyes staring directly at player
+        const eyeX = facingRight ? px + 5 : px + 3;
+        renderer.drawRect(eyeX, y + 1, 2, 2, '#ffffff');
+        renderer.drawRect(eyeX + 0.5, y + 1.5, 1, 1, '#38bdf8');
     }
 }

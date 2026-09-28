@@ -14,6 +14,7 @@ import { Player } from './entities/Player.js';
 import { Hazard } from './entities/Hazard.js';
 import { Interactable } from './entities/Interactable.js';
 import { Shadow } from './entities/Shadow.js';
+import { Doppelganger } from './entities/Doppelganger.js';
 
 // Import Content & Tools
 import { Level1 } from './levels/Level1.js';
@@ -808,6 +809,11 @@ async function init() {
         document.body.addEventListener('keydown', awaken, true);
         document.body.focus();
     }
+
+    // If user clicked or pressed a key while scripts were loading, awaken immediately!
+    if (window._userAwakened) {
+        startGame();
+    }
 }
 
 function loadLevel(scene, levelData, gameState, renderer) {
@@ -845,10 +851,13 @@ function loadLevel(scene, levelData, gameState, renderer) {
                     scene.add(new Hazard(ent.x, ent.y, props.hazardType || 0, props.width || 16, props.height || 16, props));
                     break;
                 case 'interactable':
-                    scene.add(new Interactable(ent.x, ent.y, props.interactType || 0, props));
+                    scene.add(new Interactable(ent.x, ent.y, ent.interactType !== undefined ? ent.interactType : (props.interactType || 0), props));
                     break;
                 case 'shadow':
                     scene.add(new Shadow(ent.x, ent.y));
+                    break;
+                case 'doppelganger':
+                    scene.add(new Doppelganger(ent.x, ent.y, ent.facingRight ?? true));
                     break;
             }
         });
@@ -1129,6 +1138,16 @@ function setupProceduralAudio(audioManager) {
         return (tone * 0.4 + noise * 0.6) * env * 0.75;
     });
     audioManager.buffers.set('flame_flare', flameFlare);
+
+    // Glass bottle clink and fluid swirl for oil flasks
+    const bottleClink = createBuffer(0.32, (t) => {
+        const env = Math.exp(-t * 24);
+        const glass1 = Math.sin(2 * Math.PI * 2250 * t);
+        const glass2 = Math.sin(2 * Math.PI * 3420 * t) * 0.45;
+        const slosh = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * 450 * t) * Math.exp(-t * 14);
+        return (glass1 + glass2 + slosh * 0.4) * env * 0.65;
+    });
+    audioManager.buffers.set('bottle_clink', bottleClink);
 }
 
 // Start once DOM is ready (or immediately if already parsed)

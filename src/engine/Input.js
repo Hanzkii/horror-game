@@ -15,6 +15,8 @@ export default class Input {
             'left': ['KeyA', 'ArrowLeft'],
             'right': ['KeyD', 'ArrowRight'],
             'jump': ['Space', 'KeyW', 'ArrowUp'],
+            'sprint': ['ShiftLeft', 'ShiftRight'],
+            'crouch': ['KeyC', 'ControlLeft', 'ControlRight'],
             'interact': ['KeyE'],
             'confirm': ['Enter', 'NumpadEnter', 'Space'],
             'pause': ['Escape']
@@ -45,6 +47,9 @@ export default class Input {
             if (e.key === 'd' || e.key === 'D') this.keys['KeyD'] = true;
             if (e.key === 'e' || e.key === 'E') this.keys['KeyE'] = true;
             if (e.key === 'q' || e.key === 'Q') this.keys['KeyQ'] = true;
+            if (e.key === 'c' || e.key === 'C') this.keys['KeyC'] = true;
+            if (e.key === 'Shift') { this.keys['ShiftLeft'] = true; this.keys['ShiftRight'] = true; }
+            if (e.key === 'Control') { this.keys['ControlLeft'] = true; this.keys['ControlRight'] = true; }
             if (e.key === 'Enter') this.keys['Enter'] = true;
             if (e.key === 'Escape') this.keys['Escape'] = true;
 
@@ -63,6 +68,9 @@ export default class Input {
             if (e.key === 'd' || e.key === 'D') this.keys['KeyD'] = false;
             if (e.key === 'e' || e.key === 'E') this.keys['KeyE'] = false;
             if (e.key === 'q' || e.key === 'Q') this.keys['KeyQ'] = false;
+            if (e.key === 'c' || e.key === 'C') this.keys['KeyC'] = false;
+            if (e.key === 'Shift') { this.keys['ShiftLeft'] = false; this.keys['ShiftRight'] = false; }
+            if (e.key === 'Control') { this.keys['ControlLeft'] = false; this.keys['ControlRight'] = false; }
             if (e.key === 'Enter') this.keys['Enter'] = false;
             if (e.key === 'Escape') this.keys['Escape'] = false;
         });

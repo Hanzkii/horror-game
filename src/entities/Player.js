@@ -68,6 +68,26 @@ export class Player extends Entity {
         this.stunTimer = 0;
         this.invulnerableTimer = 0;
         this.panicLightTimer = 0;
+
+        // Survival Systems: Stamina & Sprinting
+        this.maxStamina = 100;
+        this.stamina = 100;
+        this.isSprinting = false;
+        this.staminaCooldown = 0;
+        this.maxSprintSpeed = 195;
+        this.isMakingLoudNoise = false;
+
+        // Survival Systems: Lantern Oil
+        this.maxOil = 100;
+        this.lanternOil = 100;
+
+        // Survival Systems: Breath Holding & Sneak
+        this.isHoldingBreath = false;
+        this.breathHoldTimer = 0;
+        this.maxBreathHold = 5.0; // seconds before forced gasping
+        this.forcedGaspCooldown = 0;
+        this.heartbeatTimer = 0;
+        this.isHidingInShadows = false;
     }
     
     update(dt, input, scene) {
@@ -102,11 +122,30 @@ export class Player extends Entity {
         this.invulnerableTimer = Math.max(0, this.invulnerableTimer - dt);
         this.panicLightTimer = Math.max(0, this.panicLightTimer - dt);
 
-        // Suffocating darkness effect: light radius drops dramatically when attacked
+        // Suffocating darkness & Lantern Oil dynamics
+        const isTutorial = scene?.gameState?.isTutorialLevel;
+        const isFinale = scene?.gameState?.currentLevel?.includes('Surface');
+        if (!isTutorial && !isFinale) {
+            this.lanternOil = Math.max(0, this.lanternOil - dt * 0.75); // ~133s full tank
+        }
+
         if (this.panicLightTimer > 0) {
             this.lightRadius = 65 + Math.random() * 12;
-        } else {
+        } else if (this.lanternOil > 50) {
             this.lightRadius = 150;
+        } else if (this.lanternOil > 20) {
+            this.lightRadius = 110 + Math.sin(Date.now() * 0.01) * 3;
+        } else if (this.lanternOil > 0) {
+            this.lightRadius = 65 + Math.sin(Date.now() * 0.03) * 6; // harsh flicker
+            if (scene?.gameState && Math.random() < dt * 0.4) {
+                scene.gameState.drainSanity(dt * 2.0); // gloom drains sanity
+            }
+        } else {
+            // Out of oil: Sputtering dying match
+            this.lightRadius = 26 + Math.sin(Date.now() * 0.05) * 4;
+            if (scene?.gameState) {
+                scene.gameState.drainSanity(dt * 4.5); // terrifying darkness
+            }
         }
 
         // Fear state assessment
@@ -182,15 +221,79 @@ export class Player extends Entity {
     handleInput(dt, input, scene) {
         // If stunned by attack, cannot move or jump
         if (this.stunTimer > 0) {
+            this.isSprinting = false;
+            this.isMakingLoudNoise = false;
             return;
         }
 
-        // Horizontal Movement
+        // --- 1. SNEAK / BREATH HOLDING (Crouch key) ---
+        const wantsBreathHold = input.isPressed('crouch') && this.grounded && this.forcedGaspCooldown <= 0;
+        if (wantsBreathHold) {
+            this.isHoldingBreath = true;
+            this.breathHoldTimer += dt;
+
+            // Internal muffled heartbeat in player's ears
+            this.heartbeatTimer -= dt;
+            if (this.heartbeatTimer <= 0) {
+                if (scene && scene.audio && scene.audio.buffers.has('visceral_heartbeat')) {
+                    scene.audio.play('visceral_heartbeat', { volume: 0.75 });
+                }
+                this.heartbeatTimer = 0.85;
+            }
+
+            // Forced desperate gasp if held past lung capacity!
+            if (this.breathHoldTimer >= this.maxBreathHold) {
+                this.isHoldingBreath = false;
+                this.forcedGaspCooldown = 3.5;
+                this.breathHoldTimer = 0;
+                this.isMakingLoudNoise = true;
+                if (scene && scene.audio && scene.audio.buffers.has('ragged_breath')) {
+                    scene.audio.play('ragged_breath', { volume: 1.0 });
+                }
+                if (scene && scene.postProcessing) {
+                    scene.postProcessing.addTrauma(0.35);
+                }
+            }
+        } else {
+            this.isHoldingBreath = false;
+            this.breathHoldTimer = Math.max(0, this.breathHoldTimer - dt * 2.2);
+            this.forcedGaspCooldown = Math.max(0, this.forcedGaspCooldown - dt);
+        }
+
+        // Stealth in darkness: can hide from stalkers if holding breath and not near active torch
+        this.isHidingInShadows = this.isHoldingBreath;
+
+        // --- 2. SPRINT & HORIZONTAL MOVEMENT ---
+        const isMovingInput = input.isPressed('left') || input.isPressed('right');
+        const wantsSprint = input.isPressed('sprint') && isMovingInput && this.stamina > 0 && !this.isHoldingBreath;
+
+        let effectiveMaxSpeed = this.maxSpeed;
+        if (this.isHoldingBreath) {
+            effectiveMaxSpeed = 35; // Slow, cautious creep
+            this.isSprinting = false;
+            this.isMakingLoudNoise = false;
+        } else if (wantsSprint) {
+            effectiveMaxSpeed = this.maxSprintSpeed;
+            this.isSprinting = true;
+            this.stamina = Math.max(0, this.stamina - dt * 24);
+            this.staminaCooldown = 0.9;
+            this.isMakingLoudNoise = true; // Alerts Stalker across long distances!
+        } else {
+            this.isSprinting = false;
+            this.isMakingLoudNoise = false;
+            this.staminaCooldown = Math.max(0, this.staminaCooldown - dt);
+            if (this.staminaCooldown <= 0) {
+                this.stamina = Math.min(this.maxStamina, this.stamina + dt * 32);
+            }
+        }
+
+        // Movement Acceleration
+        const moveAccel = this.isHoldingBreath ? this.accel * 0.5 : (this.isSprinting ? this.accel * 1.4 : this.accel);
         if (input.isPressed('left')) {
-            this.vx -= this.accel * dt;
+            this.vx -= moveAccel * dt;
             this.facingRight = false;
         } else if (input.isPressed('right')) {
-            this.vx += this.accel * dt;
+            this.vx += moveAccel * dt;
             this.facingRight = true;
         } else {
             // Decelerate smoothly
@@ -202,10 +305,10 @@ export class Player extends Entity {
         }
         
         // Clamp speed
-        this.vx = Math.max(-this.maxSpeed, Math.min(this.maxSpeed, this.vx));
+        this.vx = Math.max(-effectiveMaxSpeed, Math.min(effectiveMaxSpeed, this.vx));
         
-        // Jumping (can trigger if grounded, within coyote time, or if buffered)
-        const canJump = this.grounded || this.coyoteTimer > 0;
+        // Jumping (can trigger if grounded, within coyote time, or if buffered) - disabled while holding breath
+        const canJump = (this.grounded || this.coyoteTimer > 0) && !this.isHoldingBreath;
         if (canJump && this.jumpBufferTimer > 0) {
             this.vy = this.jumpForce;
             this.grounded = false;
@@ -215,7 +318,7 @@ export class Player extends Entity {
             if (scene && scene.audio) {
                 scene.audio.play('footstep');
             }
-        } else if (input.isPressed('jump') && this.jumpTimer > 0) {
+        } else if (input.isPressed('jump') && this.jumpTimer > 0 && !this.isHoldingBreath) {
             // Sustained variable jump height
             this.vy += this.jumpHoldForce * dt;
             this.jumpTimer -= dt;
@@ -412,19 +515,28 @@ export class Player extends Entity {
     }
     
     handleSounds(dt, scene) {
-        if (this.state === PLAYER_STATES.WALKING && this.grounded) {
+        if (this.state === PLAYER_STATES.WALKING && this.grounded && !this.isHoldingBreath) {
             this.footstepTimer -= dt;
             if (this.footstepTimer <= 0) {
                 if (scene && scene.audio) {
                     const stepNum = Math.floor(Math.random() * 3) + 1;
                     const set = Math.random() < 0.25 ? 'footstep_wet' : 'footstep_stone';
                     const soundName = scene.audio.buffers.has(`${set}_${stepNum}`) ? `${set}_${stepNum}` : (scene.audio.buffers.has(`footstep_${stepNum}`) ? `footstep_${stepNum}` : 'footstep');
-                    scene.audio.play(soundName, { volume: 0.65 });
+                    const vol = this.isSprinting ? 0.95 : 0.65;
+                    scene.audio.play(soundName, { volume: vol });
                 }
-                this.footstepTimer = this.footstepInterval;
+                const interval = this.isSprinting ? (this.footstepInterval * 0.60) : this.footstepInterval;
+                this.footstepTimer = interval;
             }
         } else {
             this.footstepTimer = 0;
+        }
+
+        // Ragged panting when exhausted from sprinting
+        if (this.stamina < 25 && Math.random() < dt * 0.75) {
+            if (scene && scene.audio && scene.audio.buffers.has('ragged_breath')) {
+                scene.audio.play('ragged_breath', { volume: 0.65 });
+            }
         }
     }
     
@@ -465,7 +577,8 @@ export class Player extends Entity {
 
         SpriteRenderer.drawPlayer(renderer, this.x, this.y, this.state, this.walkFrame, this.facingRight, this.breathTimer, this.isBlinking, {
             isScared: this.isScared,
-            isLookingBack: this.isLookingBack
+            isLookingBack: this.isLookingBack,
+            isCrouched: this.isHoldingBreath
         });
     }
 }

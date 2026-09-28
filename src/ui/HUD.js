@@ -114,7 +114,12 @@ export default class HUD {
             ctx.fillStyle = hpNorm < 0.35 ? '#ef4444' : '#e11d48';
             ctx.fillRect(barX + 1, 25, Math.round((barW - 2) * hpNorm), 8);
 
-            Typography.drawText(ctx, 'VITALITY', barX + barW + 12, 33, {
+            // Psychological glitch text on low sanity
+            const isGlitched = sanNorm < 0.28 && Math.sin(Date.now() * 0.02) > 0.7;
+            const sanityLabel = isGlitched ? 'L̶O̷S̸T̶' : 'SANITY';
+            const vitalityLabel = isGlitched ? 'V̷I̸T̶A̸L̶I̷T̶Y̵' : 'VITALITY';
+
+            Typography.drawText(ctx, vitalityLabel, barX + barW + 12, 33, {
                 font: FONT_STACKS.CAPTION,
                 color: '#f87171'
             });
@@ -128,9 +133,67 @@ export default class HUD {
             ctx.fillStyle = sanNorm < 0.3 ? '#818cf8' : '#38bdf8';
             ctx.fillRect(barX + 1, 43, Math.round((barW - 2) * sanNorm), 6);
 
-            Typography.drawText(ctx, 'SANITY', barX + barW + 12, 50, {
+            Typography.drawText(ctx, sanityLabel, barX + barW + 12, 50, {
                 font: FONT_STACKS.CAPTION,
                 color: '#38bdf8'
+            });
+
+            // Stamina Bar (Shift to Sprint)
+            const stamNorm = player ? Math.max(0, Math.min(1, (player.stamina ?? 100) / (player.maxStamina || 100))) : 1.0;
+            ctx.fillStyle = 'rgba(12, 16, 24, 0.85)';
+            ctx.fillRect(barX, 57, barW, 6);
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, 57, barW, 6);
+            ctx.fillStyle = stamNorm < 0.25 ? '#ef4444' : '#f59e0b';
+            ctx.fillRect(barX + 1, 58, Math.round((barW - 2) * stamNorm), 4);
+
+            Typography.drawText(ctx, 'STAMINA', barX + barW + 12, 63, {
+                font: FONT_STACKS.CAPTION,
+                color: '#f59e0b'
+            });
+
+            // Lantern Oil Bar (Picked up from oil flasks)
+            if (!gameState.isTutorialLevel) {
+                const oilNorm = player ? Math.max(0, Math.min(1, (player.lanternOil ?? 100) / (player.maxOil || 100))) : 1.0;
+                ctx.fillStyle = 'rgba(12, 16, 24, 0.85)';
+                ctx.fillRect(barX, 70, barW, 6);
+                ctx.strokeStyle = 'rgba(249, 115, 22, 0.35)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(barX, 70, barW, 6);
+                ctx.fillStyle = oilNorm < 0.20 ? ((Date.now() % 400 < 200) ? '#ef4444' : '#7f1d1d') : '#f97316';
+                ctx.fillRect(barX + 1, 71, Math.round((barW - 2) * oilNorm), 4);
+
+                const oilLabel = oilNorm <= 0 ? 'EMPTY (MATCHLIGHT)' : (oilNorm < 0.20 ? 'OIL CRITICAL' : 'LANTERN OIL');
+                Typography.drawText(ctx, oilLabel, barX + barW + 12, 76, {
+                    font: FONT_STACKS.CAPTION,
+                    color: oilNorm < 0.20 ? '#ef4444' : '#f97316'
+                });
+            }
+        }
+
+        // Stealth Breath-Holding Indicator Banner
+        if (player && player.isHoldingBreath) {
+            const lungCapacity = Math.max(0, 1 - (player.breathHoldTimer / (player.maxBreathHold || 5.0)));
+            const breathW = 200;
+            const breathH = 26;
+            const breathX = width / 2 - breathW / 2;
+            const breathY = height - 50;
+
+            ctx.fillStyle = 'rgba(5, 7, 13, 0.92)';
+            ctx.fillRect(breathX, breathY, breathW, breathH);
+            ctx.strokeStyle = lungCapacity < 0.25 ? '#ef4444' : '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(breathX, breathY, breathW, breathH);
+
+            // Breath lung progress fill
+            ctx.fillStyle = lungCapacity < 0.25 ? '#dc2626' : 'rgba(56, 189, 248, 0.4)';
+            ctx.fillRect(breathX + 2, breathY + 2, Math.round((breathW - 4) * lungCapacity), breathH - 4);
+
+            Typography.drawText(ctx, 'HOLDING BREATH — CONCEALED', width / 2, breathY + 17, {
+                font: FONT_STACKS.BODY_BOLD,
+                color: lungCapacity < 0.25 ? '#fca5a5' : '#e0f2fe',
+                align: 'center'
             });
         }
 
@@ -239,7 +302,7 @@ export default class HUD {
                 const tipAlpha = Math.min(1.0, gameState.introTipTimer);
                 ctx.save();
                 ctx.globalAlpha = tipAlpha;
-                Typography.drawText(ctx, '[A/D] Walk  •  [SPACE] Jump  •  [E] Interact near objects', width / 2, 70, {
+                Typography.drawText(ctx, '[A/D] Walk  •  [SHIFT] Sprint  •  [SPACE] Jump  •  [C/CTRL] Hold Breath  •  [E] Interact', width / 2, 70, {
                     font: FONT_STACKS.BODY_BOLD,
                     color: '#cbd5e1',
                     align: 'center'
