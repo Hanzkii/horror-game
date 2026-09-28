@@ -29,6 +29,7 @@ import HUD from './ui/HUD.js';
 import MainMenu from './ui/MainMenu.js';
 import ToastNotification from './ui/ToastNotification.js';
 import { AudioScapeManager, AUDIO_STATES } from './audio/AudioScapeManager.js';
+import { Typography, FONT_STACKS } from './ui/Typography.js';
 
 // Configuration
 const GAME_WIDTH = 480;
@@ -42,6 +43,7 @@ const GAME_STATES = {
     PAUSED: 'paused'
 };
 let currentState = GAME_STATES.LOADING;
+let returnState = GAME_STATES.STORY;
 
 async function init() {
     const canvas = document.getElementById('gameCanvas');
@@ -468,7 +470,31 @@ async function init() {
                 break;
 
             case GAME_STATES.FINALE:
-                canvas.style.cursor = finaleState.phase === 'title_drop' ? 'default' : 'none';
+                const { width: fW, height: fH } = renderer.getDisplaySize();
+                const fMouse = input.getClientMousePos ? input.getClientMousePos() : { x: -999, y: -999 };
+                const fClick = input.isMouseClicked ? input.isMouseClicked() : false;
+
+                // Handle pausing / menu opening during active surface exploration
+                if (finaleState.phase !== 'title_drop') {
+                    const menuBtnW = 90;
+                    const menuBtnH = 32;
+                    const menuBtnX = fW - menuBtnW - 28;
+                    const menuBtnY = 24;
+                    const isHoverMenu = fMouse.x >= menuBtnX && fMouse.x <= menuBtnX + menuBtnW && fMouse.y >= menuBtnY && fMouse.y <= menuBtnY + menuBtnH;
+
+                    canvas.style.cursor = isHoverMenu ? 'pointer' : 'default';
+
+                    if (input.isJustPressed('pause') || (isHoverMenu && fClick)) {
+                        returnState = GAME_STATES.FINALE;
+                        currentState = GAME_STATES.PAUSED;
+                        gameState.isPaused = true;
+                        hud.pauseSubmenu = 'main';
+                        break;
+                    }
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+
                 finaleState.timer += dt;
                 finaleState.textTimer += dt;
 
@@ -507,6 +533,7 @@ async function init() {
                             finaleState.dialogue = "A cold shiver crawls down your spine...\n\nIt was never bound to the stone.\nIt was bound to you.";
                             if (finaleState.twistTimer > 6.0) {
                                 finaleState.phase = 'title_drop';
+                                finaleState.titleDropTimer = 0;
                                 audioScape.setState(AUDIO_STATES.MENU);
                             }
                         }
@@ -562,10 +589,22 @@ async function init() {
                     // Blit pixel world to display canvas
                     renderer.present();
 
-                    // Draw Crisp Epilogue Narration Banner
+                    // Draw Crisp Epilogue Narration Banner & UI Overlay
                     const finaleUiCtx = renderer.getUIContext();
-                    const { width: fW, height: fH } = renderer.getDisplaySize();
                     
+                    // 1. Top-Right MENU Button on Surface
+                    const menuBtnW = 90;
+                    const menuBtnH = 32;
+                    const menuBtnX = fW - menuBtnW - 28;
+                    const menuBtnY = 24;
+                    const isHoverMenu = fMouse.x >= menuBtnX && fMouse.x <= menuBtnX + menuBtnW && fMouse.y >= menuBtnY && fMouse.y <= menuBtnY + menuBtnH;
+
+                    Typography.drawButton(finaleUiCtx, 'MENU', menuBtnX, menuBtnY, menuBtnW, menuBtnH, {
+                        isHovered: isHoverMenu,
+                        font: FONT_STACKS.CAPTION
+                    });
+
+                    // 2. Epilogue dialogue banner
                     if (finaleState.dialogue) {
                         const bannerW = Math.min(740, fW * 0.85);
                         const bannerH = 100;
@@ -593,7 +632,10 @@ async function init() {
                     // Phase: Title Drop / Sequel Teaser
                     renderer.present();
                     const finaleUiCtx = renderer.getUIContext();
-                    const { width: fW, height: fH } = renderer.getDisplaySize();
+
+                    finaleState.titleDropTimer = (finaleState.titleDropTimer || 0) + dt;
+                    const autoReturnDuration = 10.0;
+                    const timeRemaining = Math.max(0, autoReturnDuration - finaleState.titleDropTimer);
 
                     finaleUiCtx.fillStyle = '#050208';
                     finaleUiCtx.fillRect(0, 0, fW, fH);
@@ -605,27 +647,59 @@ async function init() {
                     // Title
                     finaleUiCtx.font = '900 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                     finaleUiCtx.fillStyle = '#f43f5e';
-                    finaleUiCtx.fillText('ECHO II', fW / 2, fH * 0.38);
+                    finaleUiCtx.fillText('ECHO II', fW / 2, fH * 0.36);
 
                     // Subtitle
                     finaleUiCtx.font = '700 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                     finaleUiCtx.fillStyle = '#cbd5e1';
-                    finaleUiCtx.fillText('THE WATCHER REMAINS', fW / 2, fH * 0.46);
+                    finaleUiCtx.fillText('THE WATCHER REMAINS', fW / 2, fH * 0.44);
 
                     // Epilogue quote
                     finaleUiCtx.font = 'italic 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                     finaleUiCtx.fillStyle = '#94a3b8';
-                    finaleUiCtx.fillText('"You escaped the stone. But the shadow never leaves."', fW / 2, fH * 0.56);
-
-                    // Return to title prompt
-                    const pulse = (Math.sin(Date.now() / 350) + 1) * 0.5;
-                    finaleUiCtx.font = '600 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-                    finaleUiCtx.fillStyle = `rgba(248, 250, 252, ${0.4 + pulse * 0.6})`;
-                    finaleUiCtx.fillText('[ CLICK OR PRESS SPACE TO RETURN TO TITLE ]', fW / 2, fH * 0.74);
+                    finaleUiCtx.fillText('"You escaped the stone. But the shadow never leaves."', fW / 2, fH * 0.54);
                     finaleUiCtx.restore();
 
-                    // Click or space to return to Main Menu
-                    if (input.isJustPressed('jump') || (input.isMouseClicked && input.isMouseClicked())) {
+                    // Prominent Return to Main Menu Button
+                    const retBtnW = 280;
+                    const retBtnH = 44;
+                    const retBtnX = fW / 2 - retBtnW / 2;
+                    const retBtnY = fH * 0.64;
+                    const isHoverRet = fMouse.x >= retBtnX && fMouse.x <= retBtnX + retBtnW && fMouse.y >= retBtnY && fMouse.y <= retBtnY + retBtnH;
+
+                    Typography.drawButton(finaleUiCtx, 'RETURN TO MAIN MENU', retBtnX, retBtnY, retBtnW, retBtnH, {
+                        isHovered: isHoverRet,
+                        isSelected: true,
+                        font: FONT_STACKS.BODY_BOLD,
+                        borderColor: isHoverRet ? '#38bdf8' : '#f43f5e',
+                        textColor: isHoverRet ? '#ffffff' : '#fecdd3'
+                    });
+
+                    // Countdown & prompt guidance
+                    Typography.drawText(finaleUiCtx, `Returning to Main Menu automatically in ${Math.ceil(timeRemaining)}s...`, fW / 2, retBtnY + retBtnH + 26, {
+                        font: FONT_STACKS.CAPTION,
+                        color: '#64748b',
+                        align: 'center'
+                    });
+                    Typography.drawText(finaleUiCtx, 'Click button or press SPACE / ENTER / ESC to return now', fW / 2, retBtnY + retBtnH + 46, {
+                        font: FONT_STACKS.CAPTION,
+                        color: '#475569',
+                        align: 'center'
+                    });
+
+                    // Check triggers to return to Main Menu
+                    const isReturnTriggered = 
+                        timeRemaining <= 0 ||
+                        (isHoverRet && fClick) ||
+                        (fClick && finaleState.titleDropTimer > 0.4) ||
+                        input.isJustPressed('jump') ||
+                        input.isJustPressed('pause') ||
+                        Boolean(input.keys['Enter']) ||
+                        Boolean(input.keys['Space']) ||
+                        Boolean(input.keys['Escape']) ||
+                        Boolean(input.keys['KeyE']);
+
+                    if (isReturnTriggered) {
                         currentState = GAME_STATES.MENU;
                         audioScape.setState(AUDIO_STATES.MENU);
                         gameState.reset();
@@ -648,7 +722,7 @@ async function init() {
                 const pauseAction = hud.getPauseAction();
                 if (pauseAction === 'resume' || (input.isJustPressed('pause') && hud.pauseSubmenu === 'main')) {
                     gameState.isPaused = false;
-                    currentState = GAME_STATES.STORY;
+                    currentState = returnState;
                 } else if (input.isJustPressed('pause')) {
                     hud.pauseSubmenu = 'main';
                 } else if (pauseAction === 'refill_stats') {
