@@ -805,14 +805,25 @@ async function init() {
         audioScape.setState(AUDIO_STATES.MENU);
         
         currentState = GAME_STATES.MENU;
+        mainMenu.resetInputCooldown(0.65); // Full 0.65s delay before menu buttons can be clicked
 
         // Flush input so the click/key that dismissed the overlay doesn't
-        // bleed through and accidentally select a menu button on frame 1
+        // bleed through and accidentally select a menu button
         input.update();
         if (input.mouse) {
             input.mouse.isClicked = false;
             input.mouse.isDown = false;
             input.mouse.wasDown = false;
+        }
+        if (input.keys) {
+            for (const k in input.keys) {
+                input.keys[k] = false;
+            }
+        }
+        if (input.prevKeys) {
+            for (const k in input.prevKeys) {
+                input.prevKeys[k] = false;
+            }
         }
 
         requestAnimationFrame(loop);

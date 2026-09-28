@@ -47,6 +47,11 @@ export default class MainMenu {
 
         this.hitboxes = [];
         this.selectedAction = null;
+        this.inputCooldown = 0.65; // Prevent accidental selection on awakening
+    }
+
+    resetInputCooldown(duration = 0.65) {
+        this.inputCooldown = Math.max(this.inputCooldown, duration);
     }
 
     checkSave() {
@@ -73,6 +78,7 @@ export default class MainMenu {
     showDesignMenu() {
         this.mode = 'main';
         this.selectedIndex = 0;
+        this.inputCooldown = 0.25;
     }
 
     update(dt, input) {
@@ -91,10 +97,17 @@ export default class MainMenu {
 
         if (!input) return;
 
+        // Input cooldown: prevents awakening click/keypress bleed-through
+        if (this.inputCooldown > 0) {
+            this.inputCooldown -= dt;
+            return;
+        }
+
         // Escape handling across sub-menus
         if (input.isJustPressed('pause')) {
             if (this.mode !== 'main') {
                 this.mode = 'main';
+                this.inputCooldown = 0.2;
                 this.playSfx('click');
                 return;
             }
@@ -155,6 +168,7 @@ export default class MainMenu {
                 case 4: this.mode = 'controls'; break;
             }
         }
+        this.inputCooldown = 0.25;
         this.playSfx('click');
     }
 
