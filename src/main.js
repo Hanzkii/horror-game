@@ -89,6 +89,7 @@ async function init() {
     const savedSettings = saveManager.loadSettings();
     audioScape.setVolumes(savedSettings);
     hud.setAudioScape(audioScape);
+    hud.setAudio(audio);
     mainMenu.audioScape = audioScape;
 
     // Helper to get the next level in the main dungeon descent
@@ -722,18 +723,87 @@ async function init() {
                 toastNotification.render(pauseUiCtx, pW, pH);
 
                 const pauseAction = hud.getPauseAction();
-                if (pauseAction === 'resume' || input.isJustPressed('pause')) {
-                    if (hud.pauseSubmenu === 'settings') {
-                        hud.pauseSubmenu = 'main';
-                    } else {
-                        gameState.isPaused = false;
-                        currentState = GAME_STATES.STORY;
+                if (pauseAction === 'resume' || (input.isJustPressed('pause') && hud.pauseSubmenu === 'main')) {
+                    gameState.isPaused = false;
+                    currentState = GAME_STATES.STORY;
+                } else if (input.isJustPressed('pause')) {
+                    hud.pauseSubmenu = 'main';
+                } else if (pauseAction === 'refill_stats') {
+                    gameState.health = 100;
+                    gameState.sanity = 100;
+                    if (scene.player) {
+                        scene.player.stamina = 100;
+                        scene.player.lanternOil = 100;
                     }
-                } else if (pauseAction === 'debug_menu') {
+                    toastNotification.show('Refilled Health, Sanity, Stamina & Lantern Oil!', 'success');
+                } else if (pauseAction === 'spawn_stalker') {
+                    let shadow = scene.entities.find(e => e.type === 'shadow' || e instanceof Shadow);
+                    if (!shadow && scene.player) {
+                        shadow = new Shadow(scene.player.x + 80, scene.player.y);
+                        scene.addEntity(shadow);
+                    }
+                    if (shadow && scene.player) {
+                        shadow.state = 1;
+                        shadow.alpha = 1.0;
+                        shadow.x = scene.player.x + (scene.player.facingRight ? -80 : 80);
+                        shadow.y = scene.player.y;
+                    }
+                    audioScape.setState(AUDIO_STATES.CHASE);
+                    toastNotification.show('👻 Shadow Stalker summoned in darkness!', 'warning');
+                } else if (pauseAction === 'test_jumpscare') {
+                    let shadow = scene.entities.find(e => e.type === 'shadow' || e instanceof Shadow);
+                    if (!shadow && scene.player) {
+                        shadow = new Shadow(scene.player.x + 20, scene.player.y);
+                        scene.addEntity(shadow);
+                    }
+                    if (shadow) {
+                        shadow.jumpScareTimer = 0.55;
+                    }
+                    if (audio) {
+                        audio.play('stalker_shriek');
+                        audio.play('stinger_sharp');
+                    }
+                    postProcessing.addTrauma(1.0);
+                    gameState.isPaused = false;
+                    currentState = GAME_STATES.STORY;
+                } else if (pauseAction === 'warp_tutorial') {
                     hud.pauseSubmenu = 'main';
                     gameState.isPaused = false;
-                    currentState = GAME_STATES.MENU;
-                    mainMenu.mode = 'sound_debug';
+                    currentState = GAME_STATES.STORY;
+                    gameState.isTutorialLevel = true;
+                    gameState.floorIndex = 0;
+                    loadLevel(scene, TutorialLevel, gameState, renderer);
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
+                } else if (pauseAction === 'warp_b1') {
+                    hud.pauseSubmenu = 'main';
+                    gameState.isPaused = false;
+                    currentState = GAME_STATES.STORY;
+                    gameState.isTutorialLevel = false;
+                    gameState.floorIndex = 1;
+                    loadLevel(scene, Level1, gameState, renderer);
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
+                } else if (pauseAction === 'warp_b2') {
+                    hud.pauseSubmenu = 'main';
+                    gameState.isPaused = false;
+                    currentState = GAME_STATES.STORY;
+                    gameState.isTutorialLevel = false;
+                    gameState.floorIndex = 2;
+                    const nextLevel = getNextDungeonLevel(2);
+                    loadLevel(scene, nextLevel, gameState, renderer);
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
+                } else if (pauseAction === 'warp_b3') {
+                    hud.pauseSubmenu = 'main';
+                    gameState.isPaused = false;
+                    currentState = GAME_STATES.STORY;
+                    gameState.isTutorialLevel = false;
+                    gameState.floorIndex = 3;
+                    const nextLevel = getNextDungeonLevel(3);
+                    loadLevel(scene, nextLevel, gameState, renderer);
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
+                } else if (pauseAction === 'warp_finale') {
+                    hud.pauseSubmenu = 'main';
+                    gameState.isPaused = false;
+                    startSurfaceFinale();
                 } else if (pauseAction === 'quit' || input.keys['KeyQ']) {
                     hud.pauseSubmenu = 'main';
                     gameState.isPaused = false;

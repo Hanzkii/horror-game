@@ -115,6 +115,10 @@ export default class Scene {
             this.player.state = 0; // IDLE
         }
 
+        if (this.gameState && this.gameState.godMode) {
+            return;
+        }
+
         // 1. Reset game state and puzzle flags
         if (this.gameState) {
             this.gameState.sanity = this.gameState.maxSanity || 100;

@@ -94,6 +94,7 @@ export class Hazard extends Entity {
             const distSq = Math.pow(this.bladeX - cx, 2) + Math.pow(this.bladeY - cy, 2);
 
             if (distSq < Math.pow(this.bladeRadius, 2)) {
+                if (scene.gameState && scene.gameState.godMode) return;
                 if (scene.gameState) {
                     scene.gameState.takeDamage(this.damage);
                 }
@@ -114,6 +115,7 @@ export class Hazard extends Entity {
     
     checkPlayerCollision(player, scene) {
         if (this.dead) return;
+        if (scene.gameState && scene.gameState.godMode) return;
         
         // AABB Collision
         if (player.x < this.x + this.width &&

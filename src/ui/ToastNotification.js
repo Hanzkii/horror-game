@@ -80,8 +80,8 @@ export class ToastNotification {
         const toastW = 320;
         const toastH = 64;
         const marginX = 24;
-        const targetY = 24;
-        const startY = -toastH - 10;
+        const targetY = height - toastH - 24;
+        const startY = height + 10;
         const currentY = startY + (targetY - startY) * ease;
         const currentX = width - toastW - marginX;
 

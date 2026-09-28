@@ -463,6 +463,12 @@ export class Shadow extends Entity {
             
             // CONFRONTATION: Caught the player!
             if (dist < 32) {
+                if (scene.gameState && scene.gameState.godMode) {
+                    // In God Mode, the stalker incinerates and banishes upon touching the immortal player!
+                    this.despawnInLight(scene, { x: player.x, y: player.y, radius: 100 });
+                    return;
+                }
+
                 if (!player.invulnerableTimer || player.invulnerableTimer <= 0) {
                     const knockDir = dx < 0 ? -1 : 1;
                     if (typeof player.onShadowHit === 'function') {

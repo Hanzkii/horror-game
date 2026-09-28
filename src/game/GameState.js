@@ -23,6 +23,7 @@ export class GameState {
         this.isPublishedMap = false;
         this.isTestLevel = false;
         this.isTutorialLevel = false;
+        this.godMode = false;
 
         this.stats = {
             playtimeSeconds: 0,
@@ -36,8 +37,11 @@ export class GameState {
     }
     
     update(dt) {
-        // Sanity does not drain passively; only drains when stalkers prowl nearby or strike!
-        
+        if (this.godMode) {
+            this.health = this.maxHealth;
+            this.sanity = this.maxSanity;
+        }
+
         // Clamp values
         this.health = Math.max(0, Math.min(this.maxHealth, this.health));
         this.sanity = Math.max(0, Math.min(this.maxSanity, this.sanity));
@@ -47,6 +51,7 @@ export class GameState {
     }
     
     takeDamage(amount) {
+        if (this.godMode) return;
         this.health -= amount;
         if (this.health <= 0) {
             this.handleDeath();
@@ -54,6 +59,7 @@ export class GameState {
     }
     
     drainSanity(amount) {
+        if (this.godMode) return;
         this.sanity -= amount;
         if (this.sanity <= 15) {
             events.emit('SANITY_CRITICAL', { sanity: this.sanity });

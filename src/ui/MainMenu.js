@@ -74,7 +74,7 @@ export default class MainMenu {
     }
 
     showDesignMenu() {
-        this.mode = 'sound_debug';
+        this.mode = 'main';
         this.selectedIndex = 0;
     }
 
@@ -145,17 +145,17 @@ export default class MainMenu {
                 case 0: this.selectedAction = 'continue'; break;
                 case 1: this.selectedAction = 'story'; break;
                 case 2: this.selectedAction = 'tutorial'; break;
-                case 3: this.mode = 'sound_debug'; break;
-                case 4: this.mode = 'achievements'; break;
-                case 5: this.mode = 'settings'; break;
+                case 3: this.mode = 'achievements'; break;
+                case 4: this.mode = 'settings'; break;
+                case 5: this.mode = 'controls'; break;
             }
         } else {
             switch (index) {
                 case 0: this.selectedAction = 'story'; break;
                 case 1: this.selectedAction = 'tutorial'; break;
-                case 2: this.mode = 'sound_debug'; break;
-                case 3: this.mode = 'achievements'; break;
-                case 4: this.mode = 'settings'; break;
+                case 2: this.mode = 'achievements'; break;
+                case 3: this.mode = 'settings'; break;
+                case 4: this.mode = 'controls'; break;
             }
         }
         this.playSfx('click');
@@ -213,9 +213,6 @@ export default class MainMenu {
             case 'settings':
                 this.renderSettings(ctx, width, height);
                 break;
-            case 'sound_debug':
-                this.renderSoundDebug(ctx, width, height);
-                break;
             case 'controls':
                 this.renderControlsGuide(ctx, width, height);
                 break;
@@ -248,16 +245,16 @@ export default class MainMenu {
                 `CONTINUE  •  ${this.saveSummary}`,
                 'NEW DESCENT',
                 'TUTORIAL CHAMBER',
-                'SOUND TEST & DEBUG',
                 'ACHIEVEMENTS',
-                'SETTINGS & AUDIO'
+                'SETTINGS & AUDIO',
+                'CONTROLS'
             ]
             : [
                 'DESCEND INTO ABYSS',
                 'TUTORIAL CHAMBER',
-                'SOUND TEST & DEBUG',
                 'ACHIEVEMENTS',
-                'SETTINGS & AUDIO'
+                'SETTINGS & AUDIO',
+                'CONTROLS'
             ];
 
         const startY = height * 0.35;
@@ -522,204 +519,6 @@ export default class MainMenu {
         });
         Typography.drawButton(ctx, '< BACK TO TITLE', backX, backY, backW, backH, {
             font: FONT_STACKS.BODY_BOLD
-        });
-    }
-
-    renderSoundDebug(ctx, width, height) {
-        Typography.drawText(ctx, 'SOUND TEST & DEBUG SUITE', width / 2, 54, {
-            font: FONT_STACKS.TITLE,
-            color: '#38bdf8',
-            align: 'center',
-            shadowColor: 'rgba(56, 189, 248, 0.4)',
-            shadowBlur: 10
-        });
-
-        Typography.drawText(ctx, 'Procedural SFX Synthesizer  •  Atmosphere State Mixer  •  Cheats & Diagnostics', width / 2, 84, {
-            font: FONT_STACKS.CAPTION,
-            color: '#94a3b8',
-            align: 'center'
-        });
-
-        const panelW = Math.min(540, width * 0.46);
-        const panelH = height - 165;
-        const leftX = width / 2 - panelW - 14;
-        const rightX = width / 2 + 14;
-        const panelY = 104;
-
-        // LEFT PANEL: SFX SOUNDBOARD
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-        ctx.fillRect(leftX, panelY, panelW, panelH);
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(leftX, panelY, panelW, panelH);
-
-        Typography.drawText(ctx, 'SFX SOUNDBOARD (CLICK TO TRIGGER)', leftX + panelW / 2, panelY + 24, {
-            font: FONT_STACKS.BODY_BOLD,
-            color: '#f8fafc',
-            align: 'center'
-        });
-
-        const sfxList = [
-            { label: '👟 Stone Step', id: 'footstep_stone_1' },
-            { label: '💧 Wet Cavern Step', id: 'footstep_wet_1' },
-            { label: '💓 Visceral Heartbeat', id: 'visceral_heartbeat' },
-            { label: '🫁 Ragged Breathing', id: 'ragged_breath' },
-            { label: '🦴 Bone Snap Fracture', id: 'bone_snap' },
-            { label: '🩸 Flesh Wound Tear', id: 'flesh_wound' },
-            { label: '😱 Stalker Shriek', id: 'stalker_shriek' },
-            { label: '⚡ Stalker Lunge Ambush', id: 'stalker_lunge' },
-            { label: '👁️ Phantom Whisper', id: 'phantom_whisper' },
-            { label: '👣 Hallucination Step', id: 'hallucination_step' },
-            { label: '🕯️ Torch Extinguish', id: 'torch_snuff' },
-            { label: '🪨 Heavy Gate Grind', id: 'gate_grind' },
-            { label: '⚔️ Pendulum Whoosh', id: 'pendulum_whoosh' },
-            { label: '💥 Horror Stinger', id: 'stinger_sharp' },
-            { label: '⚙️ Lever Mechanism', id: 'click' },
-            { label: '🚪 Heavy Door Creak', id: 'door_creak' }
-        ];
-
-        const sfxCols = 2;
-        const btnW = (panelW - 36) / sfxCols;
-        const btnH = 34;
-        const startSfxY = panelY + 44;
-
-        for (let i = 0; i < sfxList.length; i++) {
-            const col = i % sfxCols;
-            const row = Math.floor(i / sfxCols);
-            const bx = leftX + 14 + col * (btnW + 8);
-            const by = startSfxY + row * (btnH + 6);
-            const item = sfxList[i];
-
-            this.hitboxes.push({
-                x: bx, y: by, w: btnW, h: btnH,
-                action: () => {
-                    this.playSfx(item.id);
-                }
-            });
-
-            Typography.drawButton(ctx, item.label, bx, by, btnW, btnH, {
-                font: FONT_STACKS.CAPTION,
-                textColor: '#e2e8f0',
-                borderColor: 'rgba(255, 255, 255, 0.15)'
-            });
-        }
-
-        // RIGHT PANEL: ATMOSPHERE & CHEATS
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-        ctx.fillRect(rightX, panelY, panelW, panelH);
-        ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(rightX, panelY, panelW, panelH);
-
-        Typography.drawText(ctx, 'ATMOSPHERE & DEBUG SUITE', rightX + panelW / 2, panelY + 24, {
-            font: FONT_STACKS.BODY_BOLD,
-            color: '#f8fafc',
-            align: 'center'
-        });
-
-        // 1. Atmosphere Selectors
-        const atmoY = panelY + 44;
-        const atmoList = [
-            { label: '🌿 EXPLORATION AMBIENCE', state: 'exploration' },
-            { label: '⚡ TENSION SOUNDSCAPE', state: 'tension' },
-            { label: '🩸 PURSUIT / CHASE DREAD', state: 'chase' },
-            { label: '🕯️ HOLY TORCH SANCTUARY', state: 'sanctuary' },
-            { label: '☀️ SURFACE SUNRISE PEACEFUL', state: 'surface_peaceful' }
-        ];
-
-        const atmoBtnW = (panelW - 28);
-        for (let i = 0; i < atmoList.length; i++) {
-            const by = atmoY + i * 35;
-            const item = atmoList[i];
-            this.hitboxes.push({
-                x: rightX + 14, y: by, w: atmoBtnW, h: 28,
-                action: () => {
-                    this.selectedAction = `atmo_${item.state}`;
-                    this.playSfx('click');
-                }
-            });
-            Typography.drawButton(ctx, item.label, rightX + 14, by, atmoBtnW, 28, {
-                font: FONT_STACKS.CAPTION,
-                textColor: '#cbd5e1'
-            });
-        }
-
-        // 2. Debug Cheats & Diagnostics
-        const cheatY = atmoY + atmoList.length * 35 + 8;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.beginPath();
-        ctx.moveTo(rightX + 14, cheatY);
-        ctx.lineTo(rightX + panelW - 14, cheatY);
-        ctx.stroke();
-
-        const cheats = [
-            { label: `🛡️ GOD MODE: ${this.debugGodMode ? 'ACTIVE [ON]' : 'DISABLED [OFF]'}`, action: 'toggle_god_mode', color: this.debugGodMode ? '#10b981' : '#f87171' },
-            { label: '👻 SPAWN SHADOW STALKER', action: 'spawn_stalker', color: '#cbd5e1' },
-            { label: '😱 TRIGGER FULLSCREEN JUMPSCARE', action: 'test_jumpscare', color: '#f87171' }
-        ];
-
-        for (let i = 0; i < cheats.length; i++) {
-            const by = cheatY + 8 + i * 34;
-            const c = cheats[i];
-            this.hitboxes.push({
-                x: rightX + 14, y: by, w: atmoBtnW, h: 28,
-                action: () => {
-                    if (c.action === 'toggle_god_mode') {
-                        this.debugGodMode = !this.debugGodMode;
-                    }
-                    this.selectedAction = c.action;
-                    this.playSfx('click');
-                }
-            });
-            Typography.drawButton(ctx, c.label, rightX + 14, by, atmoBtnW, 28, {
-                font: FONT_STACKS.CAPTION,
-                textColor: c.color
-            });
-        }
-
-        // 3. Level Warps
-        const warpY = cheatY + 8 + cheats.length * 34 + 8;
-        Typography.drawText(ctx, 'WARP TO LEVEL:', rightX + 16, warpY + 10, {
-            font: FONT_STACKS.CAPTION,
-            color: '#94a3b8'
-        });
-
-        const warps = [
-            { label: 'TUTORIAL', act: 'warp_tutorial' },
-            { label: 'B1', act: 'warp_b1' },
-            { label: 'B2', act: 'warp_b2' },
-            { label: 'B3', act: 'warp_b3' },
-            { label: 'SURFACE', act: 'warp_finale' }
-        ];
-        const warpBtnW = (panelW - 28 - (warps.length - 1) * 6) / warps.length;
-        for (let i = 0; i < warps.length; i++) {
-            const wx = rightX + 14 + i * (warpBtnW + 6);
-            const w = warps[i];
-            this.hitboxes.push({
-                x: wx, y: warpY + 18, w: warpBtnW, h: 26,
-                action: () => {
-                    this.selectedAction = w.act;
-                    this.playSfx('click');
-                }
-            });
-            Typography.drawButton(ctx, w.label, wx, warpY + 18, warpBtnW, 26, {
-                font: FONT_STACKS.CAPTION,
-                textColor: '#38bdf8'
-            });
-        }
-
-        // Back to Title Button
-        const backW = 200;
-        const backH = 38;
-        const backX = width / 2 - backW / 2;
-        const backY = height - 50;
-        this.hitboxes.push({
-            x: backX, y: backY, w: backW, h: backH,
-            action: () => { this.mode = 'main'; this.playSfx('click'); }
-        });
-        Typography.drawButton(ctx, '< BACK TO TITLE', backX, backY, backW, backH, {
-            font: FONT_STACKS.BODY_BOLD,
-            isSelected: true
         });
     }
 

@@ -17,13 +17,24 @@ export default class HUD {
         this.fadeSpeed = 1;
         this.pauseAction = null;
         this.requestedPause = false;
-        this.pauseSubmenu = 'main'; // 'main' or 'settings'
+        this.pauseSubmenu = 'main'; // 'main', 'settings', or 'sound_debug'
         this.settings = saveManager.loadSettings();
         this.audioScape = null;
+        this.audio = null;
     }
 
     setAudioScape(audioScape) {
         this.audioScape = audioScape;
+    }
+
+    setAudio(audio) {
+        this.audio = audio;
+    }
+
+    playSfx(id) {
+        if (this.audio) {
+            try { this.audio.play(id); } catch (e) {}
+        }
     }
 
     adjustVolume(bus, delta) {
@@ -335,33 +346,51 @@ export default class HUD {
             ctx.lineWidth = 1;
             ctx.strokeRect(modalX + 6, modalY + 6, modalW - 12, modalH - 12);
 
-            // Header Title
-            const modalTitle = gameState.activeNoteTitle || 'ANCIENT INSCRIPTION';
-            Typography.drawText(ctx, modalTitle, modalX + 32, modalY + 44, {
-                font: FONT_STACKS.TITLE,
-                color: '#f59e0b'
+            // Header Subtitle Tag
+            Typography.drawText(ctx, 'CHRONICLES OF THE ABYSS', modalX + 32, modalY + 32, {
+                font: FONT_STACKS.CAPTION,
+                color: '#94a3b8'
             });
 
             // Close button in top-right of parchment
-            const closeBtnW = 90;
-            const closeBtnH = 30;
+            const closeBtnW = 96;
+            const closeBtnH = 32;
             const closeBtnX = modalX + modalW - closeBtnW - 24;
-            const closeBtnY = modalY + 24;
+            const closeBtnY = modalY + 22;
             const isHoverClose = mouse.x >= closeBtnX && mouse.x <= closeBtnX + closeBtnW && mouse.y >= closeBtnY && mouse.y <= closeBtnY + closeBtnH;
 
-            if (isHoverClose && isClick) {
+            // Keyboard dismissal check ([E], [ESC], or [SPACE])
+            const isKeyClose = input && (input.isJustPressed('interact') || input.isJustPressed('pause'));
+
+            if ((isHoverClose && isClick) || isKeyClose) {
                 gameState.activeNote = null;
                 gameState.activeNoteTimer = 0;
             }
 
-            Typography.drawButton(ctx, 'CLOSE', closeBtnX, closeBtnY, closeBtnW, closeBtnH, {
+            Typography.drawButton(ctx, 'CLOSE [E]', closeBtnX, closeBtnY, closeBtnW, closeBtnH, {
                 isHovered: isHoverClose,
                 borderColor: '#785f37',
-                textColor: '#d4af37'
+                textColor: '#d4af37',
+                font: FONT_STACKS.CAPTION
             });
 
+            // Header Title (fits cleanly without colliding with CLOSE button)
+            const modalTitle = gameState.activeNoteTitle || 'ANCIENT INSCRIPTION';
+            Typography.drawText(ctx, modalTitle, modalX + 32, modalY + 56, {
+                font: FONT_STACKS.HEADING,
+                color: '#f59e0b'
+            });
+
+            // Horizontal decorative divider
+            ctx.strokeStyle = 'rgba(120, 95, 55, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(modalX + 32, modalY + 68);
+            ctx.lineTo(modalX + modalW - 32, modalY + 68);
+            ctx.stroke();
+
             // Note Content with crisp typography & smooth multiline wrapping
-            const noteTextY = modalY + 85;
+            const noteTextY = modalY + 92;
             const maxTextW = modalW - 64;
             Typography.drawWrappedText(ctx, gameState.activeNote, modalX + 32, noteTextY, maxTextW, 24, {
                 font: FONT_STACKS.PARCHMENT,
@@ -369,7 +398,7 @@ export default class HUD {
             });
 
             // Footer hint
-            Typography.drawText(ctx, 'MOVE [A / D]  •  JUMP [SPACE]  •  CLICK CLOSE TO RESUME', width / 2, modalY + modalH - 24, {
+            Typography.drawText(ctx, 'PRESS [ E ] OR [ ESC ] TO CLOSE  •  [A / D] WALK  •  [SPACE] JUMP', width / 2, modalY + modalH - 24, {
                 font: FONT_STACKS.CAPTION,
                 color: '#a1a1aa',
                 align: 'center'
@@ -484,6 +513,10 @@ export default class HUD {
                     font: FONT_STACKS.BODY_BOLD
                 });
 
+            } else if (this.pauseSubmenu === 'sound_debug') {
+                // SOUND TEST & DEBUG SUBMENU
+                this.renderSoundDebug(ctx, width, height, gameState, mouse, isClick);
+
             } else {
                 // MAIN PAUSE MENU
                 Typography.drawText(ctx, 'PAUSED', width / 2, height * 0.30, {
@@ -524,7 +557,8 @@ export default class HUD {
                 const debugY = height * 0.54;
                 const isHoverDebug = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= debugY && mouse.y <= debugY + btnH;
                 if (isHoverDebug && isClick) {
-                    this.pauseAction = 'debug_menu';
+                    this.pauseSubmenu = 'sound_debug';
+                    this.playSfx('click');
                 }
                 Typography.drawButton(ctx, 'SOUND TEST & DEBUG', btnX, debugY, btnW, btnH, {
                     isHovered: isHoverDebug,
@@ -555,6 +589,211 @@ export default class HUD {
         }
 
         ctx.restore();
+    }
+
+    renderSoundDebug(ctx, width, height, gameState, mouse, isClick) {
+        Typography.drawText(ctx, 'SOUND TEST & DEBUG SUITE', width / 2, Math.min(54, height * 0.08), {
+            font: FONT_STACKS.TITLE,
+            color: '#38bdf8',
+            align: 'center',
+            shadowColor: 'rgba(56, 189, 248, 0.4)',
+            shadowBlur: 10
+        });
+
+        Typography.drawText(ctx, 'Procedural SFX Synthesizer  •  Atmosphere State Mixer  •  Cheats & Diagnostics', width / 2, Math.min(84, height * 0.12), {
+            font: FONT_STACKS.CAPTION,
+            color: '#94a3b8',
+            align: 'center'
+        });
+
+        const panelW = Math.min(520, width * 0.46);
+        const panelH = height - 150;
+        const leftX = width / 2 - panelW - 14;
+        const rightX = width / 2 + 14;
+        const panelY = 96;
+
+        // LEFT PANEL: SFX SOUNDBOARD
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        ctx.fillRect(leftX, panelY, panelW, panelH);
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(leftX, panelY, panelW, panelH);
+
+        Typography.drawText(ctx, 'SFX SOUNDBOARD (CLICK TO TRIGGER)', leftX + panelW / 2, panelY + 22, {
+            font: FONT_STACKS.BODY_BOLD,
+            color: '#f8fafc',
+            align: 'center'
+        });
+
+        const sfxList = [
+            { label: '👟 Stone Step', id: 'footstep_stone_1' },
+            { label: '💧 Wet Cavern Step', id: 'footstep_wet_1' },
+            { label: '💓 Visceral Heartbeat', id: 'visceral_heartbeat' },
+            { label: '🫁 Ragged Breathing', id: 'ragged_breath' },
+            { label: '🦴 Bone Snap Fracture', id: 'bone_snap' },
+            { label: '🩸 Flesh Wound Tear', id: 'flesh_wound' },
+            { label: '😱 Stalker Shriek', id: 'stalker_shriek' },
+            { label: '⚡ Stalker Lunge Ambush', id: 'stalker_lunge' },
+            { label: '👁️ Phantom Whisper', id: 'phantom_whisper' },
+            { label: '👣 Hallucination Step', id: 'hallucination_step' },
+            { label: '🕯️ Torch Extinguish', id: 'torch_snuff' },
+            { label: '🪨 Heavy Gate Grind', id: 'gate_grind' },
+            { label: '⚔️ Pendulum Whoosh', id: 'pendulum_whoosh' },
+            { label: '💥 Horror Stinger', id: 'stinger_sharp' },
+            { label: '⚙️ Lever Mechanism', id: 'click' },
+            { label: '🚪 Heavy Door Creak', id: 'door_creak' }
+        ];
+
+        const sfxCols = 2;
+        const btnW = (panelW - 36) / sfxCols;
+        const btnH = 32;
+        const startSfxY = panelY + 40;
+
+        for (let i = 0; i < sfxList.length; i++) {
+            const col = i % sfxCols;
+            const row = Math.floor(i / sfxCols);
+            const bx = leftX + 14 + col * (btnW + 8);
+            const by = startSfxY + row * (btnH + 6);
+            const item = sfxList[i];
+
+            const isHover = mouse.x >= bx && mouse.x <= bx + btnW && mouse.y >= by && mouse.y <= by + btnH;
+            if (isHover && isClick) {
+                this.playSfx(item.id);
+            }
+
+            Typography.drawButton(ctx, item.label, bx, by, btnW, btnH, {
+                isHovered: isHover,
+                font: FONT_STACKS.CAPTION,
+                textColor: isHover ? '#38bdf8' : '#e2e8f0',
+                borderColor: isHover ? '#38bdf8' : 'rgba(255, 255, 255, 0.15)'
+            });
+        }
+
+        // RIGHT PANEL: ATMOSPHERE & CHEATS
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        ctx.fillRect(rightX, panelY, panelW, panelH);
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(rightX, panelY, panelW, panelH);
+
+        Typography.drawText(ctx, 'ATMOSPHERE & DEBUG SUITE', rightX + panelW / 2, panelY + 22, {
+            font: FONT_STACKS.BODY_BOLD,
+            color: '#f8fafc',
+            align: 'center'
+        });
+
+        // 1. Atmosphere Selectors
+        const atmoY = panelY + 40;
+        const atmoList = [
+            { label: '🌿 EXPLORATION AMBIENCE', state: 'exploration' },
+            { label: '⚡ TENSION SOUNDSCAPE', state: 'tension' },
+            { label: '🩸 PURSUIT / CHASE DREAD', state: 'chase' },
+            { label: '🕯️ HOLY TORCH SANCTUARY', state: 'sanctuary' },
+            { label: '☀️ SURFACE SUNRISE PEACEFUL', state: 'surface_peaceful' }
+        ];
+
+        const atmoBtnW = (panelW - 28);
+        for (let i = 0; i < atmoList.length; i++) {
+            const by = atmoY + i * 32;
+            const item = atmoList[i];
+            const isHover = mouse.x >= rightX + 14 && mouse.x <= rightX + 14 + atmoBtnW && mouse.y >= by && mouse.y <= by + 26;
+            if (isHover && isClick) {
+                if (this.audioScape && typeof this.audioScape.setState === 'function') {
+                    this.audioScape.setState(item.state);
+                }
+                this.playSfx('click');
+            }
+            Typography.drawButton(ctx, item.label, rightX + 14, by, atmoBtnW, 26, {
+                isHovered: isHover,
+                font: FONT_STACKS.CAPTION,
+                textColor: isHover ? '#fbbf24' : '#cbd5e1',
+                borderColor: isHover ? '#fbbf24' : 'rgba(255, 255, 255, 0.15)'
+            });
+        }
+
+        // 2. Debug Cheats & Diagnostics
+        const cheatY = atmoY + atmoList.length * 32 + 8;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.beginPath();
+        ctx.moveTo(rightX + 14, cheatY);
+        ctx.lineTo(rightX + panelW - 14, cheatY);
+        ctx.stroke();
+
+        const cheats = [
+            { label: `🛡️ GOD MODE: ${gameState && gameState.godMode ? 'ACTIVE [ON]' : 'DISABLED [OFF]'}`, action: 'toggle_god_mode', color: (gameState && gameState.godMode) ? '#10b981' : '#f87171' },
+            { label: '💧 REFILL OIL, STAMINA & SANITY', action: 'refill_stats', color: '#38bdf8' },
+            { label: '👻 SPAWN SHADOW STALKER', action: 'spawn_stalker', color: '#cbd5e1' },
+            { label: '😱 TRIGGER FULLSCREEN JUMPSCARE', action: 'test_jumpscare', color: '#f87171' }
+        ];
+
+        for (let i = 0; i < cheats.length; i++) {
+            const by = cheatY + 8 + i * 32;
+            const c = cheats[i];
+            const isHover = mouse.x >= rightX + 14 && mouse.x <= rightX + 14 + atmoBtnW && mouse.y >= by && mouse.y <= by + 26;
+            if (isHover && isClick) {
+                if (c.action === 'toggle_god_mode') {
+                    if (gameState) {
+                        gameState.godMode = !gameState.godMode;
+                    }
+                } else {
+                    this.pauseAction = c.action;
+                }
+                this.playSfx('click');
+            }
+            Typography.drawButton(ctx, c.label, rightX + 14, by, atmoBtnW, 26, {
+                isHovered: isHover,
+                font: FONT_STACKS.CAPTION,
+                textColor: c.color,
+                borderColor: isHover ? c.color : 'rgba(255, 255, 255, 0.15)'
+            });
+        }
+
+        // 3. Level Warps
+        const warpY = cheatY + 8 + cheats.length * 32 + 6;
+        Typography.drawText(ctx, 'WARP TO LEVEL:', rightX + 16, warpY + 8, {
+            font: FONT_STACKS.CAPTION,
+            color: '#94a3b8'
+        });
+
+        const warps = [
+            { label: 'TUTORIAL', act: 'warp_tutorial' },
+            { label: 'B1', act: 'warp_b1' },
+            { label: 'B2', act: 'warp_b2' },
+            { label: 'B3', act: 'warp_b3' },
+            { label: 'SURFACE', act: 'warp_finale' }
+        ];
+        const warpBtnW = (panelW - 28 - (warps.length - 1) * 6) / warps.length;
+        for (let i = 0; i < warps.length; i++) {
+            const wx = rightX + 14 + i * (warpBtnW + 6);
+            const w = warps[i];
+            const isHover = mouse.x >= wx && mouse.x <= wx + warpBtnW && mouse.y >= warpY + 16 && mouse.y <= warpY + 16 + 26;
+            if (isHover && isClick) {
+                this.pauseAction = w.act;
+                this.playSfx('click');
+            }
+            Typography.drawButton(ctx, w.label, wx, warpY + 16, warpBtnW, 26, {
+                isHovered: isHover,
+                font: FONT_STACKS.CAPTION,
+                textColor: isHover ? '#38bdf8' : '#94a3b8',
+                borderColor: isHover ? '#38bdf8' : 'rgba(56, 189, 248, 0.25)'
+            });
+        }
+
+        // Back to Pause Menu Button
+        const backW = 200;
+        const backH = 38;
+        const backX = width / 2 - backW / 2;
+        const backY = height - 48;
+        const isHoverBack = mouse.x >= backX && mouse.x <= backX + backW && mouse.y >= backY && mouse.y <= backY + backH;
+        if (isHoverBack && isClick) {
+            this.pauseSubmenu = 'main';
+            this.playSfx('click');
+        }
+        Typography.drawButton(ctx, '< BACK TO PAUSE', backX, backY, backW, backH, {
+            isHovered: isHoverBack,
+            isSelected: true,
+            font: FONT_STACKS.BODY_BOLD
+        });
     }
 
     /**

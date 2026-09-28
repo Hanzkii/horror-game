@@ -122,10 +122,17 @@ export class Player extends Entity {
         this.invulnerableTimer = Math.max(0, this.invulnerableTimer - dt);
         this.panicLightTimer = Math.max(0, this.panicLightTimer - dt);
 
+        // God Mode infinite stamina, oil, and immunity
+        if (scene?.gameState?.godMode) {
+            this.stamina = this.maxStamina;
+            this.lanternOil = this.maxOil;
+            this.invulnerableTimer = 1.0;
+        }
+
         // Suffocating darkness & Lantern Oil dynamics
         const isTutorial = scene?.gameState?.isTutorialLevel;
         const isFinale = scene?.gameState?.currentLevel?.includes('Surface');
-        if (!isTutorial && !isFinale) {
+        if (!isTutorial && !isFinale && !scene?.gameState?.godMode) {
             this.lanternOil = Math.max(0, this.lanternOil - dt * 0.75); // ~133s full tank
         }
 
@@ -209,6 +216,8 @@ export class Player extends Entity {
      */
     onShadowHit(dir) {
         if (this.invulnerableTimer > 0) return false;
+        // In God Mode, attacks pass harmlessly through
+        if (this.scene?.gameState?.godMode) return false;
         this.invulnerableTimer = 1.4;
         this.stunTimer = 0.55;
         this.vx = dir * 280;
@@ -476,6 +485,15 @@ export class Player extends Entity {
 
         // --- 5. ABYSS PIT-FALL BOUNDARY SAFETY ---
         if (scene.height > 0 && this.y > scene.height + 16) {
+            if (scene.gameState && scene.gameState.godMode) {
+                // In God Mode, smoothly teleport back to spawn point without dying!
+                this.x = this.spawnX;
+                this.y = this.spawnY;
+                this.vx = 0;
+                this.vy = 0;
+                this.grounded = true;
+                return;
+            }
             if (scene.audio) {
                 try { scene.audio.play('shadow_hit'); } catch (e) {}
             }
