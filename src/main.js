@@ -363,93 +363,73 @@ async function init() {
                 postProcessing.render(playerScreenPos, sanityNormalized, screenLights, shadowDistance);
 
                 if (drawJumpscare) {
-                    // 1. Dark nightmare void
-                    ctx.fillStyle = 'rgba(6, 2, 8, 0.95)';
+                    const t = performance.now() * 0.001;
+
+                    // 1. Total blackout — the void swallows everything
+                    ctx.fillStyle = '#000000';
                     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-                    // 2. Visceral blood trauma gradient
-                    const traumaGrad = ctx.createRadialGradient(
-                        GAME_WIDTH / 2, GAME_HEIGHT / 2, 20,
-                        GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH / 1.8
+                    // 2. Violent screen tear bands — horizontal slices displaced randomly
+                    for (let i = 0; i < 12; i++) {
+                        const tearY = Math.floor(Math.random() * GAME_HEIGHT);
+                        const tearH = 1 + Math.floor(Math.random() * 6);
+                        const tearOffset = (Math.random() - 0.5) * 40;
+                        // Displaced static strips in the void
+                        const brightness = Math.floor(Math.random() * 30);
+                        ctx.fillStyle = `rgb(${brightness}, ${brightness >> 1}, ${brightness >> 2})`;
+                        ctx.fillRect(tearOffset, tearY, GAME_WIDTH, tearH);
+                    }
+
+                    // 3. Dense static noise — the signal is dying
+                    for (let n = 0; n < 200; n++) {
+                        const nx = Math.random() * GAME_WIDTH;
+                        const ny = Math.random() * GAME_HEIGHT;
+                        const nw = 1 + Math.random() * 4;
+                        const intensity = Math.random();
+                        if (intensity > 0.85) {
+                            // Rare bright white flicker
+                            ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + Math.random() * 0.5})`;
+                        } else {
+                            // Dark noise grain
+                            ctx.fillStyle = `rgba(${Math.random() * 60}, 0, ${Math.random() * 20}, ${0.3 + Math.random() * 0.5})`;
+                        }
+                        ctx.fillRect(nx, ny, nw, 1);
+                    }
+
+                    // 4. Strobing red trauma pulse — like a dying heartbeat
+                    const pulse = Math.sin(t * 35) > 0.3 ? 0.35 : 0;
+                    if (pulse > 0) {
+                        ctx.fillStyle = `rgba(120, 0, 0, ${pulse})`;
+                        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+                    }
+
+                    // 5. Brief inverted flash frame — 15% chance per frame
+                    if (Math.random() < 0.15) {
+                        ctx.globalCompositeOperation = 'difference';
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+                        ctx.globalCompositeOperation = 'source-over';
+                    }
+
+                    // 6. Massive corruption blocks — something is wrong with reality
+                    for (let b = 0; b < 3; b++) {
+                        const bx = Math.random() * GAME_WIDTH;
+                        const by = Math.random() * GAME_HEIGHT;
+                        const bw = 10 + Math.random() * 80;
+                        const bh = 2 + Math.random() * 12;
+                        ctx.fillStyle = `rgba(${Math.random() * 40}, 0, ${Math.random() * 15}, 0.9)`;
+                        ctx.fillRect(bx, by, bw, bh);
+                    }
+
+                    // 7. Vignette of dread — edges closing in
+                    const dreadGrad = ctx.createRadialGradient(
+                        GAME_WIDTH / 2, GAME_HEIGHT / 2, 10,
+                        GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH / 2.5
                     );
-                    traumaGrad.addColorStop(0, 'rgba(160, 20, 20, 0.45)');
-                    traumaGrad.addColorStop(0.7, 'rgba(90, 0, 15, 0.85)');
-                    traumaGrad.addColorStop(1, 'rgba(20, 0, 5, 0.98)');
-                    ctx.fillStyle = traumaGrad;
+                    dreadGrad.addColorStop(0, 'rgba(80, 0, 0, 0.15)');
+                    dreadGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+                    ctx.fillStyle = dreadGrad;
                     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-                    // 3. Slashing nightmare claws across screen
-                    ctx.strokeStyle = '#05020a';
-                    ctx.lineWidth = 6;
-                    ctx.lineCap = 'round';
-                    for (let c = 0; c < 4; c++) {
-                        const startX = GAME_WIDTH * 0.2 + c * 75;
-                        const startY = 15 + (c % 2) * 25;
-                        ctx.beginPath();
-                        ctx.moveTo(startX, startY);
-                        ctx.lineTo(startX - 65, startY + 190);
-                        ctx.stroke();
-                    }
-
-                    // 4. Eldritch Eyes tearing through reality
-                    const eyeY = GAME_HEIGHT * 0.44;
-                    const leftEyeX = GAME_WIDTH * 0.38;
-                    const rightEyeX = GAME_WIDTH * 0.62;
-
-                    // Black hollow sockets
-                    ctx.fillStyle = '#0a0005';
-                    ctx.beginPath();
-                    ctx.ellipse(leftEyeX, eyeY, 34, 18, -0.15, 0, Math.PI * 2);
-                    ctx.ellipse(rightEyeX, eyeY, 34, 18, 0.15, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // Burning violet-white irises
-                    ctx.fillStyle = '#d4beff';
-                    ctx.beginPath();
-                    ctx.ellipse(leftEyeX, eyeY, 20, 12, 0, 0, Math.PI * 2);
-                    ctx.ellipse(rightEyeX, eyeY, 20, 12, 0, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // Narrow crimson demonic pupils
-                    ctx.fillStyle = '#ff0033';
-                    ctx.beginPath();
-                    ctx.ellipse(leftEyeX, eyeY, 5, 12, 0, 0, Math.PI * 2);
-                    ctx.ellipse(rightEyeX, eyeY, 5, 12, 0, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // 5. Gaping Horrific Screaming Void Maw
-                    const mawY = eyeY + 48;
-                    ctx.fillStyle = '#020106';
-                    ctx.beginPath();
-                    ctx.ellipse(GAME_WIDTH / 2, mawY, 68, 38, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = 'rgba(147, 51, 234, 0.45)';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-
-                    // Jagged needle teeth rows
-                    ctx.fillStyle = '#f8fafc';
-                    for (let t = -54; t <= 54; t += 12) {
-                        // Upper teeth
-                        ctx.beginPath();
-                        ctx.moveTo(GAME_WIDTH / 2 + t, mawY - 32);
-                        ctx.lineTo(GAME_WIDTH / 2 + t + 5, mawY - 32);
-                        ctx.lineTo(GAME_WIDTH / 2 + t + 2.5, mawY - 10);
-                        ctx.fill();
-
-                        // Lower teeth
-                        ctx.beginPath();
-                        ctx.moveTo(GAME_WIDTH / 2 + t + 6, mawY + 32);
-                        ctx.lineTo(GAME_WIDTH / 2 + t + 11, mawY + 32);
-                        ctx.lineTo(GAME_WIDTH / 2 + t + 8.5, mawY + 10);
-                        ctx.fill();
-                    }
-
-                    // Glitch noise sparks
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-                    for (let n = 0; n < 45; n++) {
-                        ctx.fillRect(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, 2 + Math.random() * 5, 1);
-                    }
                 }
 
                 // Mouse cursor hidden during gameplay (shown only in menus and active note screens)
@@ -740,7 +720,7 @@ async function init() {
                     let shadow = scene.entities.find(e => e.type === 'shadow' || e instanceof Shadow);
                     if (!shadow && scene.player) {
                         shadow = new Shadow(scene.player.x + 80, scene.player.y);
-                        scene.addEntity(shadow);
+                        scene.add(shadow);
                     }
                     if (shadow && scene.player) {
                         shadow.state = 1;
@@ -754,7 +734,7 @@ async function init() {
                     let shadow = scene.entities.find(e => e.type === 'shadow' || e instanceof Shadow);
                     if (!shadow && scene.player) {
                         shadow = new Shadow(scene.player.x + 20, scene.player.y);
-                        scene.addEntity(shadow);
+                        scene.add(shadow);
                     }
                     if (shadow) {
                         shadow.jumpScareTimer = 0.55;
