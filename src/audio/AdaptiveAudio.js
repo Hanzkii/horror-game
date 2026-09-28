@@ -27,17 +27,9 @@ export default class AdaptiveAudio {
         this.isActive = true;
         const ctx = this.audio.context;
         
-        // Ensure sound studio synth is running
-        if (!this.soundStudio.isPlaying) {
-            try {
-                if (this.soundStudio.droneOsc1) this.soundStudio.droneOsc1.start();
-                if (this.soundStudio.droneOsc2) this.soundStudio.droneOsc2.start();
-                if (this.soundStudio.droneLfo) this.soundStudio.droneLfo.start();
-                if (this.soundStudio.windNoise) this.soundStudio.windNoise.start();
-                this.soundStudio.isPlaying = true;
-                if (this.soundStudio.startChimesLoop) this.soundStudio.startChimesLoop();
-                if (this.soundStudio.startHeartbeatLoop) this.soundStudio.startHeartbeatLoop();
-            } catch(e) { /* may already be started */ }
+        // Ensure sound studio synth is started
+        if (this.soundStudio) {
+            this.soundStudio.startAmbient();
         }
         
         // 1. Proximity Breathing Layer
@@ -81,13 +73,25 @@ export default class AdaptiveAudio {
     
     stopAmbient() {
         this.isActive = false;
+        if (this.soundStudio) {
+            this.soundStudio.stopAmbient();
+        }
+        if (this.breathingGain) {
+            try { this.breathingGain.gain.setValueAtTime(0, this.audio.context.currentTime); } catch(e) {}
+        }
         if (this.breathingSrc) {
             try { this.breathingSrc.stop(); } catch(e) {}
             this.breathingSrc = null;
         }
+        if (this.crackleGain) {
+            try { this.crackleGain.gain.setValueAtTime(0, this.audio.context.currentTime); } catch(e) {}
+        }
         if (this.crackleSrc) {
             try { this.crackleSrc.stop(); } catch(e) {}
             this.crackleSrc = null;
+        }
+        if (this.puzzleResonanceGain) {
+            try { this.puzzleResonanceGain.gain.setValueAtTime(0, this.audio.context.currentTime); } catch(e) {}
         }
         if (this.puzzleResonanceOsc) {
             try { this.puzzleResonanceOsc.stop(); } catch(e) {}
@@ -126,42 +130,46 @@ export default class AdaptiveAudio {
         if (hasSynth) {
             const params = this.soundStudio.params;
 
-            // Base ambient drone tier depending on player sanity
-            let baseDroneFreq = 55;
+            // Base ambient sub-drone tier: quiet, deep subterranean chest rumble
+            let baseDroneFreq = 38;
             if (sanityNorm > 0.7) {
-                baseDroneFreq = Math.max(35, 55 - (floorIndex - 1) * 2);
-                params.droneLfoRate = 0.2;
+                baseDroneFreq = Math.max(28, 38 - (floorIndex - 1) * 2);
+                params.droneLfoRate = 0.08;
+                params.droneVol = 0.18; // quiet!
                 params.chimesVol = 0.3;
-                params.chimesRate = 6.0;
+                params.chimesRate = 7.0;
                 params.heartbeatVol = 0;
-                params.windVol = 0.2;
+                params.windVol = 0.8; // prominent, clearly audible cavern wind
             } else if (sanityNorm > 0.4) {
-                baseDroneFreq = Math.max(35, 48 - (floorIndex - 1) * 2);
-                params.droneLfoRate = 0.4;
-                params.chimesVol = 0.6;
-                params.chimesRate = 4.0;
-                params.heartbeatVol = 0.3;
+                baseDroneFreq = Math.max(26, 35 - (floorIndex - 1) * 2);
+                params.droneLfoRate = 0.15;
+                params.droneVol = 0.22;
+                params.chimesVol = 0.55;
+                params.chimesRate = 4.5;
+                params.heartbeatVol = 0.25;
                 params.heartbeatBpm = 60;
-                params.windVol = 0.4;
+                params.windVol = 0.9;
             } else {
-                baseDroneFreq = Math.max(35, 40 - (floorIndex - 1) * 2);
-                params.droneLfoRate = 0.8;
-                params.chimesVol = 0.9;
-                params.chimesRate = 2.0;
-                params.heartbeatVol = 0.8;
-                params.heartbeatBpm = 100;
-                params.windVol = 0.7;
+                baseDroneFreq = Math.max(24, 32 - (floorIndex - 1) * 2);
+                params.droneLfoRate = 0.3;
+                params.droneVol = 0.26;
+                params.chimesVol = 0.8;
+                params.chimesRate = 2.5;
+                params.heartbeatVol = 0.65;
+                params.heartbeatBpm = 95;
+                params.windVol = 1.0; // howling storm in deep madness
             }
 
             // Stalker Proximity overrides
             if (shadowDistance < 120) {
-                params.heartbeatVol = Math.max(params.heartbeatVol, 0.7);
+                params.heartbeatVol = Math.max(params.heartbeatVol, 0.75);
                 params.heartbeatBpm = Math.max(params.heartbeatBpm, 120);
+                params.droneVol = Math.max(params.droneVol, 0.28);
             }
             if (shadowDistance < 60) {
-                params.droneLfoRate = Math.max(params.droneLfoRate, 1.2);
-                params.windVol = 0.9;
-                params.chimesVol = 1.0;
+                params.droneLfoRate = Math.max(params.droneLfoRate, 0.6);
+                params.windVol = 1.0;
+                params.chimesVol = 0.95;
             }
 
             // --- PUZZLE ACOUSTIC CLUE SYSTEM ---
@@ -244,14 +252,19 @@ export default class AdaptiveAudio {
             // Update Sound Studio synthesis nodes in real-time
             if (this.soundStudio.droneOsc1) {
                 this.soundStudio.droneOsc1.frequency.setTargetAtTime(params.droneFreq, time, 0.35);
-                this.soundStudio.droneOsc2.frequency.setTargetAtTime(params.droneFreq * 1.5, time, 0.35);
+                this.soundStudio.droneOsc2.frequency.setTargetAtTime(params.droneFreq + 1.5, time, 0.35);
                 this.soundStudio.droneOsc2.detune.setTargetAtTime(params.droneDetune, time, 0.35);
+            }
+            if (this.soundStudio.droneGain) {
+                // Drone is kept subtle and quiet (felt in the chest as sub-bass rumble)
+                this.soundStudio.droneGain.gain.setTargetAtTime(params.droneVol * 0.08, time, 0.35);
             }
             if (this.soundStudio.droneLfo) {
                 this.soundStudio.droneLfo.frequency.setTargetAtTime(params.droneLfoRate, time, 0.35);
             }
             if (this.soundStudio.windGain) {
-                this.soundStudio.windGain.gain.setTargetAtTime(params.windVol * 0.12, time, 0.4);
+                // Cavern wind is prominent and clearly audible
+                this.soundStudio.windGain.gain.setTargetAtTime(params.windVol * 0.45, time, 0.4);
             }
         }
     }

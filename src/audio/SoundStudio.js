@@ -16,18 +16,18 @@ export default class SoundStudio {
             masterVol: 0.8,
             musicVol: 0.7,
             sfxVol: 0.85,
-            droneVol: 0.6,
-            droneFreq: 55, // A1
+            droneVol: 0.2, // much quieter, subtle ominous subterranean rumble
+            droneFreq: 38, // D1 / deep chest resonance
             droneWave: 'sine',
-            droneLfoRate: 0.2, // breathing rate
-            droneDetune: 8,
-            chimesVol: 0.5,
-            chimesRate: 3.5, // seconds between melodic chimes
-            chimesTension: 0.6, // frequency of dissonant tritones/minor 2nds
-            heartbeatVol: 0.4,
-            heartbeatBpm: 60,
-            windVol: 0.35,
-            windCutoff: 350
+            droneLfoRate: 0.08, // slow eerie breathing swell
+            droneDetune: 2.0, // eerie binaural beating
+            chimesVol: 0.35,
+            chimesRate: 5.5, // seconds between melodic chimes
+            chimesTension: 0.7, // frequency of dissonant tritones/minor 2nds
+            heartbeatVol: 0.0,
+            heartbeatBpm: 55,
+            windVol: 0.85, // prominent, howling subterranean wind
+            windCutoff: 450
         };
 
         // Synthesizer nodes
@@ -237,29 +237,29 @@ export default class SoundStudio {
         if (!this.ctx) return;
         const ctx = this.ctx;
 
-        // Master Bus for Studio
+        // Master Bus for Studio (Defaults to 0 on main menu)
         this.studioMaster = ctx.createGain();
-        this.studioMaster.gain.value = this.params.masterVol;
+        this.studioMaster.gain.value = 0;
         this.studioMaster.connect(this.audio.masterGain);
 
-        // 1. DRONE SYNTH
+        // 1. DEEP SUBTERRANEAN DRONE SYNTH (Deep, quiet, binaural dread rumble)
         this.droneGain = ctx.createGain();
-        this.droneGain.gain.value = this.params.droneVol * 0.25;
+        this.droneGain.gain.value = 0;
 
         this.droneOsc1 = ctx.createOscillator();
         this.droneOsc1.type = 'sine';
-        this.droneOsc1.frequency.value = this.params.droneFreq;
+        this.droneOsc1.frequency.value = this.params.droneFreq; // 38 Hz deep sub-bass
 
         this.droneOsc2 = ctx.createOscillator();
-        this.droneOsc2.type = 'triangle';
-        this.droneOsc2.frequency.value = this.params.droneFreq * 1.5; // perfect fifth
+        this.droneOsc2.type = 'sine'; // pure deep sine, no harsh harmonics
+        this.droneOsc2.frequency.value = this.params.droneFreq + 1.5; // 39.5 Hz binaural pulse
         this.droneOsc2.detune.value = this.params.droneDetune;
 
-        // LFO for breathing swell
+        // Slow breathing LFO for creeping terror
         this.droneLfo = ctx.createOscillator();
         this.droneLfo.frequency.value = this.params.droneLfoRate;
         this.droneLfoGain = ctx.createGain();
-        this.droneLfoGain.gain.value = 6;
+        this.droneLfoGain.gain.value = 3;
         this.droneLfo.connect(this.droneLfoGain);
         this.droneLfoGain.connect(this.droneOsc1.frequency);
 
@@ -267,44 +267,87 @@ export default class SoundStudio {
         this.droneOsc2.connect(this.droneGain);
         this.droneGain.connect(this.studioMaster);
 
-        // 2. CAVERN WIND SYNTH (Filtered Noise)
+        // 2. CAVERN WIND & HOWLING DRAFTS SYNTH
         this.windGain = ctx.createGain();
-        this.windGain.gain.value = this.params.windVol * 0.12;
+        this.windGain.gain.value = 0;
 
-        const bufferSize = ctx.sampleRate * 2;
+        const bufferSize = ctx.sampleRate * 3;
         const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
+        let lastSample = 0;
         for (let i = 0; i < bufferSize; i++) {
-            output[i] = Math.random() * 2 - 1;
+            const white = Math.random() * 2 - 1;
+            // Pink/brown filtered noise gives authentic deep rushing air
+            lastSample = (lastSample + 0.03 * white) / 1.03;
+            output[i] = lastSample * 3.8;
         }
 
         this.windNoise = ctx.createBufferSource();
         this.windNoise.buffer = noiseBuffer;
         this.windNoise.loop = true;
 
+        // Dual filters: warm cavern lowpass + sweeping resonant bandpass
         this.windFilter = ctx.createBiquadFilter();
-        this.windFilter.type = 'bandpass';
-        this.windFilter.frequency.value = this.params.windCutoff;
-        this.windFilter.Q.value = 3.0;
+        this.windFilter.type = 'lowpass';
+        this.windFilter.frequency.value = 650;
+
+        this.windResonance = ctx.createBiquadFilter();
+        this.windResonance.type = 'bandpass';
+        this.windResonance.frequency.value = this.params.windCutoff;
+        this.windResonance.Q.value = 1.8;
+
+        // Wind LFO: sweeps the resonant frequency to simulate howling air currents
+        this.windLfo = ctx.createOscillator();
+        this.windLfo.frequency.value = 0.08;
+        this.windLfoGain = ctx.createGain();
+        this.windLfoGain.gain.value = 220; // sweeps between 230Hz and 670Hz
+        this.windLfo.connect(this.windLfoGain);
+        this.windLfoGain.connect(this.windResonance.frequency);
 
         this.windNoise.connect(this.windFilter);
-        this.windFilter.connect(this.windGain);
+        this.windFilter.connect(this.windResonance);
+        this.windResonance.connect(this.windGain);
         this.windGain.connect(this.studioMaster);
 
-        // Start continuous generators
+        // Start underlying signal generators (muted until game begins)
         try {
             this.droneOsc1.start();
             this.droneOsc2.start();
             this.droneLfo.start();
             this.windNoise.start();
-            this.isPlaying = true;
+            this.windLfo.start();
         } catch (e) {
-            // will start on user interaction
+            // will start on audio context resume
         }
+        this.isPlaying = false;
+    }
 
-        // 3. START TIMED PROCEDURAL LAYERS (Chimes & Heartbeat)
+    startAmbient() {
+        this.isPlaying = true;
+        const now = this.ctx.currentTime;
+        // Fade in master, quiet sub-drone, and prominent cavern wind
+        this.studioMaster.gain.setTargetAtTime(this.params.masterVol, now, 0.4);
+        this.droneGain.gain.setTargetAtTime(this.params.droneVol * 0.08, now, 0.4);
+        this.windGain.gain.setTargetAtTime(this.params.windVol * 0.45, now, 0.4);
         this.startChimesLoop();
         this.startHeartbeatLoop();
+    }
+
+    stopAmbient() {
+        this.isPlaying = false;
+        const now = this.ctx.currentTime;
+        // Completely silence on menu screens
+        this.studioMaster.gain.setTargetAtTime(0, now, 0.08);
+        this.droneGain.gain.setTargetAtTime(0, now, 0.08);
+        this.windGain.gain.setTargetAtTime(0, now, 0.08);
+        if (this.chimesTimer) {
+            clearTimeout(this.chimesTimer);
+            this.chimesTimer = null;
+        }
+        if (this.heartbeatTimer) {
+            clearTimeout(this.heartbeatTimer);
+            this.heartbeatTimer = null;
+        }
     }
 
     /**

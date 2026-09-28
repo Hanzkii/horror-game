@@ -469,6 +469,12 @@ async function init() {
             audio.context.resume();
         }
         
+        // Ensure main menu is completely quiet (no droning sound)
+        adaptiveAudio.stopAmbient();
+        if (soundStudio && soundStudio.stopAmbient) {
+            soundStudio.stopAmbient();
+        }
+        
         currentState = GAME_STATES.MENU;
         requestAnimationFrame(loop);
     }
