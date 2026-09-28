@@ -150,13 +150,10 @@ export class Interactable extends Entity {
                     }
                 }
             } else {
-                // Door unlocked!
+                // Door unlocked — transition immediately, no inscription popup
                 if (scene.audio) scene.audio.play('door_creak');
                 if (scene.onNextLevel) {
                     scene.onNextLevel();
-                } else if (scene.gameState) {
-                    scene.gameState.activeNote = "The heavy stone door unlocks...\nDescending deeper into the abyss.";
-                    scene.gameState.activeNoteTitle = "PORTAL OF DESCENT";
                 }
             }
             
