@@ -58,6 +58,7 @@ export class Interactable extends Entity {
             // Read lore note
             if (scene.gameState) {
                 scene.gameState.activeNote = this.properties.text || "An unreadable scrap of paper...";
+                scene.gameState.activeNoteTitle = this.properties.title || "ANCIENT INSCRIPTION";
                 scene.gameState.collectNote(this.properties.id || 'note_generic');
             }
             if (scene.audio) scene.audio.play('paper');
@@ -84,6 +85,7 @@ export class Interactable extends Entity {
                 if (scene.audio) scene.audio.play('thud');
                 if (scene.gameState) {
                     scene.gameState.activeNote = "THE IRON GATE IS SEALED SHUT.\n\nAn ancient mechanism locks it in place.\nA lever must be hidden in the chambers above...";
+                    scene.gameState.activeNoteTitle = "SEALED GATE";
                 }
             } else {
                 // Door unlocked!
@@ -92,6 +94,7 @@ export class Interactable extends Entity {
                     scene.onNextLevel();
                 } else if (scene.gameState) {
                     scene.gameState.activeNote = "The heavy stone door unlocks...\nDescending deeper into the abyss.";
+                    scene.gameState.activeNoteTitle = "PORTAL OF DESCENT";
                 }
             }
             
@@ -106,6 +109,7 @@ export class Interactable extends Entity {
                 scene.gameState.activeNote = this.isActivated
                     ? "CLANK! Heavy gears grind within the stone.\n\nThe Sealed Gate has opened!"
                     : "The mechanism resets.";
+                scene.gameState.activeNoteTitle = "ANCIENT MECHANISM";
             }
             if (this.properties.onToggle) {
                 this.properties.onToggle(scene);

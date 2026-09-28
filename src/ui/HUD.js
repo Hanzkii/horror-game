@@ -273,7 +273,8 @@ export default class HUD {
             ctx.strokeRect(modalX + 6, modalY + 6, modalW - 12, modalH - 12);
 
             // Header Title
-            Typography.drawText(ctx, 'ANCIENT INSCRIPTION', modalX + 32, modalY + 44, {
+            const modalTitle = gameState.activeNoteTitle || 'ANCIENT INSCRIPTION';
+            Typography.drawText(ctx, modalTitle, modalX + 32, modalY + 44, {
                 font: FONT_STACKS.TITLE,
                 color: '#f59e0b'
             });

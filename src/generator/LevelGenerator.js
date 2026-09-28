@@ -158,7 +158,7 @@ function generateAttempt(options, forceAccept = false) {
     const hazardDensity = options.hazardDensity !== undefined ? options.hazardDensity : 0.5;
     const verticality = options.verticality !== undefined ? options.verticality : 0.5;
     const shadowCount = options.shadowCount !== undefined ? options.shadowCount : 1;
-    const noteCount = options.noteCount !== undefined ? options.noteCount : 2;
+    const noteCount = options.noteCount !== undefined ? options.noteCount : 1;
     const roomCount = Math.max(3, Math.min(8, options.roomCount || 5));
 
     const grid = Array.from({ length: rows }, () => Array(cols).fill(1));
@@ -206,7 +206,8 @@ function generateAttempt(options, forceAccept = false) {
                 properties: {
                     interactType: 0,
                     id: `note_seed_${seed}_start`,
-                    text: `Seed #${seed}:\n${CREEPY_NOTES[Math.floor(rng() * CREEPY_NOTES.length)]}\n\nThe Sealed Gate ahead requires the ancient lever in the climbing shafts.`
+                    title: 'ANCIENT INSCRIPTION',
+                    text: `Catacombs — Depth B${options.floorIndex || 1}:\n${CREEPY_NOTES[Math.floor(rng() * CREEPY_NOTES.length)]}\n\nThe Sealed Gate ahead requires the ancient lever in the climbing shafts.`
                 }
             });
 
@@ -467,21 +468,19 @@ function generateAttempt(options, forceAccept = false) {
         }
     }
 
-    // Place extra lore notes
-    for (let n = 0; n < noteCount - 1; n++) {
-        const noteCol = Math.floor(cols * (0.3 + 0.3 * n) + rng() * 5);
-        if (noteCol > 10 && noteCol < cols - 8) {
-            entities.push({
-                type: 'interactable',
-                x: noteCol * tileSize,
-                y: (baseFloorRow - 1) * tileSize,
-                properties: {
-                    interactType: 0,
-                    id: `note_seed_${seed}_${n}`,
-                    text: CREEPY_NOTES[Math.floor(rng() * CREEPY_NOTES.length)]
-                }
-            });
-        }
+    // Optional: Place lore note at lever mechanism if specifically requested
+    if (noteCount > 1 && leverPos) {
+        entities.push({
+            type: 'interactable',
+            x: (leverPos.c + 1) * tileSize,
+            y: leverPos.r * tileSize,
+            properties: {
+                interactType: 0,
+                id: `note_seed_${seed}_lever`,
+                title: 'SANCTUM MECHANISM',
+                text: "ARCHITECT'S CARVING:\n'The ancient gears groan beneath the mountain.\nPull the switch to break the gate's seal.'"
+            }
+        });
     }
 
     return {

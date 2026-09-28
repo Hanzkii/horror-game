@@ -40,7 +40,7 @@ export default class LevelEditor {
             hazardDensity: 40,
             verticality: 50,
             shadowCount: 1,
-            noteCount: 2
+            noteCount: 1
         };
 
         this.initUI();

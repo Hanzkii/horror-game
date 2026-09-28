@@ -97,6 +97,7 @@ export const Level1 = {
             properties: {
                 interactType: 0, // Note
                 id: 'note_start',
+                title: 'ANCIENT INSCRIPTION',
                 text: "The main gate is locked.\nFollow the torches upward into the shaft.\nThe ancient lever rests in the sanctum above."
             }
         },
@@ -139,6 +140,7 @@ export const Level1 = {
             properties: {
                 interactType: 0, // Note
                 id: 'note_sanctum',
+                title: "ARCHITECT'S JOURNAL",
                 text: "ARCHITECT'S JOURNAL:\n'The gate has been secured.\nNo creature from the depths shall pass upward.'"
             }
         },

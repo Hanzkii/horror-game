@@ -90,22 +90,13 @@ export const TutorialLevel = {
             y: 208,
             properties: {
                 interactType: 0,
-                id: 'tut_move',
-                text: "TRIAL I: MOVEMENT\n\nUse [A] and [D] to move across the catacombs.\nTake steady steps into the unknown."
+                id: 'tut_start',
+                title: 'CRYPT OF TRIALS',
+                text: "THE CRYPT OF TRIALS\n\nProve your worth to venture into the abyss.\n\nLeap across the chasms, unlock ancient mechanisms, and remember:\nThe holy light of torches is your only sanctuary against the dark."
             }
         },
 
-        // --- ZONE 2: Jump Trial ---
-        {
-            type: 'interactable',
-            x: 272,
-            y: 208,
-            properties: {
-                interactType: 0,
-                id: 'tut_jump',
-                text: "TRIAL II: LEAP OF FAITH\n\nPress [SPACE] or [W] to leap.\nHold the key longer for greater height and distance."
-            }
-        },
+        // --- ZONE 2: Jump Trial --- (Guided smoothly by dynamic HUD banner)
 
         // --- ZONE 3: Mechanism Trial ---
         {
@@ -115,16 +106,6 @@ export const TutorialLevel = {
             properties: {
                 interactType: 2, // Switch / Lever
                 flag: 'tutorial_gate'
-            }
-        },
-        {
-            type: 'interactable',
-            x: 520,
-            y: 208,
-            properties: {
-                interactType: 0,
-                id: 'tut_lever',
-                text: "TRIAL III: ANCIENT MECHANISMS\n\nLevers operate locked doors throughout the dungeon.\nClimb the wooden steps and press [E] to activate the switch."
             }
         },
 
@@ -137,28 +118,8 @@ export const TutorialLevel = {
                 interactType: 3
             }
         },
-        {
-            type: 'interactable',
-            x: 800,
-            y: 208,
-            properties: {
-                interactType: 0,
-                id: 'tut_sanity',
-                text: "TRIAL IV: SANCTUARY & SANITY\n\nThe abyssal dark drains your sanity.\nStand near lit torches to calm your trembling mind."
-            }
-        },
 
         // --- ZONE 5: Lurker Confrontation & Exit ---
-        {
-            type: 'interactable',
-            x: 1040,
-            y: 208,
-            properties: {
-                interactType: 0,
-                id: 'tut_stalker',
-                text: "TRIAL V: THE SHADOW LURKER\n\nBeware! Interacting with ancient puzzles awakens stalkers.\nThey hunt when your back is turned.\n\nDo NOT fight with your fists.\nLure the creature into the TORCH FLAME ahead to incinerate it!"
-            }
-        },
         {
             type: 'interactable',
             x: 1136,
