@@ -313,7 +313,6 @@ export class Shadow extends Entity {
         this.y = this.homeY + Math.sin(this.timer * 2.5) * 4;
 
         // --- ESCAPE / DESPAWN MECHANIC 1: TORCHES & SACRED FLAMES ---
-        const floor = scene && scene.gameState ? (scene.gameState.floorIndex || 1) : 1;
         const isHardLevel = floor >= 2 || (scene && scene.gameState && scene.gameState.isTestLevel);
 
         if (scene && scene.entities) {

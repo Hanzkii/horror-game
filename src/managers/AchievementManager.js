@@ -93,6 +93,7 @@ export class AchievementManager {
     }
 
     load() {
+        if (typeof localStorage === 'undefined') return;
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) {
@@ -107,6 +108,7 @@ export class AchievementManager {
     }
 
     save() {
+        if (typeof localStorage === 'undefined') return;
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(this.unlocked)));
         } catch (e) {
