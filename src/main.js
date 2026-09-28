@@ -536,12 +536,19 @@ async function init() {
         if (gameStarted) return;
         gameStarted = true;
 
-        loadingOverlay.classList.add('hidden');
+        if (loadingOverlay) {
+            loadingOverlay.classList.add('hidden');
+            setTimeout(() => {
+                loadingOverlay.style.display = 'none';
+            }, 300);
+        }
+        
         window.focus();
+        if (document.body) document.body.focus();
 
         // Unlock browser Web Audio
-        if (audio.context.state === 'suspended') {
-            audio.context.resume();
+        if (audio && audio.context && audio.context.state === 'suspended') {
+            audio.context.resume().catch(() => {});
         }
         
         // Ensure main menu is completely quiet (no droning sound)
@@ -564,15 +571,25 @@ async function init() {
         }
     });
 
-    // Awaken on explicit click or keypress
-    loadingOverlay.addEventListener('click', startGame);
-    window.addEventListener('click', () => {
-        window.focus();
-        if (!gameStarted) startGame();
-    });
-    window.addEventListener('keydown', () => {
-        if (!gameStarted) startGame();
-    });
+    // Awaken on ANY keypress, click, or touch anywhere on the page
+    const awaken = (e) => {
+        if (!gameStarted) {
+            startGame();
+        }
+    };
+
+    if (loadingOverlay) {
+        loadingOverlay.addEventListener('click', awaken);
+        loadingOverlay.addEventListener('pointerdown', awaken);
+    }
+    window.addEventListener('click', awaken, true);
+    window.addEventListener('pointerdown', awaken, true);
+    window.addEventListener('keydown', awaken, true);
+    document.addEventListener('keydown', awaken, true);
+    if (document.body) {
+        document.body.addEventListener('keydown', awaken, true);
+        document.body.focus();
+    }
 }
 
 function loadLevel(scene, levelData, gameState, renderer) {
@@ -778,5 +795,9 @@ function setupProceduralAudio(audioManager) {
     audioManager.buffers.set('flame_flare', flameFlare);
 }
 
-// Start once DOM is ready
-window.addEventListener('DOMContentLoaded', init);
+// Start once DOM is ready (or immediately if already parsed)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
