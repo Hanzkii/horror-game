@@ -270,9 +270,10 @@ export default class HUD {
 
             if (isHoverClose && isClick) {
                 gameState.activeNote = null;
+                gameState.activeNoteTimer = 0;
             }
 
-            Typography.drawButton(ctx, 'CLOSE [E]', closeBtnX, closeBtnY, closeBtnW, closeBtnH, {
+            Typography.drawButton(ctx, 'CLOSE [ESC]', closeBtnX, closeBtnY, closeBtnW, closeBtnH, {
                 isHovered: isHoverClose,
                 borderColor: '#785f37',
                 textColor: '#d4af37'
@@ -287,7 +288,7 @@ export default class HUD {
             });
 
             // Footer hint
-            Typography.drawText(ctx, 'PRESS [E], [SPACE], [ESC] OR CLICK CLOSE TO CONTINUE', width / 2, modalY + modalH - 24, {
+            Typography.drawText(ctx, 'MOVE [A / D]  •  JUMP [SPACE]  •  [ESC] OR CLICK CLOSE', width / 2, modalY + modalH - 24, {
                 font: FONT_STACKS.CAPTION,
                 color: '#a1a1aa',
                 align: 'center'

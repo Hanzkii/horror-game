@@ -262,29 +262,41 @@ async function init() {
                 }
 
                 if (gameState.activeNote) {
-                    const isClosePressed = 
-                        input.isJustPressed('pause') || 
-                        input.isJustPressed('interact') || 
-                        input.isJustPressed('confirm') || 
-                        input.isJustPressed('jump') || 
-                        (input.isMouseClicked && input.isMouseClicked()) ||
-                        Boolean(input.keys['KeyE']) ||
-                        Boolean(input.keys['Space']) ||
-                        Boolean(input.keys['Escape']) ||
-                        Boolean(input.keys['Enter']);
+                    if (gameState.activeNoteTimer === undefined || gameState.activeNoteTimer === null) {
+                        gameState.activeNoteTimer = 0;
+                    }
+                    gameState.activeNoteTimer += dt;
+
+                    // Close ONLY on movement (A/D/arrows), jump (Space), pause (Escape), or mouse click
+                    // Never close automatically on 'E' or 'Enter'
+                    let isClosePressed = false;
+                    if (gameState.activeNoteTimer > 0.15) {
+                        isClosePressed = 
+                            input.isJustPressed('left') || 
+                            input.isJustPressed('right') || 
+                            input.isJustPressed('jump') || 
+                            input.isJustPressed('pause') || 
+                            Boolean(input.keys['KeyA']) ||
+                            Boolean(input.keys['KeyD']) ||
+                            Boolean(input.keys['ArrowLeft']) ||
+                            Boolean(input.keys['ArrowRight']) ||
+                            Boolean(input.keys['Space']) ||
+                            Boolean(input.keys['Escape']) ||
+                            (input.isMouseClicked && input.isMouseClicked());
+                    }
 
                     if (isClosePressed) {
                         gameState.activeNote = null;
+                        gameState.activeNoteTimer = 0;
                         if (input.keys) {
-                            input.keys['KeyE'] = false;
-                            input.keys['Space'] = false;
                             input.keys['Escape'] = false;
-                            input.keys['Enter'] = false;
                         }
                         try {
                             if (audio) audio.play('paper');
                         } catch (e) {}
                     }
+                } else {
+                    gameState.activeNoteTimer = 0;
                 } else if (input.isJustPressed('pause') || hud.getRequestedPause()) {
                     currentState = GAME_STATES.PAUSED;
                     gameState.isPaused = true;
