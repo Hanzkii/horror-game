@@ -49,6 +49,7 @@ Trapped deep within an abyssal subterranean labyrinth, you awaken into suffocati
 | --- | --- | --- |
 | `A` / `D` or `←` / `→` | **Walk / Balance** | Traverse uneven stone floors and narrow subterranean ledges. |
 | `Space` / `W` / `↑` | **Jump & Wall-Slide** | Hold for variable jump height; press against vertical walls to wall-slide down shafts. |
+| `S` / `↓` or `Down + Space` | **Drop Down Platform** | Drop down through one-way wooden platforms and crumbling stone bridges to lower levels. |
 | `Shift` | **Sprint (High Risk)** | Run at rapid speed. Drains stamina quickly and generates heavy footsteps that alert the Stalker from across the level! |
 | `C` or `Ctrl` | **Hold Breath / Sneak** | Crouch silently in shadows. Collapses Stalker sensory detection down to 36px so it glides past unaware. Beware: holding breath too long triggers an uncontrollable gasping fit. |
 | `E` | **Interact** | Pull ancient mechanism levers, collect Lantern Oil Flasks, and read stone inscriptions. |

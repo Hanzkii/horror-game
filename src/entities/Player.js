@@ -88,6 +88,7 @@ export class Player extends Entity {
         this.forcedGaspCooldown = 0;
         this.heartbeatTimer = 0;
         this.isHidingInShadows = false;
+        this.dropThroughTimer = 0; // Allows dropping down through one-way platforms (S / Down / Down+Jump)
     }
     
     update(dt, input, scene) {
@@ -316,8 +317,33 @@ export class Player extends Entity {
         // Clamp speed
         this.vx = Math.max(-effectiveMaxSpeed, Math.min(effectiveMaxSpeed, this.vx));
         
-        // Jumping (can trigger if grounded, within coyote time, or if buffered) - disabled while holding breath
-        const canJump = (this.grounded || this.coyoteTimer > 0) && !this.isHoldingBreath;
+        // Dropping down through one-way platforms (S / ArrowDown or Down + Jump)
+        const wantsDropDown = (input.isJustPressed('down') || (input.isPressed('down') && (input.isJustPressed('jump') || input.isPressed('jump')))) && this.grounded;
+        if (wantsDropDown && scene) {
+            const tileSize = scene.tileSize || 16;
+            const feetRow = Math.floor((this.y + this.height + 2) / tileSize);
+            const leftC = Math.floor(this.x / tileSize);
+            const rightC = Math.floor((this.x + this.width - 0.001) / tileSize);
+            let onOneWayPlatform = false;
+            let onSolidRock = false;
+            for (let c = leftC; c <= rightC; c++) {
+                const t = scene.getTile(c, feetRow);
+                if (t === 3 || t === 5) onOneWayPlatform = true;
+                if (t === 1 || t === 2 || t === 6 || t === 7 || t === 8 || t === 9 || t === 10 || t === 11) onSolidRock = true;
+            }
+            if (onOneWayPlatform && !onSolidRock) {
+                this.dropThroughTimer = 0.28;
+                this.y += 3;
+                this.vy = 80;
+                this.grounded = false;
+                this.coyoteTimer = 0;
+                this.jumpBufferTimer = 0;
+                this.jumpTimer = 0;
+            }
+        }
+
+        // Jumping (can trigger if grounded, within coyote time, or if buffered) - disabled while holding breath or dropping down
+        const canJump = (this.grounded || this.coyoteTimer > 0) && !this.isHoldingBreath && this.dropThroughTimer <= 0;
         if (canJump && this.jumpBufferTimer > 0) {
             this.vy = this.jumpForce;
             this.grounded = false;
@@ -345,6 +371,13 @@ export class Player extends Entity {
         if (!scene) return;
         const tileSize = scene.tileSize || 16;
         
+        if (this.dropThroughTimer > 0) {
+            this.dropThroughTimer -= dt;
+        }
+
+        // Solid wall/floor tiles across all 5 subterranean strata and surface
+        const isSolidTile = (tile) => tile === 1 || tile === 2 || tile === 6 || tile === 7 || tile === 8 || tile === 9 || tile === 10 || tile === 11;
+
         // Apply Gravity
         if (this.state === PLAYER_STATES.WALL_SLIDING) {
             this.vy += this.gravity * 0.4 * dt;
@@ -378,7 +411,7 @@ export class Player extends Entity {
                 // Moving right: check right leading edge
                 for (let r = topRow; r <= bottomRow; r++) {
                     const tile = scene.getTile(rightCol, r);
-                    if (tile === 1 || tile === 2 || tile === 6 || tile === 7) {
+                    if (isSolidTile(tile)) {
                         this.x = rightCol * tileSize - this.width;
                         this.vx = 0;
                         this.touchingWallRight = true;
@@ -389,7 +422,7 @@ export class Player extends Entity {
                 // Moving left: check left leading edge
                 for (let r = topRow; r <= bottomRow; r++) {
                     const tile = scene.getTile(leftCol, r);
-                    if (tile === 1 || tile === 2 || tile === 6 || tile === 7) {
+                    if (isSolidTile(tile)) {
                         this.x = (leftCol + 1) * tileSize;
                         this.vx = 0;
                         this.touchingWallLeft = true;
@@ -415,13 +448,13 @@ export class Player extends Entity {
                 for (let r = topRow; r <= bottomRow; r++) {
                     for (let c = leftCol; c <= rightCol; c++) {
                         const tile = scene.getTile(c, r);
-                        if (tile === 1 || tile === 2 || tile === 6 || tile === 7) { // solid stone, brick, grass, or dirt
+                        if (isSolidTile(tile)) { // solid stone, brick, grass, or strata rock
                             this.y = r * tileSize - this.height;
                             this.vy = 0;
                             this.grounded = true;
                             landed = true;
                             break;
-                        } else if (tile === 3 || tile === 5) { // one-way semi-solid platform or crumbling stone
+                        } else if ((tile === 3 || tile === 5) && this.dropThroughTimer <= 0) { // one-way semi-solid platform or crumbling stone (ignored if dropping through)
                             const platTop = r * tileSize;
                             if (prevY + this.height <= platTop + 8) {
                                 this.y = platTop - this.height;
@@ -443,7 +476,7 @@ export class Player extends Entity {
                 for (let r = bottomRow; r >= topRow; r--) {
                     for (let c = leftCol; c <= rightCol; c++) {
                         const tile = scene.getTile(c, r);
-                        if (tile === 1 || tile === 2 || tile === 6 || tile === 7) {
+                        if (isSolidTile(tile)) {
                             this.y = (r + 1) * tileSize;
                             this.vy = 0;
                             this.jumpTimer = 0;
@@ -466,7 +499,7 @@ export class Player extends Entity {
         const centerCol = Math.floor((this.x + this.width / 2) / tileSize);
         const centerRow = Math.floor((this.y + this.height / 2) / tileSize);
         const centerTile = scene.getTile(centerCol, centerRow);
-        if (centerTile === 1 || centerTile === 2 || centerTile === 6 || centerTile === 7) {
+        if (isSolidTile(centerTile)) {
             let unstuck = false;
             for (let r = centerRow - 1; r >= Math.max(0, centerRow - 8); r--) {
                 if (scene.getTile(centerCol, r) === 0 && scene.getTile(centerCol, r - 1) === 0) {
