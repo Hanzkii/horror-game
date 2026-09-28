@@ -297,9 +297,10 @@ async function init() {
                     }
                 } else {
                     gameState.activeNoteTimer = 0;
-                } else if (input.isJustPressed('pause') || hud.getRequestedPause()) {
-                    currentState = GAME_STATES.PAUSED;
-                    gameState.isPaused = true;
+                    if (input.isJustPressed('pause') || hud.getRequestedPause()) {
+                        currentState = GAME_STATES.PAUSED;
+                        gameState.isPaused = true;
+                    }
                 }
 
                 if (!gameState.isPaused && !gameState.activeNote) {
