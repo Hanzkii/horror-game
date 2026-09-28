@@ -10,9 +10,32 @@ A browser-based psychological horror platformer built from scratch in vanilla Ja
 
 ## 👁️ Overview & Story
 
-Trapped deep within an abyssal subterranean labyrinth, you awaken into suffocating darkness armed only with a flickering oil lantern. As you descend deeper through ancient catacombs (Depth B1 to B3) seeking a way to the surface, an eldritch entity—the **Shadow Stalker**—watches your every move from the periphery of vision.
+Trapped deep within an abyssal subterranean labyrinth, you awaken into suffocating darkness armed only with a flickering oil lantern. As you descend through **30 progressively harrowing depths across 5 distinct thematic strata**, you must solve multi-conduit mechanism puzzles, avoid lethal clockwork traps, and decipher the 30-entry journal of Althea—all while the relentless **Shadow Stalker** hunts you from the gloom.
 
-- **Genre**: 2D Psychological Survival Horror Platformer
+```
++---------------------------------------------------------------------------------------------------+
+|                                30-DEPTH SUBTERRANEAN STRATA                                       |
++---------------------------------------------------------------------------------------------------+
+|  Depths B1 - B6   | STRATUM I   | The Upper Catacombs & Cold Awakening                            |
+|                   |             | - Slate stone, ancient reliefs, solitary lurker, 2-conduit gates|
++-------------------+-------------+-----------------------------------------------------------------+
+|  Depths B7 - B12  | STRATUM II  | The Sunken Aqueducts & Moldering Tombs                          |
+|                   |             | - Slick mossy pavers, waterlogged crypts, crumbling platforms   |
++-------------------+-------------+-----------------------------------------------------------------+
+|  Depths B13 - B18 | STRATUM III | The Clockwork Foundry & Iron Vaults                             |
+|                   |             | - Riveted iron plates, steam pipes, pendulum blades, 3-conduits |
++-------------------+-------------+-----------------------------------------------------------------+
+|  Depths B19 - B24 | STRATUM IV  | The Obsidian Necropolis & Cursed Sanctum                        |
+|                   |             | - Glowing violet runes, doppelgangers, torch-snuffing stalkers  |
++-------------------+-------------+-----------------------------------------------------------------+
+|  Depths B25 - B30 | STRATUM V   | The Abyssal Crucible & The Final Ascent                         |
+|                   |             | - Eldritch void tiles, 5-conduit master networks, apex pursuers |
++-------------------+-------------+-----------------------------------------------------------------+
+|      FINALE       | THE SURFACE | Breaking all 30 seals unlocks the glorious Dawn Escape Finale!  |
++---------------------------------------------------------------------------------------------------+
+```
+
+- **Genre**: 2D Psychological Survival Horror Platformer (30 Depths)
 - **Engine**: Custom vanilla JavaScript engine (60 FPS fixed-timestep physics, dual-pass high-resolution vector HUD)
 - **Audio**: Real-time procedural audio synthesis via Web Audio API (dynamic heartbeats, reactive drones, binaural whispers, hallucinated footsteps)
 - **Atmosphere**: Dynamic radial lighting, lantern oil depletion, torch snuffing, sanity-driven visual corruption, and fullscreen jumpscares
@@ -68,8 +91,7 @@ Available **exclusively while playing inside the game** via the **Pause Menu** (
   - `🛡️ GOD MODE: ON/OFF`: Absolute immortality (immune to spikes, falling traps, pendulum blades, void abyss pits, and shadow attacks; locks stamina, oil, health, and sanity to 100%).
   - `💧 REFILL OIL, STAMINA & SANITY`: Instantly restores all vitals.
   - `👻 SPAWN SHADOW STALKER`: Summons the Stalker directly behind the player for live chase testing.
-  - `😱 TRIGGER FULLSCREEN JUMPSCARE`: Previews the traumatic nightmare void and eldritch maw confrontation.
-- **Level Warps**: Fast-travel directly to `TUTORIAL`, `B1`, `B2`, `B3`, or the `SURFACE` finale.
+- **Stratum Level Warps**: Fast-travel directly to major campaign milestones: `TUTORIAL`, `B1` (Upper Catacombs), `B7` (Sunken Aqueducts), `B13` (Clockwork Foundry), `B19` (Obsidian Necropolis), `B25` (Abyssal Crucible), `B30` (Final Gate), or the `SURFACE` escape finale.
 
 ---
 

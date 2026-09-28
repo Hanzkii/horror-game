@@ -97,6 +97,9 @@ export class GameState {
     }
     
     save(slot = 'auto') {
+        if (this.floorIndex > (this.stats.deepestFloor || 1)) {
+            this.stats.deepestFloor = this.floorIndex;
+        }
         const data = {
             player: {
                 floorIndex: this.floorIndex,

@@ -236,9 +236,15 @@ export default class HUD {
         } else if (gameState.isTutorialLevel) {
             badgeText = 'TUTORIAL TRIAL';
             badgeColor = '#34d399';
-        } else if (gameState.currentLevel && gameState.floorIndex) {
-            badgeText = gameState.isPublishedMap ? `DEPTH B${gameState.floorIndex} [COMMUNITY]` : `DEPTH B${gameState.floorIndex}`;
-            badgeColor = gameState.isPublishedMap ? '#38bdf8' : '#cbd5e1';
+        } else if (gameState.floorIndex) {
+            let stratumLabel = "UPPER CATACOMBS";
+            if (gameState.floorIndex >= 25) stratumLabel = "ABYSSAL CRUCIBLE";
+            else if (gameState.floorIndex >= 19) stratumLabel = "OBSIDIAN NECROPOLIS";
+            else if (gameState.floorIndex >= 13) stratumLabel = "CLOCKWORK FOUNDRY";
+            else if (gameState.floorIndex >= 7) stratumLabel = "SUNKEN AQUEDUCTS";
+            
+            badgeText = `DEPTH B${gameState.floorIndex} • ${stratumLabel}`;
+            badgeColor = gameState.floorIndex >= 25 ? '#f43f5e' : (gameState.floorIndex >= 19 ? '#c084fc' : (gameState.floorIndex >= 13 ? '#fbbf24' : '#38bdf8'));
         }
 
         if (badgeText) {
@@ -770,8 +776,11 @@ export default class HUD {
         const warps = [
             { label: 'TUTORIAL', act: 'warp_tutorial' },
             { label: 'B1', act: 'warp_b1' },
-            { label: 'B2', act: 'warp_b2' },
-            { label: 'B3', act: 'warp_b3' },
+            { label: 'B7', act: 'warp_b7' },
+            { label: 'B13', act: 'warp_b13' },
+            { label: 'B19', act: 'warp_b19' },
+            { label: 'B25', act: 'warp_b25' },
+            { label: 'B30', act: 'warp_b30' },
             { label: 'SURFACE', act: 'warp_finale' }
         ];
         const warpBtnW = (panelW - 28 - (warps.length - 1) * 6) / warps.length;

@@ -108,6 +108,196 @@ export default class SpriteRenderer {
         renderer.drawRect(x + px, y + py, 2, 2, '#5d4037');
     }
 
+    /**
+     * Tile 8: Obsidian Runic Stone (Stratum IV - Obsidian Necropolis)
+     * Volcanic glass with glowing violet/magenta runic carvings.
+     */
+    static drawObsidianRunic(renderer, x, y, size, seed) {
+        // Obsidian black base
+        renderer.drawRect(x, y, size, size, '#0b0813');
+
+        // Glassy bevel highlight on top and left edge
+        renderer.drawRect(x, y, size, 1, '#1e162d');
+        renderer.drawRect(x, y, 1, size, '#1e162d');
+
+        // Dark bevel on bottom and right
+        renderer.drawRect(x, y + size - 1, size, 1, '#050308');
+        renderer.drawRect(x + size - 1, y, 1, size, '#050308');
+
+        // Carved runic fissures
+        const runePattern = seed % 4;
+        if (runePattern === 0) {
+            // Glyph: Eye of the Void
+            renderer.drawRect(x + 4, y + 7, 8, 2, '#4a154b');
+            renderer.drawRect(x + 7, y + 5, 2, 6, '#4a154b');
+            renderer.drawRect(x + 7, y + 7, 2, 2, '#c084fc'); // glowing pupil
+        } else if (runePattern === 1) {
+            // Glyph: Twin Runic Serpents
+            renderer.drawRect(x + 3, y + 4, 3, 8, '#581c87');
+            renderer.drawRect(x + 10, y + 4, 3, 8, '#581c87');
+            renderer.drawRect(x + 4, y + 6, 1, 3, '#d8b4fe');
+            renderer.drawRect(x + 11, y + 7, 1, 3, '#d8b4fe');
+        } else if (runePattern === 2) {
+            // Glyph: Abyssal Chevron
+            renderer.drawRect(x + 5, y + 4, 6, 2, '#4c1d95');
+            renderer.drawRect(x + 7, y + 6, 2, 5, '#6b21a8');
+            renderer.drawRect(x + 6, y + 11, 4, 2, '#a855f7');
+        } else {
+            // Glyph: Cracked Runic Fissure
+            renderer.drawRect(x + 2, y + 8, 12, 1, '#3b0764');
+            renderer.drawRect(x + 8, y + 3, 1, 10, '#3b0764');
+            renderer.drawRect(x + 8, y + 8, 2, 2, '#e879f9');
+        }
+    }
+
+    /**
+     * Tile 9: Industrial Iron Plate (Stratum III - Clockwork Foundry)
+     * Heavy steel plating with mechanical rivets, seams, and rust streaks.
+     */
+    static drawIndustrialIron(renderer, x, y, size, seed) {
+        // Dark riveted steel base
+        renderer.drawRect(x, y, size, size, '#262930');
+
+        // Inset border seam
+        renderer.drawRect(x + 1, y + 1, size - 2, 1, '#383d47');
+        renderer.drawRect(x + 1, y + 1, 1, size - 2, '#383d47');
+        renderer.drawRect(x + 1, y + size - 2, size - 2, 1, '#15171c');
+        renderer.drawRect(x + size - 2, y + 1, 1, size - 2, '#15171c');
+
+        // 4 Corner Rivets
+        renderer.drawRect(x + 2, y + 2, 2, 2, '#475569');
+        renderer.drawRect(x + size - 4, y + 2, 2, 2, '#475569');
+        renderer.drawRect(x + 2, y + size - 4, 2, 2, '#475569');
+        renderer.drawRect(x + size - 4, y + size - 4, 2, 2, '#475569');
+
+        // Rust streak or mechanical plate division
+        if (seed % 3 === 0) {
+            const rx = (seed * 5) % (size - 6) + 3;
+            renderer.drawRect(x + rx, y + 4, 1, 8, '#78350f');
+            renderer.drawRect(x + rx + 1, y + 6, 1, 5, '#92400e');
+        } else if (seed % 3 === 1) {
+            // Horizontal ventilation grating slot
+            renderer.drawRect(x + 4, y + 7, 8, 2, '#0f1115');
+        }
+    }
+
+    /**
+     * Tile 10: Waterlogged Paver (Stratum II - Sunken Aqueducts)
+     * Mossy, water-slick stone with algae stains and glistening moisture.
+     */
+    static drawWaterloggedPaver(renderer, x, y, size, seed) {
+        // Dark damp greenish-grey base
+        renderer.drawRect(x, y, size, size, '#15201d');
+
+        // Mortar lines
+        renderer.drawRect(x, y + 7, size, 1, '#0a1210');
+        renderer.drawRect(x + 7, y, 1, size, '#0a1210');
+
+        // Algae & Moss clusters
+        const mossPattern = seed % 3;
+        if (mossPattern === 0) {
+            renderer.drawRect(x + 1, y + size - 4, 5, 3, '#14532d');
+            renderer.drawRect(x + 2, y + size - 3, 3, 2, '#166534');
+        } else if (mossPattern === 1) {
+            renderer.drawRect(x + size - 6, y + size - 5, 5, 4, '#14532d');
+            renderer.drawRect(x + size - 5, y + size - 3, 3, 2, '#22c55e');
+        }
+
+        // Wet glint drops
+        if ((seed * 7) % 5 === 0) {
+            const gx = (seed * 3) % (size - 4) + 2;
+            const gy = (seed * 7) % (size - 4) + 2;
+            renderer.drawRect(x + gx, y + gy, 1, 1, '#38bdf8');
+        }
+    }
+
+    /**
+     * Tile 11: Eldritch Void Stone (Stratum V - Abyssal Crucible)
+     * Distorted dark matter stone with chromatic edge aberration.
+     */
+    static drawEldritchVoid(renderer, x, y, size, seed) {
+        // Deep pitch-black abyssal core
+        renderer.drawRect(x, y, size, size, '#040107');
+
+        // Subtle chromatic fringe on corners
+        renderer.drawRect(x, y, 1, 3, '#dc2626');
+        renderer.drawRect(x + 1, y, 2, 1, '#dc2626');
+        renderer.drawRect(x + size - 3, y + size - 1, 3, 1, '#06b6d4');
+        renderer.drawRect(x + size - 1, y + size - 3, 1, 3, '#06b6d4');
+
+        // Shifting dark matter flecks
+        const speckX = (seed * 11) % (size - 4) + 2;
+        const speckY = (seed * 13) % (size - 4) + 2;
+        renderer.drawRect(x + speckX, y + speckY, 2, 2, '#1e1b4b');
+
+        // Occasional bleeding eye fleck in deep void
+        if (seed % 7 === 0) {
+            renderer.drawRect(x + 7, y + 7, 2, 2, '#ef4444');
+        }
+    }
+
+    /**
+     * Tile 12: Ancient Relief & Pillars (Background/Structural)
+     * Weathered carved stonework depicting ancient glyphs and architectural moldings.
+     */
+    static drawAncientRelief(renderer, x, y, size, seed) {
+        renderer.drawRect(x, y, size, size, '#121118');
+
+        // Vertical relief fluting
+        renderer.drawRect(x + 2, y, 2, size, '#1a1924');
+        renderer.drawRect(x + 7, y, 2, size, '#1a1924');
+        renderer.drawRect(x + 12, y, 2, size, '#1a1924');
+
+        // Central medallion carving
+        if (seed % 2 === 0) {
+            renderer.drawRect(x + 5, y + 5, 6, 6, '#232230');
+            renderer.drawRect(x + 6, y + 6, 4, 4, '#15141e');
+            renderer.drawRect(x + 7, y + 7, 2, 2, '#383647');
+        }
+    }
+
+    /**
+     * Tile 13: Conduit Cable (Wall wiring connecting levers to locked gates)
+     */
+    static drawConduitCable(renderer, x, y, size, seed, isPowered = false) {
+        // Backdrop stone base
+        renderer.drawRect(x, y, size, size, '#0d0d15');
+
+        // Cable conduit line
+        const cableColor = isPowered ? '#38bdf8' : '#334155';
+        const coreColor = isPowered ? '#e0f2fe' : '#1e293b';
+
+        // Horizontal cable running through center
+        renderer.drawRect(x, y + 7, size, 2, cableColor);
+        renderer.drawRect(x, y + 7, size, 1, coreColor);
+
+        // Wall bracket anchor
+        renderer.drawRect(x + 7, y + 5, 2, 6, '#475569');
+        if (isPowered) {
+            // Pulse glow spark
+            renderer.drawRect(x + 6, y + 6, 4, 4, 'rgba(56, 189, 248, 0.4)');
+        }
+    }
+
+    /**
+     * Tile 14: Skeletal Bone Pile (Environmental storytelling)
+     */
+    static drawBonePile(renderer, x, y, size, seed) {
+        // Floor backdrop
+        renderer.drawRect(x, y, size, size, '#0a0a10');
+
+        // Ribcage and bone shards
+        renderer.drawRect(x + 3, y + size - 3, 10, 2, '#71717a');
+        renderer.drawRect(x + 4, y + size - 5, 2, 3, '#a1a1aa');
+        renderer.drawRect(x + 7, y + size - 6, 2, 4, '#d4d4d8');
+        renderer.drawRect(x + 10, y + size - 4, 2, 3, '#a1a1aa');
+
+        // Broken skull
+        renderer.drawRect(x + 5, y + size - 8, 4, 4, '#e4e4e7');
+        renderer.drawRect(x + 6, y + size - 7, 1, 1, '#18181b'); // eye socket
+        renderer.drawRect(x + 8, y + size - 7, 1, 1, '#18181b');
+    }
+
     static drawBirchTree(renderer, x, y) {
         // 1. Birch trunk (cream white with dark grey horizontal notches)
         const trunkW = 8;

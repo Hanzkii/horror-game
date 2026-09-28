@@ -19,19 +19,20 @@ export const SHADOW_STATES = {
 };
 
 export class Shadow extends Entity {
-    constructor(x, y) {
+    constructor(x, y, options = {}) {
         super(x, y, 16, 38); // Towering nightmare stalker
         this.type = 'shadow';
         
         this.homeX = x;
         this.homeY = y;
+        this.options = options;
         
         // Starts DORMANT: waiting for a puzzle trigger / surprise awakening
         this.state = SHADOW_STATES.DORMANT;
         this.alpha = 0;
         this.timer = 0;
-        this.stalkSpeed = 55; // creeps forward quietly
-        this.rushSpeed = 120;
+        this.stalkSpeed = options.stalkSpeed || 55; // creeps forward quietly
+        this.rushSpeed = options.rushSpeed || 120;
         
         // Visuals
         this.eyeGlow = 0;
@@ -228,6 +229,10 @@ export class Shadow extends Entity {
             }
             return;
         }
+
+        const floor = (scene.gameState && scene.gameState.floorIndex) ? scene.gameState.floorIndex : 1;
+        this.stalkSpeed = 50 + Math.min(45, (floor - 1) * 1.55);
+        this.rushSpeed = 115 + Math.min(65, (floor - 1) * 2.25);
 
         this.timer += dt;
         this.tendrilTimer += dt * 3;

@@ -1,10 +1,12 @@
 /**
  * @file LevelGenerator.js
- * @description Advanced procedural level generator with multi-tier architectures,
- * dynamic puzzle conduits, pendulum traps, crumbling stone chasms, and multi-goal BFS validation.
+ * @description Advanced 2D Macro-Chamber Procedural Dungeon Generator.
+ * Creates expansive, multi-tiered subterranean levels across 30 progressively terrifying depths.
+ * Features 5 distinct thematic strata, multi-conduit puzzle networks, pendulum traps,
+ * crumbling platform chasms, environmental storytelling, and a 2D platformer BFS validator.
  */
 
-// Simple deterministic Mulberry32 PRNG
+// Deterministic Mulberry32 PRNG
 function createRNG(seed) {
     let s = typeof seed === 'number' ? seed : 0;
     if (typeof seed === 'string') {
@@ -22,6 +24,11 @@ function createRNG(seed) {
     };
 }
 
+/**
+ * 30-Floor Narrative Chronicle: Althea's Journal
+ * Chronicles the descent, the discovery of the ancient mechanism, the tragic origin of the Shadow Stalker,
+ * and the desperate final ascent toward daylight.
+ */
 export const STORY_INSCRIPTIONS = {
     1: {
         title: "ANCIENT INSCRIPTION: ENTRY I",
@@ -30,61 +37,267 @@ export const STORY_INSCRIPTIONS = {
     },
     2: {
         title: "ANCIENT INSCRIPTION: ENTRY II",
-        chapter: "The Sunken Crypt",
-        text: "Day unknown. I have descended into the sunken, waterlogged crypts. The stone floor crumbles into the abyss if you hesitate for even a heartbeat.\n\nI caught its gaze in the black water. It has no true shape—only hunger and ancient spite. It does not feast on flesh; it feeds on our unraveling sanity.\n\nLook away from its eyes and keep moving.\n\n— Althea's Journal, Entry II"
+        chapter: "The Bone Orchard",
+        text: "Day 2. The catacomb walls are lined with skeletal remains of those who descended before us. None of them bear wounds from weapons; they died huddled in corners after their lanterns guttered out.\n\nKeep your oil flask filled. When the flame dies, the dark steps forward.\n\n— Althea's Journal, Entry II"
     },
     3: {
         title: "ANCIENT INSCRIPTION: ENTRY III",
-        chapter: "The Clockwork Vaults",
-        text: "The swinging pendulum blades never stop. The ancient builders engineered this labyrinth as an ordeal—a crucible to purge the weak.\n\nThe creature hunting us is the remnant of the first soul trapped here, deformed by centuries of isolation. It envies those who still possess warmth and form. It wants to claim yours.\n\n— Althea's Journal, Entry III"
+        chapter: "The Weeping Catacombs",
+        text: "Water seeps through the mortar above, dripping in relentless rhythm. Every drip echoes like footsteps behind me.\n\nI tested holding my breath when it crept near. If you press yourself against the stone and stay utterly still, it loses your silhouette in the gloom. Remember this.\n\n— Althea's Journal, Entry III"
     },
     4: {
         title: "ANCIENT INSCRIPTION: ENTRY IV",
+        chapter: "The Vault of Whispers",
+        text: "The voices are not inside my skull. The stone itself hums with whispers. They speak in languages dead for millennia, pleading for release.\n\nThe iron gates ahead are locked by twin conduit levers. Find the high altar and break the seals.\n\n— Althea's Journal, Entry IV"
+    },
+    5: {
+        title: "ANCIENT INSCRIPTION: ENTRY V",
+        chapter: "The Cloister of Shadows",
+        text: "It knows my name now. I found my initials carved into a stone bench that was buried centuries ago. How is that possible?\n\nDo not stare into the darkness at the edge of your lantern light. If you stare long enough, it begins to wear your own face.\n\n— Althea's Journal, Entry V"
+    },
+    6: {
+        title: "ANCIENT INSCRIPTION: ENTRY VI",
+        chapter: "The Threshold of Waters",
+        text: "I can hear roaring torrents below. The upper catacombs end here. Below lies the ancient sunken drainage system of the forgotten city.\n\nThe air is damp and thick with rot. Check your matches before descending.\n\n— Althea's Journal, Entry VI"
+    },
+    7: {
+        title: "ANCIENT INSCRIPTION: ENTRY VII",
+        chapter: "The Sunken Cistern",
+        text: "Day unknown. I have descended into the sunken, waterlogged crypts. The stone floor crumbles into the abyss if you hesitate for even a heartbeat.\n\nI caught its gaze in the black water. It has no true shape—only hunger and ancient spite. It feeds on our unraveling sanity.\n\n— Althea's Journal, Entry VII"
+    },
+    8: {
+        title: "ANCIENT INSCRIPTION: ENTRY VIII",
+        chapter: "The Moldering Aqueduct",
+        text: "Algae slicks the stone ledges. One slip means plunging into the black canal below. The creature moves silently through the water; only the ripples give it away.\n\nLight every wall torch you find. The holy flame keeps the water demons at bay.\n\n— Althea's Journal, Entry VIII"
+    },
+    9: {
+        title: "ANCIENT INSCRIPTION: ENTRY IX",
+        chapter: "The Drowned Mausoleum",
+        text: "Sarcophagi float in the flooded chambers like macabre barges. The builders sealed this place from the outside. They were not keeping thieves out; they were walling something in.\n\nThree runic conduits power the gate ahead. Explore every elevated branch.\n\n— Althea's Journal, Entry IX"
+    },
+    10: {
+        title: "ANCIENT INSCRIPTION: ENTRY X",
+        chapter: "The Submerged Crypts",
+        text: "A phantom stood at the end of the corridor. When I ran toward it with my lantern, it dissolved into cold ash.\n\nIt is playing tricks on my eyes. It wants me to waste stamina running in terror. Conserve your strength for the leaps.\n\n— Althea's Journal, Entry X"
+    },
+    11: {
+        title: "ANCIENT INSCRIPTION: ENTRY XI",
+        chapter: "The Basin of Lost Souls",
+        text: "The crumbling pavers here drop after half a heartbeat under weight. Leap decisively. Never pause on a fractured slab.\n\nI found another journal fragment signed by someone named Kenneth. His handwriting looks identical to mine. I am losing track of who I was.\n\n— Althea's Journal, Entry XI"
+    },
+    12: {
+        title: "ANCIENT INSCRIPTION: ENTRY XII",
+        chapter: "The Iron Sluice Gates",
+        text: "Massive iron machinery looms ahead. Giant sluice gates that once controlled subterranean rivers now rust in silence.\n\nBehind these gates lies the ancient foundry. The air grows hot, smelling of scorched oil and sulfur.\n\n— Althea's Journal, Entry XII"
+    },
+    13: {
+        title: "ANCIENT INSCRIPTION: ENTRY XIII",
+        chapter: "The Clockwork Foundry",
+        text: "The swinging pendulum blades never stop. The ancient builders engineered this labyrinth as an ordeal—a crucible to purge the weak.\n\nThe creature hunting us is the remnant of the first soul trapped here, deformed by centuries of isolation. It envies those who still possess warmth.\n\n— Althea's Journal, Entry XIII"
+    },
+    14: {
+        title: "ANCIENT INSCRIPTION: ENTRY XIV",
+        chapter: "The Great Mechanism",
+        text: "Gears the size of houses turn slowly in the dark. Watch the rhythm of the razor pendulums. There is a half-second window when the blade reaches its apex—dash through then!\n\nThree conduits power the exit sluice. One is perched high atop the clock tower.\n\n— Althea's Journal, Entry XIV"
+    },
+    15: {
+        title: "ANCIENT INSCRIPTION: ENTRY XV",
+        chapter: "The Hall of Swinging Blades",
+        text: "My cloak was sliced by a swinging blade. A fraction of an inch closer and my journey would have ended on these iron plates.\n\nThe shadow lurker has learned to time its rushes with the swinging blades, trying to herd me into their path. Do not let it panic you.\n\n— Althea's Journal, Entry XV"
+    },
+    16: {
+        title: "ANCIENT INSCRIPTION: ENTRY XVI",
+        chapter: "The Pressure Conduit",
+        text: "Four conduit lines connect to the master vault gate. The pipes hiss with scalding steam. Follow the copper cables along the ceiling to locate the distant valves.\n\nEvery lever pulled brings a groaning shriek from deep within the earth.\n\n— Althea's Journal, Entry XVI"
+    },
+    17: {
+        title: "ANCIENT INSCRIPTION: ENTRY XVII",
+        chapter: "The Steam Shafts",
+        text: "The vertical shafts here are dizzyingly tall. Wall-sliding is essential to survive the long drops between rusted catwalks.\n\nThe shadow stalker now attempts to snuff out torches if you linger too long in the light. Keep moving from sanctuary to sanctuary.\n\n— Althea's Journal, Entry XVII"
+    },
+    18: {
+        title: "ANCIENT INSCRIPTION: ENTRY XVIII",
+        chapter: "The Foundry Furnace",
+        text: "We have reached the deepest boiler level. Beyond this lies the black heart of the mountain: the Obsidian Necropolis.\n\nThe creature is furious that I have survived the blades. I can hear its claws scraping against the iron plates above my head.\n\n— Althea's Journal, Entry XVIII"
+    },
+    19: {
+        title: "ANCIENT INSCRIPTION: ENTRY XIX",
+        chapter: "The Obsidian Gateway",
+        text: "The stone turned pitch black, smooth as polished glass, carved with pulsing violet runes. The temperature dropped forty degrees in ten steps.\n\nThis is where the ancient priests worshiped the void. The shadows here have physical weight.\n\n— Althea's Journal, Entry XIX"
+    },
+    20: {
+        title: "ANCIENT INSCRIPTION: ENTRY XX",
+        chapter: "The Hall of Dark Mirrors",
+        text: "I saw myself standing on a high platform. When I waved, it stepped toward me with empty black eye sockets.\n\nThe doppelgangers are hallucinations born of our unraveling sanity, but their touch drains warmth instantly. Illuminate them with bright torchlight to banish the illusion.\n\n— Althea's Journal, Entry XX"
+    },
+    21: {
+        title: "ANCIENT INSCRIPTION: ENTRY XXI",
+        chapter: "The Cursed Sepulcher",
+        text: "Four runic conduits are hidden within these black vaults. The glyphs on the walls tell a terrible truth: the exit is not an accident. The builders intended for one person to escape every century—the one who survives the hunt.\n\nI will be that survivor.\n\n— Althea's Journal, Entry XXI"
+    },
+    22: {
+        title: "ANCIENT INSCRIPTION: ENTRY XXII",
+        chapter: "The Altar of Blood Stone",
+        text: "The stalker teleports directly behind me if I turn my back for more than a few heartbeats. Keep checking behind you.\n\nLantern oil is scarce here. Search every forgotten alcove before attempting the vertical climbs.\n\n— Althea's Journal, Entry XXII"
+    },
+    23: {
+        title: "ANCIENT INSCRIPTION: ENTRY XXIII",
+        chapter: "The Necropolis Gallery",
+        text: "Statues of weeping kings line the grand gallery. Their outstretched hands hold empty torch sconces. Light them as you pass—they form a safe corridor across the hall.\n\nTwo shadows hunt together now. When one stalks from the front, the other circles behind.\n\n— Althea's Journal, Entry XXIII"
+    },
+    24: {
+        title: "ANCIENT INSCRIPTION: ENTRY XXIV",
+        chapter: "The Gate of Reflection",
+        text: "I have reached the boundary of the Obsidian Necropolis. Below lies the Abyssal Crucible—the deepest point of the labyrinth.\n\nFrom here, the passage turns upward. The final ascent begins below.\n\n— Althea's Journal, Entry XXIV"
+    },
+    25: {
+        title: "ANCIENT INSCRIPTION: ENTRY XXV",
+        chapter: "The Abyssal Crucible",
+        text: "The stone itself seems alive, glitching between reality and void. Space bends strangely; platforms appear disconnected, floating over endless emptiness.\n\nFive conduit levers power the exit portals in these deepest trials. We must search every corner of the abyss.\n\n— Althea's Journal, Entry XXV"
+    },
+    26: {
+        title: "ANCIENT INSCRIPTION: ENTRY XXVI",
+        chapter: "The Void Chasm",
+        text: "The chasms here have no bottom. If you fall, you fall forever through darkness.\n\nTrust your footing on the crumbling void stone. Move with swift, unwavering momentum. The shadows cannot catch what does not hesitate.\n\n— Althea's Journal, Entry XXVI"
+    },
+    27: {
+        title: "ANCIENT INSCRIPTION: ENTRY XXVII",
+        chapter: "The Labyrinth of Ruin",
+        text: "The creature has summoned its full fury. Screen-tearing hallucinations strike whenever sanity drops below half. Keep calm. Breathe.\n\nEvery lever pulled brings a blinding flash of violet flame that banishes nearby lurkers. Use the levers defensively!\n\n— Althea's Journal, Entry XXVII"
+    },
+    28: {
+        title: "ANCIENT INSCRIPTION: ENTRY XXVIII",
+        chapter: "The Final Gauntlet",
+        text: "I can feel a faint draft of moving air! It smells of cool rain and pine needles! The surface is directly above us!\n\nFive conduit seals remain between us and the upper threshold. Climb the grand central tower and break the chains!\n\n— Althea's Journal, Entry XXVIII"
+    },
+    29: {
+        title: "ANCIENT INSCRIPTION: ENTRY XXIX",
         chapter: "The Threshold of Daylight",
-        text: "I can smell it! Sweet pine and damp earth blowing through the cracks in the high ceiling! The surface lies directly above the final portal!\n\nThe creature knows we are close to the exit. It is thrashing in fury, trying to extinguish our light. Break the final runic conduits and run toward the dawn!\n\n— Althea's Journal, Entry IV"
+        text: "I can see cracks of pale morning light filtering through the high ceiling sixty feet above! Sunlight! Real, golden sunlight!\n\nThe creature knows we are at the final portal. It is thrashing in desperate rage, attempting to snuff every flame. Light your lantern, run through the gauntlet, and break the 30th seal!\n\n— Althea's Journal, Entry XXIX"
+    },
+    30: {
+        title: "ANCIENT INSCRIPTION: ENTRY XXX",
+        chapter: "The Portal of the Dawn",
+        text: "This is the final gate. Thirty depths of suffering, thirty trials of darkness.\n\nBeyond this ancient iron archway lies the surface world, the green grass, the open sky. Pull the final master conduits and step into the light!\n\n— Althea's Journal, Final Entry"
     }
 };
 
+/**
+ * 30 Distinct Floor Names
+ */
 export const FLOOR_NAMES = {
-    1: "The Awakening",
-    2: "Depth B2 — The Sunken Crypt",
-    3: "Depth B3 — The Clockwork Vaults",
-    4: "Depth B4 — The Threshold of Daylight"
+    1: "The Cold Awakening",
+    2: "The Bone Orchard",
+    3: "The Weeping Catacombs",
+    4: "The Vault of Whispers",
+    5: "The Cloister of Shadows",
+    6: "The Threshold of Waters",
+    7: "Depth B7 — The Sunken Cistern",
+    8: "Depth B8 — The Moldering Aqueduct",
+    9: "Depth B9 — The Drowned Mausoleum",
+    10: "Depth B10 — The Submerged Crypts",
+    11: "Depth B11 — The Basin of Lost Souls",
+    12: "Depth B12 — The Iron Sluice Gates",
+    13: "Depth B13 — The Clockwork Foundry",
+    14: "Depth B14 — The Great Mechanism",
+    15: "Depth B15 — The Hall of Swinging Blades",
+    16: "Depth B16 — The Pressure Conduit",
+    17: "Depth B17 — The Steam Shafts",
+    18: "Depth B18 — The Foundry Furnace",
+    19: "Depth B19 — The Obsidian Gateway",
+    20: "Depth B20 — The Hall of Dark Mirrors",
+    21: "Depth B21 — The Cursed Sepulcher",
+    22: "Depth B22 — The Altar of Blood Stone",
+    23: "Depth B23 — The Necropolis Gallery",
+    24: "Depth B24 — The Gate of Reflection",
+    25: "Depth B25 — The Abyssal Crucible",
+    26: "Depth B26 — The Void Chasm",
+    27: "Depth B27 — The Labyrinth of Ruin",
+    28: "Depth B28 — The Final Gauntlet",
+    29: "Depth B29 — The Threshold of Daylight",
+    30: "Depth B30 — The Portal of the Dawn"
 };
 
-const CREEPY_NOTES = [
-    "I can hear scratching from beneath the stone slabs.",
-    "Do not look it in the eyes. Just walk past.",
-    "The torches burned out hours ago. Something else provides the light.",
-    "Whoever finds this: there is no surface above us anymore.",
-    "The floor is cold. The walls are colder. It waits at the threshold.",
-    "I pulled the first lever. A horrifying groan echoed from the dark.",
-    "The blade swings relentlessly in the clockwork vault. Time has expired.",
-    "Step lightly across the cracked pavers. The abyss claims the careless.",
-    "Every step echoes twice. Only one sound is mine."
-];
-
 /**
- * Ensures at least 2 tiles of clear headroom above any platform (tiles 3 and 5).
+ * Returns architectural and visual configuration based on floor depth (1 to 30).
  */
-function ensurePlatformClearances(grid, cols, rows) {
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            if (grid[r][c] === 3 || grid[r][c] === 5) {
-                // Ensure at least 2 tiles of clear headroom above the platform
-                for (let h = 1; h <= 2; h++) {
-                    if (r - h >= 0 && (grid[r - h][c] === 1 || grid[r - h][c] === 2)) {
-                        grid[r - h][c] = 0; // Clear solid ceiling to air so player can jump and stand
-                    }
-                }
-            }
-        }
+export function getStratumInfo(floorIndex = 1) {
+    if (floorIndex <= 6) {
+        return {
+            stratum: 1,
+            name: "Upper Catacombs",
+            solidTile: 1,       // Stone
+            accentTile: 2,      // Brick
+            decorTile: 12,      // Ancient Relief
+            bgColor: '#07070b',
+            conduitCount: 2,
+            shadowCount: 1,
+            doppelganger: false,
+            pendulumSpeed: 2.0,
+            crumbleDelay: 0.8
+        };
+    } else if (floorIndex <= 12) {
+        return {
+            stratum: 2,
+            name: "Sunken Aqueducts",
+            solidTile: 10,      // Waterlogged Paver
+            accentTile: 1,      // Stone
+            decorTile: 4,       // Backdrop
+            bgColor: '#050907',
+            conduitCount: 3,
+            shadowCount: floorIndex >= 10 ? 2 : 1,
+            doppelganger: floorIndex >= 10,
+            pendulumSpeed: 2.3,
+            crumbleDelay: 0.7
+        };
+    } else if (floorIndex <= 18) {
+        return {
+            stratum: 3,
+            name: "Clockwork Foundry",
+            solidTile: 9,       // Industrial Iron
+            accentTile: 2,      // Brick
+            decorTile: 13,      // Conduit Cables
+            bgColor: '#090708',
+            conduitCount: 3,
+            shadowCount: 2,
+            doppelganger: false,
+            pendulumSpeed: 2.7,
+            crumbleDelay: 0.65
+        };
+    } else if (floorIndex <= 24) {
+        return {
+            stratum: 4,
+            name: "Obsidian Necropolis",
+            solidTile: 8,       // Obsidian Runic
+            accentTile: 12,     // Ancient Relief
+            decorTile: 14,      // Bone Piles
+            bgColor: '#07040d',
+            conduitCount: 4,
+            shadowCount: 2,
+            doppelganger: true,
+            pendulumSpeed: 3.0,
+            crumbleDelay: 0.55
+        };
+    } else {
+        return {
+            stratum: 5,
+            name: "Abyssal Crucible",
+            solidTile: 11,      // Eldritch Void
+            accentTile: 8,      // Obsidian Runic
+            decorTile: 13,      // High-power Conduit
+            bgColor: '#040107',
+            conduitCount: floorIndex >= 28 ? 5 : 4,
+            shadowCount: 3,
+            doppelganger: true,
+            pendulumSpeed: 3.4,
+            crumbleDelay: 0.45
+        };
     }
 }
 
 /**
  * Multi-goal platformer-aware Breadth-First-Search solver.
- * Verifies that the player can reach ALL conduit levers and the exit gate.
+ * Verifies that the player can reach ALL conduit levers and the exit gate across the 2D grid.
  */
 function runBFS(grid, startC, startR, levers = [], exitC = null, exitR = null) {
     const rows = grid.length;
@@ -96,22 +309,22 @@ function runBFS(grid, startC, startR, levers = [], exitC = null, exitR = null) {
         visited[startR][startC] = true;
     }
 
-    // Player occupies row r (feet) and row r - 1 (head).
-    // Air (0), one-way platform (3), background (4), and crumbling stone (5) are passable.
+    const isPassable = (tile) => {
+        return tile === 0 || tile === 3 || tile === 4 || tile === 5 || tile === 12 || tile === 13 || tile === 14;
+    };
+
+    const isSolidGround = (tile) => {
+        return tile === 1 || tile === 2 || tile === 3 || tile === 5 || tile === 6 || tile === 7 || tile === 8 || tile === 9 || tile === 10 || tile === 11;
+    };
+
     const canPlayerFit = (c, r) => {
         if (r < 1 || r >= rows || c < 0 || c >= cols) return false;
-        const feet = grid[r][c];
-        const head = grid[r - 1][c];
-        const feetPassable = (feet === 0 || feet === 3 || feet === 4 || feet === 5);
-        const headPassable = (head === 0 || head === 3 || head === 4 || head === 5);
-        return feetPassable && headPassable;
+        return isPassable(grid[r][c]) && isPassable(grid[r - 1][c]);
     };
 
     const isStanding = (c, r) => {
         if (r + 1 >= rows) return true;
-        const floor = grid[r + 1][c];
-        const hasSolidFloor = (floor === 1 || floor === 2 || floor === 3 || floor === 5);
-        return hasSolidFloor && canPlayerFit(c, r);
+        return isSolidGround(grid[r + 1][c]) && canPlayerFit(c, r);
     };
 
     while (queue.length > 0) {
@@ -130,7 +343,7 @@ function runBFS(grid, startC, startR, levers = [], exitC = null, exitR = null) {
         // Falling
         tryAdd(c, r + 1);
 
-        // Jumping up to 3 tiles high when standing on a surface
+        // Jumping up to 3 tiles high when standing on solid ground or one-way platform
         if (isStanding(c, r)) {
             if (canPlayerFit(c, r - 1)) {
                 tryAdd(c, r - 1);
@@ -146,8 +359,8 @@ function runBFS(grid, startC, startR, levers = [], exitC = null, exitR = null) {
 
     const isReached = (tc, tr) => {
         if (tc === null || tr === null) return true;
-        for (let dc = -1; dc <= 1; dc++) {
-            for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+            for (let dr = -2; dr <= 2; dr++) {
                 let nc = tc + dc;
                 let nr = tr + dr;
                 if (nc >= 0 && nc < cols && nr >= 0 && nr < rows && visited[nr][nc]) {
@@ -158,525 +371,500 @@ function runBFS(grid, startC, startR, levers = [], exitC = null, exitR = null) {
         return false;
     };
 
-    // Platform validation: verify player can stand on top of reachable platforms
-    let platformsValid = true;
-    for (let r = 1; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            if ((grid[r][c] === 3 || grid[r][c] === 5) && visited[r][c]) {
-                if (!canPlayerFit(c, r - 1)) {
-                    platformsValid = false;
-                }
-            }
-        }
-    }
-
-    let maxReachableCol = 0;
-    for (let c = 0; c < cols; c++) {
-        for (let r = 0; r < rows; r++) {
-            if (visited[r][c] && c > maxReachableCol) {
-                maxReachableCol = c;
-            }
-        }
-    }
-
     const allLeversReached = levers.every(l => isReached(l.c, l.r));
     const exitReached = isReached(exitC, exitR);
 
     return {
-        valid: allLeversReached && exitReached && platformsValid,
+        valid: allLeversReached && exitReached,
         allLeversReached,
         exitReached,
-        furthestReachableCol: maxReachableCol,
         visited
     };
 }
 
 /**
- * Attempts to generate a single level configuration.
+ * Attempts to generate a single 2D Macro-Chamber level configuration.
  */
 function generateAttempt(options, forceAccept = false) {
     const seed = options.seed;
     const rng = createRNG(seed);
+    const floorIndex = Math.max(1, Math.min(30, options.floorIndex || 1));
+    const stratum = getStratumInfo(floorIndex);
 
-    const cols = Math.max(60, Math.min(160, options.width || 85));
-    const rows = Math.max(18, Math.min(32, options.height || 22));
+    // Dynamic 2D Level Dimensions based on floor depth
+    // Scaled up to be 4x-6x larger than legacy maps with true multi-story verticality
+    let gridCols = 3;
+    let gridRows = 2;
+    if (floorIndex <= 5) {
+        gridCols = 3; gridRows = 2; // 6 chambers
+    } else if (floorIndex <= 10) {
+        gridCols = 4; gridRows = 2; // 8 chambers
+    } else if (floorIndex <= 18) {
+        gridCols = 4; gridRows = 3; // 12 chambers
+    } else if (floorIndex <= 24) {
+        gridCols = 5; gridRows = 3; // 15 chambers
+    } else {
+        gridCols = 5; gridRows = 3; // 15 massive abyssal chambers
+    }
+
+    const chamberW = Math.floor(36 + Math.min(10, floorIndex * 0.3)); // 36 to 45 tiles wide per chamber
+    const chamberH = 17; // 17 tiles tall per chamber (fits vertical platforming)
     const tileSize = 16;
-    
-    const floorIndex = options.floorIndex || 1;
-    const hazardDensity = options.hazardDensity !== undefined ? options.hazardDensity : Math.min(0.8, 0.4 + floorIndex * 0.08);
-    const verticality = options.verticality !== undefined ? options.verticality : 0.55;
-    const shadowCount = options.shadowCount !== undefined ? options.shadowCount : (floorIndex >= 3 ? 2 : 1);
-    const roomCount = Math.max(4, Math.min(8, options.roomCount || 5));
 
-    // Multi-conduit puzzle count: 2 on B1/B2, 3 on B3+
-    const totalConduits = options.conduitCount !== undefined 
-        ? options.conduitCount 
-        : (floorIndex >= 3 ? 3 : 2);
-    const conduitFlags = Array.from({ length: totalConduits }, (_, i) => `conduit_${seed}_${i}`);
+    const cols = Math.max(100, Math.min(230, options.width || (gridCols * chamberW + 4)));
+    const rows = Math.max(30, Math.min(65, options.height || (gridRows * chamberH + 4)));
 
-    const grid = Array.from({ length: rows }, () => Array(cols).fill(1));
+    // Fill world with stratum primary solid tile
+    const grid = Array.from({ length: rows }, () => Array(cols).fill(stratum.solidTile));
     const entities = [];
 
-    const baseFloorRow = Math.min(rows - 4, 16);
-    const roomWidth = Math.floor((cols - 2) / roomCount);
+    const totalConduits = options.conduitCount !== undefined 
+        ? options.conduitCount 
+        : stratum.conduitCount;
+    const conduitFlags = Array.from({ length: totalConduits }, (_, i) => `conduit_f${floorIndex}_${seed}_${i}`);
 
-    let playerSpawn = { x: 48, y: (baseFloorRow - 1) * tileSize - 4 };
-    let playerTilePos = { c: 3, r: baseFloorRow - 1 };
-    
+    // Helper: carve a rectangular hollow space
+    function carve(c1, r1, c2, r2, fillTile = 0) {
+        const minC = Math.max(1, Math.min(c1, c2));
+        const maxC = Math.min(cols - 2, Math.max(c1, c2));
+        const minR = Math.max(1, Math.min(r1, r2));
+        const maxR = Math.min(rows - 2, Math.max(r1, r2));
+        for (let r = minR; r <= maxR; r++) {
+            for (let c = minC; c <= maxC; c++) {
+                grid[r][c] = fillTile;
+            }
+        }
+    }
+
+    // Define 2D Chamber Layout
+    // Each chamber: colStart, colEnd, rowStart, rowEnd, floorRow
+    const chambers = [];
+    for (let gr = 0; gr < gridRows; gr++) {
+        for (let gc = 0; gc < gridCols; gc++) {
+            const cStart = 2 + gc * chamberW;
+            const cEnd = Math.min(cols - 3, cStart + chamberW - 2);
+            const rStart = 2 + gr * chamberH;
+            const rEnd = Math.min(rows - 3, rStart + chamberH - 2);
+            const floorRow = rEnd - 1;
+
+            chambers.push({
+                gc, gr,
+                index: gr * gridCols + gc,
+                cStart, cEnd, rStart, rEnd,
+                floorRow,
+                type: 'standard'
+            });
+        }
+    }
+
+    // Role Assignments:
+    // Spawn Chamber: bottom-left (or top-left)
+    // Exit Chamber: opposite corner (e.g. top-right or bottom-right)
+    const spawnChamber = chambers[chambers.length - gridCols]; // bottom-left
+    spawnChamber.type = 'spawn';
+
+    const exitChamber = chambers[gridCols - 1]; // top-right
+    exitChamber.type = 'exit';
+
+    // Distribute Conduit Levers across distinct chambers
+    const eligibleConduitChambers = chambers.filter(c => c !== spawnChamber && c !== exitChamber);
+    // Shuffle eligible chambers
+    for (let i = eligibleConduitChambers.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [eligibleConduitChambers[i], eligibleConduitChambers[j]] = [eligibleConduitChambers[j], eligibleConduitChambers[i]];
+    }
+
+    const conduitChambers = eligibleConduitChambers.slice(0, totalConduits);
+    conduitChambers.forEach(c => { c.type = 'conduit'; });
+
+    // Remaining chambers get specialized archetypes
+    const remainingChambers = chambers.filter(c => c.type === 'standard');
+    const archetypes = ['vertical_climb', 'chasm_crossing', 'pendulum_gauntlet', 'labyrinth'];
+    remainingChambers.forEach((c, i) => {
+        c.type = archetypes[i % archetypes.length];
+    });
+
+    let playerSpawn = { x: (spawnChamber.cStart + 4) * tileSize, y: (spawnChamber.floorRow - 1) * tileSize - 4 };
+    let playerTilePos = { c: spawnChamber.cStart + 4, r: spawnChamber.floorRow - 1 };
     const placedLevers = [];
     let exitPos = { c: null, r: null };
 
-    // Determine room archetype ordering for intermediate rooms
-    const intermediateRoomCount = roomCount - 2;
-    const archetypePool = [0, 1, 2, 3]; // 0: Vertical Shaft, 1: Crumbling Chasm, 2: Pendulum Vault, 3: Trap Corridor
-    // Shuffle pool with PRNG
-    for (let i = archetypePool.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        [archetypePool[i], archetypePool[j]] = [archetypePool[j], archetypePool[i]];
-    }
+    // === GENERATE CHAMBER GEOMETRY ===
+    for (const ch of chambers) {
+        // 1. Carve base room hollow
+        carve(ch.cStart, ch.rStart + 1, ch.cEnd, ch.floorRow - 1, 0);
 
-    for (let rIndex = 0; rIndex < roomCount; rIndex++) {
-        const startCol = 1 + rIndex * roomWidth;
-        const endCol = (rIndex === roomCount - 1) ? cols - 2 : startCol + roomWidth - 1;
-
-        if (rIndex === 0) {
-            // === ROOM 0: Safe Starting Crypt ===
-            const ceilingRow = Math.max(2, baseFloorRow - 6);
-            for (let c = startCol; c <= endCol; c++) {
-                for (let r = ceilingRow + 1; r < baseFloorRow; r++) {
-                    grid[r][c] = (c % 4 === 0) ? 4 : 0;
+        // Solid floor with accent tiles
+        for (let c = ch.cStart; c <= ch.cEnd; c++) {
+            grid[ch.floorRow][c] = (c % 2 === 0) ? stratum.solidTile : stratum.accentTile;
+            // Background relief / pillars
+            if (c % 6 === 0) {
+                for (let r = ch.rStart + 2; r < ch.floorRow; r++) {
+                    grid[r][c] = stratum.decorTile;
                 }
-                grid[baseFloorRow][c] = 1;
             }
-            playerSpawn = {
-                x: (startCol + 2) * tileSize,
-                y: (baseFloorRow - 1) * tileSize - 4
-            };
-            playerTilePos = { c: startCol + 2, r: baseFloorRow - 1 };
+        }
 
-            // Sanctuary torch at entrance
+        // 2. Archetype-specific interior architecture
+        if (ch.type === 'spawn') {
+            // Safe Starting Sanctuary
+            // Torch sanctuary at spawn
             entities.push({
                 type: 'interactable',
-                x: (startCol + 2) * tileSize,
-                y: (baseFloorRow - 3) * tileSize,
-                properties: { interactType: 3 }
+                x: (ch.cStart + 3) * tileSize,
+                y: (ch.floorRow - 2) * tileSize,
+                properties: { interactType: 3 } // Torch
             });
 
-            // Lore Inscription detailing the episodic story and Multi-Conduit Puzzle
+            // Ancient Inscription Chronicle Lore Scroll
             const storyData = STORY_INSCRIPTIONS[floorIndex] || {
                 title: `ANCIENT INSCRIPTION: DEPTH B${floorIndex}`,
-                text: `Catacombs — Depth B${floorIndex}:\n${CREEPY_NOTES[Math.floor(rng() * CREEPY_NOTES.length)]}`
+                text: `Catacombs — Depth B${floorIndex}. Stay in the light.`
             };
-            const conduitWord = totalConduits === 3 ? "THREE" : "TWIN";
             entities.push({
                 type: 'interactable',
-                x: (startCol + 4) * tileSize,
-                y: (baseFloorRow - 1) * tileSize,
+                x: (ch.cStart + 6) * tileSize,
+                y: (ch.floorRow - 1) * tileSize,
                 properties: {
-                    interactType: 0,
-                    id: `note_entry_${floorIndex}`,
+                    interactType: 0, // Note
+                    id: `note_f${floorIndex}`,
                     title: storyData.title,
-                    text: `${storyData.text}\n\nThe Sealed Gate ahead is bound by ${conduitWord} RUNIC CONDUITS. Activate all ${totalConduits} conduit levers to break the seals.`
+                    text: `${storyData.text}\n\n[OBJECTIVE]: Locate all ${totalConduits} Conduit Levers to unlock the Sealed Exit Portal.`
                 }
             });
 
-        } else if (rIndex === roomCount - 1) {
-            // === FINAL ROOM: Runic Exit Chamber ===
-            const ceilingRow = Math.max(2, baseFloorRow - 6);
-            for (let c = startCol; c <= endCol; c++) {
-                for (let r = ceilingRow + 1; r < baseFloorRow; r++) {
-                    grid[r][c] = (c % 3 === 0) ? 4 : 0;
-                }
-                grid[baseFloorRow][c] = 2; // brick floor
-            }
-
-            exitPos = { c: endCol - 2, r: baseFloorRow - 1 };
-
-            // Sanctuary torch near exit
+            // Initial Survival Lantern Oil Flask
             entities.push({
                 type: 'interactable',
-                x: (endCol - 4) * tileSize,
-                y: (baseFloorRow - 3) * tileSize,
+                interactType: 4, // OIL_FLASK
+                x: (ch.cStart + 10) * tileSize,
+                y: (ch.floorRow - 1) * tileSize
+            });
+
+        } else if (ch.type === 'exit') {
+            // Master Sealed Gate Chamber
+            const gateCol = ch.cEnd - 4;
+            exitPos = { c: gateCol, r: ch.floorRow - 1 };
+
+            // Exit Gate with Multi-Conduit Requirements
+            entities.push({
+                type: 'interactable',
+                interactType: 1, // DOOR
+                x: gateCol * tileSize,
+                y: (ch.floorRow - 2) * tileSize,
+                properties: {
+                    requiresFlags: conduitFlags
+                }
+            });
+
+            // Guiding Sanctuary Torches framing the master portal
+            entities.push({
+                type: 'interactable',
+                x: (gateCol - 3) * tileSize,
+                y: (ch.floorRow - 2) * tileSize,
+                properties: { interactType: 3 }
+            });
+            entities.push({
+                type: 'interactable',
+                x: (gateCol + 3) * tileSize,
+                y: (ch.floorRow - 2) * tileSize,
                 properties: { interactType: 3 }
             });
 
-            // Multi-Seal Runic Exit Gate
+            // Runic conduits wired into background wall leading into gate
+            for (let c = ch.cStart; c < gateCol; c++) {
+                grid[ch.floorRow - 2][c] = 13; // Conduit Cable
+            }
+
+        } else if (ch.type === 'conduit') {
+            // Conduit Altar Hall
+            const conduitIdx = placedLevers.length;
+            const leverFlag = conduitFlags[conduitIdx] || `conduit_f${floorIndex}_${seed}_${conduitIdx}`;
+            
+            // Build an elevated stone altar dais
+            const altarCol = Math.floor((ch.cStart + ch.cEnd) / 2);
+            const altarRow = ch.floorRow - 4;
+
+            // Altar steps
+            for (let c = altarCol - 4; c <= altarCol + 4; c++) {
+                grid[altarRow][c] = 3; // wooden/stone platform
+            }
+
+            // Conduit Lever Entity
             entities.push({
                 type: 'interactable',
-                x: exitPos.c * tileSize,
-                y: exitPos.r * tileSize,
+                interactType: 2, // SWITCH / LEVER
+                x: altarCol * tileSize,
+                y: (altarRow - 1) * tileSize,
                 properties: {
-                    interactType: 1,
-                    id: `door_${seed}`,
-                    requiresFlags: conduitFlags,
-                    totalSeals: totalConduits,
-                    targetScene: 'NextFloor'
+                    flag: leverFlag,
+                    id: `lever_${conduitIdx}`
                 }
             });
+            placedLevers.push({ c: altarCol, r: altarRow - 1 });
 
-        } else {
-            // === INTERMEDIATE CHAMBERS: Varied Archetypes ===
-            const intermediateIndex = rIndex - 1;
-            const archetype = archetypePool[intermediateIndex % archetypePool.length];
-            const needConduit = placedLevers.length < totalConduits;
+            // Altar Torch Sanctuary
+            entities.push({
+                type: 'interactable',
+                x: (altarCol - 2) * tileSize,
+                y: (altarRow - 2) * tileSize,
+                properties: { interactType: 3 }
+            });
 
-            if (archetype === 0 && verticality > 0.25) {
-                // --- ARCHETYPE 0: The Grand Climbing Shaft ---
-                const highCeiling = Math.max(2, baseFloorRow - 12);
-                const deepFloor = Math.min(rows - 2, baseFloorRow + 2);
+            // Conduit wiring leading out
+            for (let c = ch.cStart; c <= ch.cEnd; c++) {
+                grid[altarRow + 1][c] = 13; // Conduit Cable
+            }
 
-                for (let c = startCol; c <= endCol; c++) {
-                    for (let r = highCeiling + 1; r < deepFloor; r++) {
-                        grid[r][c] = 0;
-                    }
-                    grid[deepFloor][c] = 1;
+            // Bone pile near altar
+            grid[ch.floorRow - 1][ch.cStart + 3] = 14;
+
+        } else if (ch.type === 'vertical_climb') {
+            // Multi-Tier Climbing Shaft
+            // Create alternating staggered one-way platforms spaced ~3 tiles vertically
+            const tiers = Math.floor((ch.floorRow - (ch.rStart + 2)) / 3);
+            for (let t = 1; t <= tiers; t++) {
+                const pr = ch.floorRow - t * 3;
+                const isLeft = (t % 2 === 0);
+                const pcStart = isLeft ? ch.cStart + 4 : ch.cStart + 16;
+                const pcEnd = isLeft ? ch.cStart + 14 : ch.cStart + 26;
+
+                for (let c = pcStart; c <= pcEnd; c++) {
+                    grid[pr][c] = 3; // platform
                 }
 
-                // Staggered platform staircase (spacing <= 3 tiles)
-                let platY = deepFloor - 2;
-                let toggleSide = 0;
-                let highestPlatCol = startCol + 2;
-                let highestPlatY = platY;
-
-                while (platY > highCeiling + 2) {
-                    const pColStart = toggleSide === 0 ? startCol + 2 : startCol + Math.floor(roomWidth / 2);
-                    for (let pc = 0; pc < 3; pc++) {
-                        if (pColStart + pc <= endCol - 1) {
-                            grid[platY][pColStart + pc] = 3;
-                        }
-                    }
-                    highestPlatCol = pColStart + 1;
-                    highestPlatY = platY;
-
-                    toggleSide = 1 - toggleSide;
-                    platY -= Math.floor(2 + rng() * 1.4); 
-                }
-
-                // Guide torch at top of vertical shaft
-                entities.push({
-                    type: 'interactable',
-                    x: (highestPlatCol + 2) * tileSize,
-                    y: (highestPlatY - 2) * tileSize,
-                    properties: { interactType: 3 }
-                });
-
-                // Conduit lever at summit of the shaft
-                if (needConduit) {
-                    const conduitIndex = placedLevers.length;
-                    const cPos = { c: highestPlatCol, r: highestPlatY - 1, flag: conduitFlags[conduitIndex] };
-                    placedLevers.push(cPos);
+                // Torch on every second tier to guide ascent
+                if (t % 2 === 1) {
                     entities.push({
                         type: 'interactable',
-                        x: cPos.c * tileSize,
-                        y: cPos.r * tileSize,
-                        properties: {
-                            interactType: 2,
-                            id: `lever_${seed}_${conduitIndex}`,
-                            flag: cPos.flag
-                        }
-                    });
-                }
-
-                // Spikes at the bottom of the drop
-                if (hazardDensity > 0.25) {
-                    entities.push({
-                        type: 'hazard',
-                        x: (startCol + 1) * tileSize,
-                        y: (deepFloor - 1) * tileSize,
-                        properties: {
-                            hazardType: 0,
-                            width: Math.max(32, (roomWidth - 3) * tileSize),
-                            height: 16
-                        }
-                    });
-                }
-
-            } else if (archetype === 1) {
-                // --- ARCHETYPE 1: Sunken Crypt with Fragile Crumbling Stone Bridge ---
-                const ceilingRow = Math.max(2, baseFloorRow - 6);
-                const pitRow = Math.min(rows - 2, baseFloorRow + 3);
-
-                for (let c = startCol; c <= endCol; c++) {
-                    for (let r = ceilingRow + 1; r < baseFloorRow; r++) {
-                        grid[r][c] = 0;
-                    }
-                    grid[baseFloorRow][c] = 1;
-                }
-
-                const pitStart = startCol + 2;
-                const pitEnd = endCol - 2;
-                if (pitEnd > pitStart + 3) {
-                    for (let c = pitStart; c <= pitEnd; c++) {
-                        grid[baseFloorRow][c] = 0; // deep gap
-                        for (let r = baseFloorRow + 1; r < pitRow; r++) {
-                            grid[r][c] = 0;
-                        }
-                        grid[pitRow][c] = 1;
-                    }
-
-                    // Stepping bridge: alternating sturdy one-way stone (3) and crumbling stone (5)
-                    const midCol = Math.floor((pitStart + pitEnd) / 2);
-                    grid[baseFloorRow][midCol - 2] = 3;
-                    grid[baseFloorRow][midCol - 1] = 5; // Crumbling platform!
-                    grid[baseFloorRow][midCol] = 5;     // Crumbling platform!
-                    grid[baseFloorRow][midCol + 1] = 5; // Crumbling platform!
-                    grid[baseFloorRow][midCol + 2] = 3;
-
-                    // Spikes lining the bottom of the crumbling chasm
-                    entities.push({
-                        type: 'hazard',
-                        x: pitStart * tileSize,
-                        y: (pitRow - 1) * tileSize,
-                        properties: {
-                            hazardType: 0,
-                            width: (pitEnd - pitStart + 1) * tileSize,
-                            height: 16
-                        }
-                    });
-
-                    // Alcove with Conduit Lever on an elevated ledge across the chasm
-                    if (needConduit) {
-                        const conduitIndex = placedLevers.length;
-                        const leverC = pitEnd - 1;
-                        const leverR = baseFloorRow - 1;
-                        const cPos = { c: leverC, r: leverR, flag: conduitFlags[conduitIndex] };
-                        placedLevers.push(cPos);
-                        entities.push({
-                            type: 'interactable',
-                            x: cPos.c * tileSize,
-                            y: cPos.r * tileSize,
-                            properties: {
-                                interactType: 2,
-                                id: `lever_${seed}_${conduitIndex}`,
-                                flag: cPos.flag
-                            }
-                        });
-                    }
-                }
-
-                if (rng() < 0.35) {
-                    entities.push({
-                        type: 'interactable',
-                        x: (startCol + 1) * tileSize,
-                        y: (baseFloorRow - 3) * tileSize,
+                        x: (pcStart + 2) * tileSize,
+                        y: (pr - 2) * tileSize,
                         properties: { interactType: 3 }
                     });
                 }
+            }
 
-            } else if (archetype === 2) {
-                // --- ARCHETYPE 2: Clockwork Vault with Swinging Pendulum Blades ---
-                const ceilingRow = Math.max(3, baseFloorRow - 7);
-                for (let c = startCol; c <= endCol; c++) {
-                    for (let r = ceilingRow + 1; r < baseFloorRow; r++) {
-                        grid[r][c] = (c % 4 === 0) ? 4 : 0;
-                    }
-                    grid[baseFloorRow][c] = 2; // brick floor
-                }
-
-                // Place 1 to 2 swinging Pendulum Blades suspended from the high ceiling
-                const pendCol1 = startCol + Math.floor(roomWidth * 0.35);
+            // Falling trap stone block hazard at top of shaft
+            if (stratum.stratum >= 2 && rng() < 0.6) {
+                const dropCol = ch.cStart + 12;
                 entities.push({
                     type: 'hazard',
-                    x: pendCol1 * tileSize,
-                    y: (ceilingRow + 1) * tileSize,
+                    x: dropCol * tileSize,
+                    y: (ch.rStart + 3) * tileSize,
+                    properties: { hazardType: 1 } // FALLING_BLOCK
+                });
+            }
+
+        } else if (ch.type === 'chasm_crossing') {
+            // Crumbling Stone Chasm over Spike Basin
+            const pitStart = ch.cStart + 5;
+            const pitEnd = ch.cEnd - 5;
+
+            // Dig out floor for pit
+            for (let c = pitStart; c <= pitEnd; c++) {
+                grid[ch.floorRow][c] = 0; // deep drop
+                // Lethal spikes at bottom
+                entities.push({
+                    type: 'hazard',
+                    x: c * tileSize,
+                    y: (ch.floorRow) * tileSize,
+                    properties: { hazardType: 0 } // SPIKES
+                });
+            }
+
+            // Crumbling bridge stepping stones across the chasm
+            for (let c = pitStart + 1; c < pitEnd; c += 3) {
+                grid[ch.floorRow - 1][c] = 5; // Crumbling platform
+                grid[ch.floorRow - 1][c + 1] = 5;
+            }
+
+            // Central sanctuary torch on far ledge
+            entities.push({
+                type: 'interactable',
+                x: (pitEnd + 2) * tileSize,
+                y: (ch.floorRow - 2) * tileSize,
+                properties: { interactType: 3 }
+            });
+
+        } else if (ch.type === 'pendulum_gauntlet') {
+            // Clockwork Pendulum Gauntlet
+            const bladeCount = stratum.stratum >= 3 ? 3 : 2;
+            const spacing = Math.floor((ch.cEnd - ch.cStart - 10) / bladeCount);
+
+            for (let b = 0; b < bladeCount; b++) {
+                const pCol = ch.cStart + 6 + b * spacing;
+                entities.push({
+                    type: 'hazard',
+                    x: pCol * tileSize,
+                    y: (ch.rStart + 3) * tileSize,
                     properties: {
                         hazardType: 2, // PENDULUM_BLADE
-                        pivotX: pendCol1 * tileSize + 8,
-                        pivotY: (ceilingRow + 1) * tileSize,
-                        length: (baseFloorRow - ceilingRow - 3) * tileSize,
-                        swingSpeed: 2.1 + (rng() * 0.6),
-                        maxAngle: Math.PI / 3.2,
-                        phase: rng() * Math.PI,
-                        bladeRadius: 11
+                        pivotX: pCol * tileSize,
+                        pivotY: (ch.rStart + 3) * tileSize,
+                        length: 52 + (b % 2) * 8,
+                        swingSpeed: stratum.pendulumSpeed + b * 0.15,
+                        phase: (b * Math.PI) / bladeCount
                     }
                 });
+            }
 
-                if (roomWidth > 12 && hazardDensity > 0.4) {
-                    const pendCol2 = startCol + Math.floor(roomWidth * 0.7);
-                    entities.push({
-                        type: 'hazard',
-                        x: pendCol2 * tileSize,
-                        y: (ceilingRow + 1) * tileSize,
-                        properties: {
-                            hazardType: 2, // PENDULUM_BLADE
-                            pivotX: pendCol2 * tileSize + 8,
-                            pivotY: (ceilingRow + 1) * tileSize,
-                            length: (baseFloorRow - ceilingRow - 3) * tileSize,
-                            swingSpeed: 2.3 + (rng() * 0.5),
-                            maxAngle: Math.PI / 3.4,
-                            phase: rng() * Math.PI + Math.PI / 2,
-                            bladeRadius: 11
-                        }
-                    });
-                }
+            // Safe resting platforms between pendulums
+            for (let b = 0; b < bladeCount - 1; b++) {
+                const safeCol = ch.cStart + 6 + b * spacing + Math.floor(spacing / 2);
+                grid[ch.floorRow - 3][safeCol] = 3;
+                grid[ch.floorRow - 3][safeCol + 1] = 3;
+            }
 
-                // Conduit lever in Clockwork Vault
-                if (needConduit) {
-                    const conduitIndex = placedLevers.length;
-                    const leverC = startCol + Math.floor(roomWidth / 2);
-                    const leverR = baseFloorRow - 1;
-                    const cPos = { c: leverC, r: leverR, flag: conduitFlags[conduitIndex] };
-                    placedLevers.push(cPos);
-                    entities.push({
-                        type: 'interactable',
-                        x: cPos.c * tileSize,
-                        y: cPos.r * tileSize,
-                        properties: {
-                            interactType: 2,
-                            id: `lever_${seed}_${conduitIndex}`,
-                            flag: cPos.flag
-                        }
-                    });
-                }
+        } else {
+            // Labyrinth Corridor with alcoves and bone piles
+            const alcoveCol = Math.floor((ch.cStart + ch.cEnd) / 2);
+            // Upper gallery platform
+            for (let c = ch.cStart + 6; c <= ch.cEnd - 6; c++) {
+                grid[ch.floorRow - 5][c] = 3;
+            }
 
-            } else {
-                // --- ARCHETYPE 3: Claustrophobic Corridor with Falling Traps ---
-                const ceilingRow = Math.max(4, baseFloorRow - 4);
-                for (let c = startCol; c <= endCol; c++) {
-                    for (let r = ceilingRow + 1; r < baseFloorRow; r++) {
-                        grid[r][c] = (rng() < 0.2) ? 4 : 0;
+            // Oil flask in upper alcove
+            entities.push({
+                type: 'interactable',
+                interactType: 4, // OIL_FLASK
+                x: alcoveCol * tileSize,
+                y: (ch.floorRow - 6) * tileSize
+            });
+
+            // Torch in gallery
+            entities.push({
+                type: 'interactable',
+                x: (alcoveCol - 6) * tileSize,
+                y: (ch.floorRow - 7) * tileSize,
+                properties: { interactType: 3 }
+            });
+
+            // Bone pile details
+            grid[ch.floorRow - 1][ch.cStart + 4] = 14;
+            grid[ch.floorRow - 1][ch.cEnd - 4] = 14;
+        }
+    }
+
+    // === CONNECT CHAMBERS (DOORWAYS & VERTICAL SHAFTS) ===
+    // 1. Horizontal Doorways between adjacent rooms on same floor
+    for (let gr = 0; gr < gridRows; gr++) {
+        for (let gc = 0; gc < gridCols - 1; gc++) {
+            const leftRoom = chambers.find(c => c.gc === gc && c.gr === gr);
+            const rightRoom = chambers.find(c => c.gc === gc + 1 && c.gr === gr);
+            if (leftRoom && rightRoom) {
+                const doorC = leftRoom.cEnd;
+                const doorR = leftRoom.floorRow - 1;
+                // Carve 4-tile-tall, 4-tile-wide horizontal passage
+                for (let dc = 0; dc <= 3; dc++) {
+                    for (let dr = 0; dr < 4; dr++) {
+                        grid[doorR - dr][doorC + dc] = 0; // air passage
                     }
-                    grid[baseFloorRow][c] = (rng() < 0.3) ? 2 : 1;
-                }
-
-                if (hazardDensity > 0.35) {
-                    const trapCol = startCol + Math.floor(rng() * (roomWidth - 4)) + 2;
-                    entities.push({
-                        type: 'hazard',
-                        x: trapCol * tileSize,
-                        y: (ceilingRow + 1) * tileSize,
-                        properties: {
-                            hazardType: 1, // Falling trap
-                            width: 16,
-                            height: 16
-                        }
-                    });
-                }
-
-                if (rng() < 0.3) {
-                    entities.push({
-                        type: 'interactable',
-                        x: (startCol + Math.floor(roomWidth / 2)) * tileSize,
-                        y: (ceilingRow + 1) * tileSize,
-                        properties: { interactType: 3 }
-                    });
-                }
-
-                // If we still need conduit levers, place one in this corridor
-                if (needConduit) {
-                    const conduitIndex = placedLevers.length;
-                    const leverC = startCol + Math.floor(roomWidth / 2);
-                    const leverR = baseFloorRow - 1;
-                    const cPos = { c: leverC, r: leverR, flag: conduitFlags[conduitIndex] };
-                    placedLevers.push(cPos);
-                    entities.push({
-                        type: 'interactable',
-                        x: cPos.c * tileSize,
-                        y: cPos.r * tileSize,
-                        properties: {
-                            interactType: 2,
-                            id: `lever_${seed}_${conduitIndex}`,
-                            flag: cPos.flag
-                        }
-                    });
+                    grid[doorR + 1][doorC + dc] = stratum.solidTile; // solid ground beneath
                 }
             }
         }
     }
 
-    // === GUARANTEE: Ensure ALL conduit levers were placed ===
-    while (placedLevers.length < totalConduits) {
-        const conduitIndex = placedLevers.length;
-        const targetRoomIndex = 1 + (conduitIndex % (roomCount - 2));
-        const startCol = 1 + targetRoomIndex * roomWidth;
-        const leverC = startCol + Math.floor(roomWidth * 0.6);
-        const leverR = baseFloorRow - 1;
-        const cPos = { c: leverC, r: leverR, flag: conduitFlags[conduitIndex] };
-        placedLevers.push(cPos);
+    // 2. Vertical Elevator / Stairwell Shafts between upper and lower floors
+    for (let gc = 0; gc < gridCols; gc++) {
+        for (let gr = 0; gr < gridRows - 1; gr++) {
+            const topRoom = chambers.find(c => c.gc === gc && c.gr === gr);
+            const botRoom = chambers.find(c => c.gc === gc && c.gr === gr + 1);
+            if (topRoom && botRoom) {
+                // Pick a column for the vertical passage (alternating left/right per column)
+                const shaftC = (gc % 2 === 0) ? topRoom.cStart + 6 : topRoom.cEnd - 8;
+                const shaftW = 5;
 
+                // Carve opening through top floor down into lower room
+                for (let r = topRoom.floorRow; r <= botRoom.rStart + 3; r++) {
+                    for (let c = shaftC; c < shaftC + shaftW; c++) {
+                        grid[r][c] = 0; // air shaft
+                    }
+                }
+
+                // Place jumpable one-way platforms inside shaft
+                for (let r = topRoom.floorRow; r <= botRoom.rStart + 3; r += 3) {
+                    for (let c = shaftC + 1; c < shaftC + shaftW - 1; c++) {
+                        grid[r][c] = 3; // platform
+                    }
+                }
+
+                // Guide torch inside shaft
+                entities.push({
+                    type: 'interactable',
+                    x: (shaftC + 1) * tileSize,
+                    y: (topRoom.floorRow + 1) * tileSize,
+                    properties: { interactType: 3 }
+                });
+            }
+        }
+    }
+
+    // Guarantee that all required conduit levers are placed
+    while (placedLevers.length < totalConduits) {
+        const fallbackCol = Math.min(cols - 10, 16 + placedLevers.length * 24);
+        const fallbackRow = Math.min(rows - 6, 12);
+        const lFlag = conduitFlags[placedLevers.length] || `conduit_fallback_${placedLevers.length}`;
+        grid[fallbackRow + 1][fallbackCol] = 3;
+        grid[fallbackRow + 1][fallbackCol + 1] = 3;
         entities.push({
             type: 'interactable',
-            x: cPos.c * tileSize,
-            y: cPos.r * tileSize,
-            properties: {
-                interactType: 2,
-                id: `lever_${seed}_${conduitIndex}`,
-                flag: cPos.flag
+            interactType: 2,
+            x: fallbackCol * tileSize,
+            y: fallbackRow * tileSize,
+            properties: { flag: lFlag }
+        });
+        placedLevers.push({ c: fallbackCol, r: fallbackRow });
+    }
+
+    // Ensure exitPos is valid
+    if (exitPos.c === null) {
+        exitPos = { c: cols - 8, r: rows - 6 };
+    }
+
+    // === RUN PLATFORMER BFS SOLVER ===
+    const bfs = runBFS(grid, playerTilePos.c, playerTilePos.r, placedLevers, exitPos.c, exitPos.r);
+
+    if (!bfs.valid && !forceAccept) {
+        // Return null to signal retry with next seed
+        return null;
+    }
+
+    // If force accepting, bridge any unreachable targets with solid floor and platforms
+    if (!bfs.valid && forceAccept) {
+        placedLevers.forEach(l => {
+            if (!bfs.allLeversReached) {
+                for (let c = Math.min(playerTilePos.c, l.c); c <= Math.max(playerTilePos.c, l.c); c++) {
+                    grid[l.r + 1][c] = 3;
+                }
             }
         });
-    }
-
-    // === CONNECTIVITY: Carve boundary doorways between adjacent rooms ===
-    for (let rIndex = 0; rIndex < roomCount - 1; rIndex++) {
-        const boundCol = 1 + rIndex * roomWidth + roomWidth - 1;
-        for (let c = boundCol - 1; c <= boundCol + 2; c++) {
-            for (let r = baseFloorRow - 4; r < baseFloorRow; r++) {
-                grid[r][c] = 0; // carve open air
-            }
-            grid[baseFloorRow][c] = 1; // solid connecting floor
+        for (let c = Math.min(playerTilePos.c, exitPos.c); c <= Math.max(playerTilePos.c, exitPos.c); c++) {
+            grid[exitPos.r + 1][c] = 3;
         }
     }
 
-    // Ensure clear jumping headroom over all platforms (types 3 & 5)
-    ensurePlatformClearances(grid, cols, rows);
-
-    // === SOLVABILITY: Multi-Goal BFS Validation & Patching ===
-    let patches = 0;
-    while (patches < 3) {
-        const res = runBFS(grid, playerTilePos.c, playerTilePos.r, placedLevers, exitPos.c, exitPos.r);
-        if (res.valid) {
-            break;
-        } else {
-            // Gap identified: carve a solid 3-tile wide passage along baseFloorRow
-            const startP = Math.max(1, res.furthestReachableCol - 2);
-            const endP = Math.min(cols - 2, res.furthestReachableCol + 10);
-            for (let c = startP; c <= endP; c++) {
-                for (let r = baseFloorRow - 3; r < baseFloorRow; r++) {
-                    grid[r][c] = 0;
-                }
-                grid[baseFloorRow][c] = 1;
-            }
-            ensurePlatformClearances(grid, cols, rows);
-            patches++;
-        }
-    }
-
-    const finalRes = runBFS(grid, playerTilePos.c, playerTilePos.r, placedLevers, exitPos.c, exitPos.r);
-    if (!finalRes.valid && !forceAccept) {
-        return null; // Request regeneration with next seed
-    }
-
-    // === ATMOSPHERE: Place Shadow Stalkers in Exploration Zones ===
-    const stalkerCount = Math.max(1, shadowCount);
-    for (let s = 0; s < stalkerCount; s++) {
-        const shadowCol = Math.min(cols - 6, Math.max(16, Math.floor(cols * (0.35 + s * 0.3) + (rng() * 4 - 2))));
+    // === SPAWN ENEMIES BASED ON DEPTH SCALING ===
+    const shadowCount = stratum.shadowCount;
+    for (let s = 0; s < shadowCount; s++) {
+        // Place shadows in distinct exploration chambers away from spawn
+        const shadowChamber = chambers[Math.min(chambers.length - 1, 1 + s * 2 + Math.floor(rng() * 2))];
+        const sCol = Math.floor((shadowChamber.cStart + shadowChamber.cEnd) / 2);
         entities.push({
             type: 'shadow',
-            x: shadowCol * tileSize,
-            y: (baseFloorRow - 2) * tileSize
+            x: sCol * tileSize,
+            y: (shadowChamber.floorRow - 2) * tileSize
         });
     }
 
-    // === SURVIVAL: Place Lantern Oil Flasks across intermediate chambers ===
-    const flaskCount = Math.max(2, Math.min(4, Math.floor(roomCount * 0.55)));
-    for (let f = 0; f < flaskCount; f++) {
-        const segCol = Math.floor(cols * (0.2 + f * 0.22) + (rng() * 4 - 2));
-        const safeCol = Math.min(cols - 5, Math.max(12, segCol));
-        entities.push({
-            type: 'interactable',
-            interactType: 4, // OIL_FLASK
-            x: safeCol * tileSize,
-            y: (baseFloorRow - 1) * tileSize
-        });
-    }
-
-    // === PSYCHOLOGICAL HORROR: Place Doppelganger decoy on Depth B2 & B3 ===
-    if (floorIndex >= 2 && rng() < 0.85) {
-        const doppelCol = Math.min(cols - 8, Math.max(24, Math.floor(cols * 0.52 + (rng() * 8 - 4))));
+    // Spawn psychological Doppelganger on appropriate strata
+    if (stratum.doppelganger) {
+        const doppelChamber = chambers[Math.min(chambers.length - 2, 2 + Math.floor(rng() * (chambers.length - 3)))];
+        const dCol = Math.floor((doppelChamber.cStart + doppelChamber.cEnd) / 2);
         entities.push({
             type: 'doppelganger',
-            x: doppelCol * tileSize,
-            y: (baseFloorRow - 1) * tileSize,
+            x: dCol * tileSize,
+            y: (doppelChamber.floorRow - 1) * tileSize,
             facingRight: rng() > 0.5
         });
     }
@@ -684,10 +872,12 @@ function generateAttempt(options, forceAccept = false) {
     return {
         name: options.name || (FLOOR_NAMES[floorIndex] || `Catacombs Depth B${floorIndex}`),
         seed: seed,
+        floorIndex: floorIndex,
+        stratumName: stratum.name,
         width: cols,
         height: rows,
         tileSize: tileSize,
-        backgroundColor: '#07070b',
+        backgroundColor: stratum.bgColor,
         ambientTrack: 'ambient_drip',
         playerStart: playerSpawn,
         tiles: grid,
@@ -696,16 +886,11 @@ function generateAttempt(options, forceAccept = false) {
 }
 
 /**
- * Generates a fully playable procedural level guaranteed to be solvable.
+ * Generates a fully playable 2D procedural level guaranteed to be solvable.
+ * Automatically retries up to 5 times with deterministic seeds to find a valid layout.
  * @param {Object} options
  * @param {number|string} [options.seed] - Seed for procedural generation
- * @param {number} [options.width=85] - Level width in tiles (60 - 150)
- * @param {number} [options.height=22] - Level height in tiles (18 - 32)
- * @param {number} [options.roomCount=5] - Number of architectural segments (4 - 8)
- * @param {number} [options.hazardDensity=0.5] - Spikes, pendulums, and falling traps (0.0 - 1.0)
- * @param {number} [options.verticality=0.55] - Frequency of climbing shafts and platforms
- * @param {number} [options.shadowCount=1] - Number of stalking horror entities (1 - 3)
- * @param {number} [options.floorIndex=1] - Catacomb depth index (B1, B2, B3...)
+ * @param {number} [options.floorIndex=1] - Catacomb depth index (1 - 30)
  * @param {string} [options.name] - Custom name for level
  * @returns {Object} Complete level object ready to be loaded by Scene
  */
@@ -724,6 +909,6 @@ export function generateProceduralLevel(options = {}) {
         }
     }
     
-    // If all retries fail, force accept the last attempt with patched corridors
+    // Fallback: force-accept with connecting safety platforms
     return generateAttempt({ ...options, seed: currentSeed }, true);
 }

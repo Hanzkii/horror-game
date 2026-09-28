@@ -345,7 +345,8 @@ export default class Scene {
             for (let c = startCol; c <= endCol; c++) {
                 if (r >= 0 && r < this.rows && c >= 0 && c < this.columns) {
                     const tile = this.mapData[r][c];
-                    if (tile === 1 || tile === 2 || tile === 6 || tile === 7) { // solid subterranean or surface tiles
+                    // Solid structural tiles across all 5 strata and surface
+                    if (tile === 1 || tile === 2 || tile === 6 || tile === 7 || tile === 8 || tile === 9 || tile === 10 || tile === 11) {
                         return true;
                     }
                 }
@@ -406,6 +407,29 @@ export default class Scene {
                             break;
                         case 7:
                             SpriteRenderer.drawSurfaceDirt(renderer, x, y, this.tileSize, seed);
+                            break;
+                        case 8:
+                            SpriteRenderer.drawObsidianRunic(renderer, x, y, this.tileSize, seed);
+                            break;
+                        case 9:
+                            SpriteRenderer.drawIndustrialIron(renderer, x, y, this.tileSize, seed);
+                            break;
+                        case 10:
+                            SpriteRenderer.drawWaterloggedPaver(renderer, x, y, this.tileSize, seed);
+                            break;
+                        case 11:
+                            SpriteRenderer.drawEldritchVoid(renderer, x, y, this.tileSize, seed);
+                            break;
+                        case 12:
+                            SpriteRenderer.drawAncientRelief(renderer, x, y, this.tileSize, seed);
+                            break;
+                        case 13: {
+                            const isConduitOn = this.gameState && this.gameState.getFlag && this.gameState.getFlag('conduit_active_general');
+                            SpriteRenderer.drawConduitCable(renderer, x, y, this.tileSize, seed, Boolean(isConduitOn));
+                            break;
+                        }
+                        case 14:
+                            SpriteRenderer.drawBonePile(renderer, x, y, this.tileSize, seed);
                             break;
                         default: 
                             SpriteRenderer.drawStone(renderer, x, y, this.tileSize, seed);

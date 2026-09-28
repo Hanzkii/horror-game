@@ -98,9 +98,7 @@ async function init() {
     function getNextDungeonLevel(floorIndex) {
         return generateProceduralLevel({
             seed: Math.floor(Math.random() * 999999),
-            roomCount: Math.min(8, 4 + floorIndex),
-            hazardDensity: Math.min(0.75, 0.3 + floorIndex * 0.08),
-            verticality: Math.min(0.75, 0.4 + floorIndex * 0.08),
+            floorIndex: floorIndex,
             name: `Catacombs — Depth B${floorIndex}`
         });
     }
@@ -120,8 +118,8 @@ async function init() {
         // Emit Stage Clear milestone before advancing floor
         events.emit('STAGE_CLEAR', { floorIndex: gameState.floorIndex, sanity: gameState.sanity });
 
-        if (gameState.floorIndex >= 4) {
-            // Player unlocked the final gate on Depth B4 — emerge to the surface!
+        if (gameState.floorIndex >= 30) {
+            // Player unlocked the final master portal on Depth B30 — emerge to the surface!
             startSurfaceFinale();
             return;
         }
@@ -147,6 +145,7 @@ async function init() {
 
     function startSurfaceFinale() {
         currentState = GAME_STATES.FINALE;
+        events.emit('FINALE_START');
         loadLevel(scene, SurfaceFinale, gameState, renderer);
         audioScape.setState(AUDIO_STATES.SURFACE_PEACEFUL);
         hud.fadeIn(1.0);
@@ -188,15 +187,12 @@ async function init() {
                     currentState = GAME_STATES.STORY;
                     gameState.isTutorialLevel = false;
                     if (gameState.load('auto')) {
-                        if (gameState.floorIndex === 1) {
-                            loadLevel(scene, Level1, gameState, renderer);
-                        } else {
-                            const nextLevel = getNextDungeonLevel(gameState.floorIndex);
-                            loadLevel(scene, nextLevel, gameState, renderer);
-                        }
+                        const nextLevel = getNextDungeonLevel(gameState.floorIndex || 1);
+                        loadLevel(scene, nextLevel, gameState, renderer);
                     } else {
                         gameState.floorIndex = 1;
-                        loadLevel(scene, Level1, gameState, renderer);
+                        const nextLevel = getNextDungeonLevel(1);
+                        loadLevel(scene, nextLevel, gameState, renderer);
                     }
                     audioScape.setState(AUDIO_STATES.EXPLORATION);
                 } else if (sel === 'story') { 
@@ -205,7 +201,8 @@ async function init() {
                     gameState.reset();
                     gameState.floorIndex = 1;
                     gameState.isPublishedMap = false;
-                    loadLevel(scene, Level1, gameState, renderer);
+                    const nextLevel = getNextDungeonLevel(1);
+                    loadLevel(scene, nextLevel, gameState, renderer);
                     gameState.save('auto');
                     audioScape.setState(AUDIO_STATES.EXPLORATION);
                 } else if (sel === 'tutorial') {
@@ -754,30 +751,14 @@ async function init() {
                     gameState.floorIndex = 0;
                     loadLevel(scene, TutorialLevel, gameState, renderer);
                     audioScape.setState(AUDIO_STATES.EXPLORATION);
-                } else if (pauseAction === 'warp_b1') {
+                } else if (pauseAction && pauseAction.startsWith('warp_b')) {
+                    const fIndex = parseInt(pauseAction.replace('warp_b', ''), 10) || 1;
                     hud.pauseSubmenu = 'main';
                     gameState.isPaused = false;
                     currentState = GAME_STATES.STORY;
                     gameState.isTutorialLevel = false;
-                    gameState.floorIndex = 1;
-                    loadLevel(scene, Level1, gameState, renderer);
-                    audioScape.setState(AUDIO_STATES.EXPLORATION);
-                } else if (pauseAction === 'warp_b2') {
-                    hud.pauseSubmenu = 'main';
-                    gameState.isPaused = false;
-                    currentState = GAME_STATES.STORY;
-                    gameState.isTutorialLevel = false;
-                    gameState.floorIndex = 2;
-                    const nextLevel = getNextDungeonLevel(2);
-                    loadLevel(scene, nextLevel, gameState, renderer);
-                    audioScape.setState(AUDIO_STATES.EXPLORATION);
-                } else if (pauseAction === 'warp_b3') {
-                    hud.pauseSubmenu = 'main';
-                    gameState.isPaused = false;
-                    currentState = GAME_STATES.STORY;
-                    gameState.isTutorialLevel = false;
-                    gameState.floorIndex = 3;
-                    const nextLevel = getNextDungeonLevel(3);
+                    gameState.floorIndex = fIndex;
+                    const nextLevel = getNextDungeonLevel(fIndex);
                     loadLevel(scene, nextLevel, gameState, renderer);
                     audioScape.setState(AUDIO_STATES.EXPLORATION);
                 } else if (pauseAction === 'warp_finale') {

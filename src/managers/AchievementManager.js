@@ -51,11 +51,25 @@ export const ACHIEVEMENTS = [
         color: '#ef4444'
     },
     {
-        id: 'architect_of_echoes',
-        title: 'Master Architect',
-        description: 'Design and test a custom dungeon chamber in Level Architect.',
-        icon: '📐',
-        color: '#10b981'
+        id: 'abyss_veteran',
+        title: 'Clockwork Conqueror',
+        description: 'Survive the swinging blades and delve past Depth B18.',
+        icon: '⚙️',
+        color: '#f59e0b'
+    },
+    {
+        id: 'void_walker',
+        title: 'Walker of the Void',
+        description: 'Descend through the Obsidian Necropolis to Depth B25.',
+        icon: '🌌',
+        color: '#c084fc'
+    },
+    {
+        id: 'dawn_breaker',
+        title: 'Dawn Breaker',
+        description: 'Break all 30 ancient seals and emerge into the morning sunlight.',
+        icon: '☀️',
+        color: '#34d399'
     },
     {
         id: 'first_demise',
@@ -149,6 +163,9 @@ export class AchievementManager {
             const floor = data?.floorIndex || 1;
             if (floor >= 2) this.unlock('first_descent');
             if (floor >= 3) this.unlock('deep_explorer');
+            if (floor >= 18) this.unlock('abyss_veteran');
+            if (floor >= 25) this.unlock('void_walker');
+            if (floor >= 30) this.unlock('dawn_breaker');
 
             if (data?.sanity !== undefined && data.sanity <= 20) {
                 this.unlock('edge_of_madness');
@@ -160,9 +177,9 @@ export class AchievementManager {
             this.unlock('forbidden_lore');
         });
 
-        // 5. Level Architect Test
-        events.on('MAP_TESTED', () => {
-            this.unlock('architect_of_echoes');
+        // 5. Surface Finale Reached
+        events.on('FINALE_START', () => {
+            this.unlock('dawn_breaker');
         });
 
         // 6. Player Death
