@@ -151,7 +151,7 @@ export default class HUD {
         const bar1Y = startY + 2;
         const bar1H = 11;
         ctx.fillStyle = 'rgba(8, 12, 22, 0.92)';
-        ctx.fillRect(bar1X, bar11Y = bar1Y, barW, bar1H);
+        ctx.fillRect(bar1X, bar1Y, barW, bar1H);
         ctx.strokeStyle = isLowSanity ? 'rgba(239, 68, 68, 0.6)' : 'rgba(56, 189, 248, 0.45)';
         ctx.lineWidth = 1;
         ctx.strokeRect(bar1X, bar1Y, barW, bar1H);
