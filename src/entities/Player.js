@@ -258,13 +258,16 @@ export class Player extends Entity {
                             this.grounded = true;
                             landed = true;
                             break;
-                        } else if (tile === 3) { // one-way semi-solid platform
+                        } else if (tile === 3 || tile === 5) { // one-way semi-solid platform or crumbling stone
                             const platTop = r * tileSize;
                             if (prevY + this.height <= platTop + 8) {
                                 this.y = platTop - this.height;
                                 this.vy = 0;
                                 this.grounded = true;
                                 landed = true;
+                                if (tile === 5 && typeof scene.triggerCrumble === 'function') {
+                                    scene.triggerCrumble(c, r);
+                                }
                                 break;
                             }
                         }

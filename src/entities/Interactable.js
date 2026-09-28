@@ -56,8 +56,11 @@ export class Interactable extends Entity {
         }
         
         if (this.interactType === INTERACTABLE_TYPES.DOOR) {
-            const requiresFlag = this.properties.requiresFlag;
-            this.isLocked = requiresFlag && scene.gameState && !scene.gameState.getFlag(requiresFlag);
+            const reqFlags = this.properties.requiresFlags || 
+                (this.properties.requiresFlag ? [this.properties.requiresFlag] : []);
+            this.totalSeals = reqFlags.length;
+            this.brokenSeals = reqFlags.filter(f => scene.gameState && scene.gameState.getFlag(f)).length;
+            this.isLocked = this.totalSeals > 0 && this.brokenSeals < this.totalSeals;
         }
     }
     
@@ -84,16 +87,25 @@ export class Interactable extends Entity {
             }
             
         } else if (this.interactType === INTERACTABLE_TYPES.DOOR) {
-            // Check if door requires a lever / key
-            const requiresFlag = this.properties.requiresFlag;
-            const isUnlocked = !requiresFlag || (scene.gameState && scene.gameState.getFlag(requiresFlag));
+            // Check if door requires one or more levers / conduit flags
+            const reqFlags = this.properties.requiresFlags || 
+                (this.properties.requiresFlag ? [this.properties.requiresFlag] : []);
+            const totalSeals = reqFlags.length;
+            const brokenSeals = reqFlags.filter(f => scene.gameState && scene.gameState.getFlag(f)).length;
+            const isUnlocked = totalSeals === 0 || brokenSeals >= totalSeals;
             
             if (!isUnlocked) {
                 // Door is locked!
+                const remaining = totalSeals - brokenSeals;
                 if (scene.audio) scene.audio.play('thud');
                 if (scene.gameState) {
-                    scene.gameState.activeNote = "THE IRON GATE IS SEALED SHUT.\n\nAn ancient mechanism locks it in place.\nA lever must be hidden in the chambers above...";
-                    scene.gameState.activeNoteTitle = "SEALED GATE";
+                    if (totalSeals > 1) {
+                        scene.gameState.activeNote = `THE IRON GATE IS BOUND BY RUNIC CONDUITS.\n\n${brokenSeals} / ${totalSeals} runic seals broken (${remaining} remaining).\n\nExplore every branch of the catacombs and activate all conduit levers to unseal the passage.`;
+                        scene.gameState.activeNoteTitle = "RUNIC SEALED GATE";
+                    } else {
+                        scene.gameState.activeNote = "THE IRON GATE IS SEALED SHUT.\n\nAn ancient mechanism locks it in place.\nA lever must be hidden in the chambers above...";
+                        scene.gameState.activeNoteTitle = "SEALED GATE";
+                    }
                 }
             } else {
                 // Door unlocked!
@@ -146,7 +158,7 @@ export class Interactable extends Entity {
         if (this.interactType === INTERACTABLE_TYPES.NOTE) {
             SpriteRenderer.drawNote(renderer, this.x, this.y);
         } else if (this.interactType === INTERACTABLE_TYPES.DOOR) {
-            SpriteRenderer.drawDoor(renderer, this.x, this.y, this.isLocked);
+            SpriteRenderer.drawDoor(renderer, this.x, this.y, this.isLocked, this.totalSeals || 1, this.brokenSeals || 0);
         } else if (this.interactType === INTERACTABLE_TYPES.SWITCH) {
             SpriteRenderer.drawLever(renderer, this.x, this.y, this.isActivated);
         } else if (this.interactType === INTERACTABLE_TYPES.TORCH) {

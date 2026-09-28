@@ -206,7 +206,7 @@ export default class SpriteRenderer {
         }
     }
 
-    static drawDoor(renderer, x, y, isLocked) {
+    static drawDoor(renderer, x, y, isLocked, totalSeals = 1, brokenSeals = 0) {
         // Doorframe
         renderer.drawRect(x, y - 12, 16, 28, '#555566'); // grey border
         renderer.drawRect(x + 2, y - 10, 12, 26, '#382518'); // internal base
@@ -226,14 +226,142 @@ export default class SpriteRenderer {
         renderer.drawRect(x + 10, y + 1, 2, 3, '#0d0d15');
 
         if (isLocked) {
-            // Glowing rune
-            const pulse = Math.abs(Math.sin(Date.now() / 500));
-            if (pulse > 0.5) {
-                renderer.drawRect(x + 7, y - 6, 2, 2, '#8844ff');
+            if (totalSeals > 1) {
+                // Multi-Seal Runic Glyph Display above archway
+                const glyphSpacing = 5;
+                const totalWidth = totalSeals * glyphSpacing - 1;
+                const startX = Math.floor(x + 8 - totalWidth / 2);
+                const runeY = y - 16;
+                const now = Date.now();
+
+                // Stone lintel plaque for runes
+                renderer.drawRect(startX - 2, runeY - 2, totalWidth + 4, 6, '#282b33');
+                renderer.drawRect(startX - 1, runeY - 1, totalWidth + 2, 4, '#1b1d22');
+
+                for (let i = 0; i < totalSeals; i++) {
+                    const rx = startX + i * glyphSpacing;
+                    const isBroken = i < brokenSeals;
+                    if (isBroken) {
+                        // Broken conduit: Radiant glowing cyan rune
+                        renderer.drawRect(rx, runeY, 2, 2, '#22ffcc');
+                        renderer.drawRect(rx, runeY - 1, 2, 1, '#77ffdd');
+                    } else {
+                        // Locked conduit: Menacing pulsing violet/crimson rune
+                        const pulse = Math.sin((now / 350) + i * 1.5);
+                        const runeColor = pulse > 0 ? '#ff2255' : '#881133';
+                        renderer.drawRect(rx, runeY, 2, 2, runeColor);
+                    }
+                }
+            } else {
+                // Classic single glowing rune
+                const pulse = Math.abs(Math.sin(Date.now() / 500));
+                if (pulse > 0.5) {
+                    renderer.drawRect(x + 7, y - 6, 2, 2, '#8844ff');
+                }
             }
         } else {
-            // Slightly open crack
+            // Slightly open crack when unlocked
             renderer.drawRect(x + 2, y - 10, 2, 26, '#0d0d15');
+            // If it had multiple seals, display them all deactivated / pale cyan
+            if (totalSeals > 1) {
+                const glyphSpacing = 5;
+                const totalWidth = totalSeals * glyphSpacing - 1;
+                const startX = Math.floor(x + 8 - totalWidth / 2);
+                const runeY = y - 16;
+                renderer.drawRect(startX - 2, runeY - 2, totalWidth + 4, 6, '#282b33');
+                for (let i = 0; i < totalSeals; i++) {
+                    const rx = startX + i * glyphSpacing;
+                    renderer.drawRect(rx, runeY, 2, 2, '#336655');
+                }
+            }
+        }
+    }
+
+    static drawCrumblingPlatform(renderer, x, y, size, seed, shakeOffset = 0, isBreaking = false) {
+        const ox = Math.round(shakeOffset);
+        const bx = x + ox;
+
+        // Base crumbling stone (warm shale)
+        renderer.drawRect(bx, y, size, size, '#332c25');
+        
+        // Jagged eroded top edge
+        renderer.drawRect(bx, y, size, 2, '#4d4338');
+        renderer.drawRect(bx + 3, y, 4, 1, '#635649'); // highlight chunk
+        
+        // Deep fissure cracks
+        renderer.drawRect(bx + 4, y + 2, 1, 6, '#191512');
+        renderer.drawRect(bx + 5, y + 5, 3, 1, '#191512');
+        renderer.drawRect(bx + 10, y + 3, 1, 9, '#191512');
+        renderer.drawRect(bx + 9, y + 8, 2, 1, '#191512');
+        renderer.drawRect(bx + 2, y + 10, 5, 1, '#191512');
+
+        // Eroded bottom edge
+        renderer.drawRect(bx, y + size - 2, size, 2, '#211c18');
+        renderer.drawRect(bx + 6, y + size - 3, 3, 1, '#191512');
+
+        // Falling dust and pebbles when shaking
+        if (Math.abs(shakeOffset) > 0.05 || isBreaking) {
+            const p1 = (seed * 7) % (size - 2);
+            const p2 = (seed * 13) % (size - 3);
+            renderer.drawRect(bx + p1, y + size + 1, 1, 2, '#635649');
+            renderer.drawRect(bx + p2, y + size + 3, 1, 1, '#4d4338');
+            renderer.drawRect(bx + (seed % 10) + 2, y - 2, 1, 1, '#332c25');
+        }
+    }
+
+    static drawPendulum(renderer, pivotX, pivotY, bladeX, bladeY, angle) {
+        // 1. Pivot Wall Mount
+        renderer.drawRect(pivotX - 3, pivotY - 3, 6, 6, '#3a3f47');
+        renderer.drawRect(pivotX - 2, pivotY - 2, 4, 4, '#535b66');
+        renderer.drawRect(pivotX - 1, pivotY - 1, 2, 2, '#1e2126'); // pivot axle
+
+        // 2. Heavy iron chain links
+        const dx = bladeX - pivotX;
+        const dy = bladeY - pivotY;
+        const dist = Math.hypot(dx, dy);
+        const steps = Math.max(3, Math.floor(dist / 4));
+
+        for (let s = 1; s < steps; s++) {
+            const t = s / steps;
+            const lx = pivotX + dx * t;
+            const ly = pivotY + dy * t;
+            const linkColor = (s % 2 === 0) ? '#687382' : '#3d444d';
+            renderer.drawRect(Math.round(lx - 1), Math.round(ly - 1), 2, 2, linkColor);
+        }
+
+        // 3. Central Blade Collar & Axis Weight
+        const bx = Math.round(bladeX);
+        const by = Math.round(bladeY);
+        renderer.drawRect(bx - 3, by - 3, 6, 6, '#2e333b');
+        renderer.drawRect(bx - 2, by - 2, 4, 4, '#48505c');
+        renderer.drawRect(bx - 1, by - 1, 2, 2, '#181b1f');
+
+        // 4. Crescent Executioner's Blade (curved along tangent)
+        // Tangent vector perpendicular to the pendulum arm
+        const cosA = Math.cos(angle);
+        const sinA = Math.sin(angle);
+        // Tangent unit direction
+        const tx = cosA;
+        const ty = -sinA;
+
+        // Draw curved crescent blade along the tangent
+        const halfSpan = 12;
+        for (let offset = -halfSpan; offset <= halfSpan; offset++) {
+            // Blade thickness and curve curvature
+            const curve = (1 - (offset * offset) / (halfSpan * halfSpan)) * 5;
+            const px = Math.round(bx + tx * offset + sinA * curve);
+            const py = Math.round(by + ty * offset + cosA * curve);
+
+            // Steel blade body
+            renderer.drawRect(px - 1, py - 1, 2, 2, '#697482');
+            
+            // Razor edge gleam
+            renderer.drawRect(px, py, 1, 1, '#d8e1eb');
+
+            // Blood stains on outer blade tips
+            if (Math.abs(offset) > 7) {
+                renderer.drawRect(px, py + 1, 1, 1, '#8f1717');
+            }
         }
     }
 

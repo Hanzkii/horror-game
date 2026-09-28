@@ -637,7 +637,7 @@ function loadLevel(scene, levelData, gameState, renderer) {
             const props = ent.properties || {};
             switch (ent.type) {
                 case 'hazard':
-                    scene.add(new Hazard(ent.x, ent.y, props.hazardType || 0, props.width || 16, props.height || 16));
+                    scene.add(new Hazard(ent.x, ent.y, props.hazardType || 0, props.width || 16, props.height || 16, props));
                     break;
                 case 'interactable':
                     scene.add(new Interactable(ent.x, ent.y, props.interactType || 0, props));

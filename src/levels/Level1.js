@@ -60,16 +60,16 @@ export const Level1 = {
         }
         grid[5][42] = 3; grid[5][43] = 3; grid[5][44] = 3; // altar shelf
 
-        // 4. Chamber 4: The Spike Pit Trench (Lower level, c: 35 to 55, r: 9 to 18)
+        // 4. Chamber 4: The Hazard Pit & Sunken Vault (Lower level, c: 35 to 55, r: 9 to 18)
         carve(35, 9, 55, 17, 0);
         for (let c = 38; c <= 50; c++) {
             grid[16][c] = 0; // deep pit hole
             grid[18][c] = 1; // pit bottom where spikes rest
         }
-        // Floating stepping stones across pit with ample headroom (rows 9-13 are open air)
-        grid[14][40] = 3; grid[14][41] = 3; grid[14][42] = 3;
-        grid[14][44] = 3; grid[14][45] = 3; grid[14][46] = 3;
-        grid[14][48] = 3; grid[14][49] = 3; grid[14][50] = 3;
+        // Floating stepping stones across pit: sturdy stone + fragile crumbling stone
+        grid[14][39] = 3; grid[14][40] = 3; grid[14][41] = 3;
+        grid[14][44] = 5; grid[14][45] = 5; grid[14][46] = 5; // Crumbling stone platform!
+        grid[14][49] = 3; grid[14][50] = 3; grid[14][51] = 3;
 
         // 5. Chamber 5: The Stalker's Dark Hall (c: 56 to 78, r: 10 to 16)
         carve(56, 11, 78, 15, 0);
@@ -98,7 +98,7 @@ export const Level1 = {
                 interactType: 0, // Note
                 id: 'note_start',
                 title: 'ANCIENT INSCRIPTION',
-                text: "The main gate is locked.\nFollow the torches upward into the shaft.\nThe ancient lever rests in the sanctum above."
+                text: "The Iron Gate is bound by twin runic conduits.\n\nOne lever awaits in the high sanctum above the climbing shaft.\nThe second lever lies beyond the pendulums and crumbling stone of the lower crypt."
             }
         },
 
@@ -122,13 +122,13 @@ export const Level1 = {
             properties: { interactType: 3 } // Torch near platform 3
         },
 
-        // --- CHAMBER 3: The Upper Sanctum (The Goal of the Vertical Route) ---
+        // --- CHAMBER 3: The Upper Sanctum (Conduit Lever 1) ---
         {
             type: 'interactable',
             x: 688, // col 43
             y: 64,  // row 4 (on altar)
             properties: {
-                interactType: 2, // Ancient Lever / Switch!
+                interactType: 2, // Ancient Lever 1
                 id: 'lever_sanctum',
                 flag: 'lever_shaft_pulled'
             }
@@ -140,7 +140,7 @@ export const Level1 = {
             properties: { interactType: 3 } // Torch in sanctum
         },
 
-        // --- CHAMBER 4: The Hazard Pit ---
+        // --- CHAMBER 4: The Hazard Pit & Pendulum Blade ---
         {
             type: 'hazard',
             x: 608,
@@ -161,6 +161,31 @@ export const Level1 = {
                 height: 16
             }
         },
+        {
+            type: 'hazard',
+            x: 720,
+            y: 144,
+            properties: {
+                hazardType: 2, // PENDULUM_BLADE
+                pivotX: 720,
+                pivotY: 144,
+                length: 64,
+                swingSpeed: 2.2,
+                maxAngle: Math.PI / 3.2,
+                bladeRadius: 11
+            }
+        },
+        // Conduit Lever 2 (in lower crypt past the crumbling pit)
+        {
+            type: 'interactable',
+            x: 832, // col 52
+            y: 240, // row 15
+            properties: {
+                interactType: 2, // Ancient Lever 2
+                id: 'lever_catacomb',
+                flag: 'lever_catacomb_pulled'
+            }
+        },
 
         // --- CHAMBER 5: The Stalker's Hall ---
         {
@@ -175,7 +200,7 @@ export const Level1 = {
             properties: { interactType: 3 } // Torch illuminating entrance to dark hall
         },
 
-        // --- FINAL CHAMBER: The Sealed Gate ---
+        // --- FINAL CHAMBER: The Sealed Gate (Requires Both Levers) ---
         {
             type: 'interactable',
             x: 1200,
@@ -183,7 +208,7 @@ export const Level1 = {
             properties: {
                 interactType: 1, // Exit Door / Gate
                 id: 'exit_gate',
-                requiresFlag: 'lever_shaft_pulled', // MUST PULL THE LEVER IN THE HIGH SANCTUM!
+                requiresFlags: ['lever_shaft_pulled', 'lever_catacomb_pulled'],
                 targetScene: 'ProceduralLevel'
             }
         }

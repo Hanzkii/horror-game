@@ -30,6 +30,10 @@ export default class Scene {
         this.ui = null;
         this.gameState = null;
         this.input = null;
+        this.postProcessing = null;
+        
+        // Crumbling tiles state tracking
+        this.crumblingTiles = new Map();
         
         // Transition state
         this.transitioning = false;
@@ -51,6 +55,30 @@ export default class Scene {
         this.columns = data[0] ? data[0].length : 0;
         this.width = this.columns * this.tileSize;
         this.height = this.rows * this.tileSize;
+        if (this.crumblingTiles) {
+            this.crumblingTiles.clear();
+        }
+    }
+
+    /**
+     * Triggers the crumbling sequence of a fragile stone platform tile (Tile 5).
+     * @param {number} col - Column index
+     * @param {number} row - Row index
+     */
+    triggerCrumble(col, row) {
+        const key = `${col},${row}`;
+        if (!this.crumblingTiles.has(key)) {
+            this.crumblingTiles.set(key, {
+                col,
+                row,
+                state: 'shaking',
+                timer: 0.45,
+                respawnTimer: 3.5
+            });
+            if (this.audio) {
+                this.audio.play('drip');
+            }
+        }
     }
     
     /**
@@ -129,6 +157,16 @@ export default class Scene {
                     ent.banish('respawn', this);
                 }
             }
+        }
+
+        // 3. Reset crumbling platforms
+        if (this.crumblingTiles) {
+            for (const [key, item] of this.crumblingTiles) {
+                if (item.row < this.rows && item.col < this.columns) {
+                    this.mapData[item.row][item.col] = 5;
+                }
+            }
+            this.crumblingTiles.clear();
         }
     }
     
@@ -247,6 +285,35 @@ export default class Scene {
             }
         }
         
+        // Handle crumbling platforms
+        if (this.crumblingTiles && this.crumblingTiles.size > 0) {
+            for (const [key, item] of this.crumblingTiles) {
+                if (item.state === 'shaking') {
+                    item.timer -= dt;
+                    if (item.timer <= 0) {
+                        item.state = 'broken';
+                        if (item.row < this.rows && item.col < this.columns) {
+                            this.mapData[item.row][item.col] = 0; // tile crumbles away!
+                        }
+                        if (this.audio) {
+                            this.audio.play('thud');
+                        }
+                        if (this.postProcessing) {
+                            this.postProcessing.addTrauma(0.25);
+                        }
+                    }
+                } else if (item.state === 'broken') {
+                    item.respawnTimer -= dt;
+                    if (item.respawnTimer <= 0) {
+                        if (item.row < this.rows && item.col < this.columns) {
+                            this.mapData[item.row][item.col] = 5; // platform respawns!
+                        }
+                        this.crumblingTiles.delete(key);
+                    }
+                }
+            }
+        }
+
         // Handle transition
         if (this.transitioning) {
             this.transitionAlpha += dt * 2;
@@ -321,6 +388,15 @@ export default class Scene {
                         case 4: 
                             SpriteRenderer.drawBackdrop(renderer, x, y, this.tileSize, seed);
                             break;
+                        case 5: {
+                            const key = `${c},${r}`;
+                            const crumble = this.crumblingTiles?.get(key);
+                            const shakeOffset = (crumble && crumble.state === 'shaking')
+                                ? (Math.random() - 0.5) * 2.5
+                                : 0;
+                            SpriteRenderer.drawCrumblingPlatform(renderer, x, y, this.tileSize, seed, shakeOffset, crumble?.state === 'shaking');
+                            break;
+                        }
                         default: 
                             SpriteRenderer.drawStone(renderer, x, y, this.tileSize, seed);
                     }
