@@ -22,6 +22,36 @@ function createRNG(seed) {
     };
 }
 
+export const STORY_INSCRIPTIONS = {
+    1: {
+        title: "ANCIENT INSCRIPTION: ENTRY I",
+        chapter: "The Cold Awakening",
+        text: "If your eyes can read these scratches, you have awakened upon the cold stone just as I did.\n\nDo not panic. Panic quickens the pulse, and it hears every heartbeat.\n\nThis subterranean vault is older than memory. The torches are your only sanctuary. Whatever you do, do not linger in the dark. It watches from the edges of your vision.\n\n— Althea's Journal, Entry I"
+    },
+    2: {
+        title: "ANCIENT INSCRIPTION: ENTRY II",
+        chapter: "The Sunken Crypt",
+        text: "Day unknown. I have descended into the sunken, waterlogged crypts. The stone floor crumbles into the abyss if you hesitate for even a heartbeat.\n\nI caught its gaze in the black water. It has no true shape—only hunger and ancient spite. It does not feast on flesh; it feeds on our unraveling sanity.\n\nLook away from its eyes and keep moving.\n\n— Althea's Journal, Entry II"
+    },
+    3: {
+        title: "ANCIENT INSCRIPTION: ENTRY III",
+        chapter: "The Clockwork Vaults",
+        text: "The swinging pendulum blades never stop. The ancient builders engineered this labyrinth as an ordeal—a crucible to purge the weak.\n\nThe creature hunting us is the remnant of the first soul trapped here, deformed by centuries of isolation. It envies those who still possess warmth and form. It wants to claim yours.\n\n— Althea's Journal, Entry III"
+    },
+    4: {
+        title: "ANCIENT INSCRIPTION: ENTRY IV",
+        chapter: "The Threshold of Daylight",
+        text: "I can smell it! Sweet pine and damp earth blowing through the cracks in the high ceiling! The surface lies directly above the final portal!\n\nThe creature knows we are close to the exit. It is thrashing in fury, trying to extinguish our light. Break the final runic conduits and run toward the dawn!\n\n— Althea's Journal, Entry IV"
+    }
+};
+
+export const FLOOR_NAMES = {
+    1: "The Awakening",
+    2: "Depth B2 — The Sunken Crypt",
+    3: "Depth B3 — The Clockwork Vaults",
+    4: "Depth B4 — The Threshold of Daylight"
+};
+
 const CREEPY_NOTES = [
     "I can hear scratching from beneath the stone slabs.",
     "Do not look it in the eyes. Just walk past.",
@@ -232,7 +262,11 @@ function generateAttempt(options, forceAccept = false) {
                 properties: { interactType: 3 }
             });
 
-            // Lore Inscription detailing the Multi-Conduit Puzzle
+            // Lore Inscription detailing the episodic story and Multi-Conduit Puzzle
+            const storyData = STORY_INSCRIPTIONS[floorIndex] || {
+                title: `ANCIENT INSCRIPTION: DEPTH B${floorIndex}`,
+                text: `Catacombs — Depth B${floorIndex}:\n${CREEPY_NOTES[Math.floor(rng() * CREEPY_NOTES.length)]}`
+            };
             const conduitWord = totalConduits === 3 ? "THREE" : "TWIN";
             entities.push({
                 type: 'interactable',
@@ -240,9 +274,9 @@ function generateAttempt(options, forceAccept = false) {
                 y: (baseFloorRow - 1) * tileSize,
                 properties: {
                     interactType: 0,
-                    id: `note_seed_${seed}_start`,
-                    title: 'ANCIENT INSCRIPTION',
-                    text: `Catacombs — Depth B${floorIndex}:\n${CREEPY_NOTES[Math.floor(rng() * CREEPY_NOTES.length)]}\n\nThe Sealed Gate ahead is bound by ${conduitWord} RUNIC CONDUITS.\nLocate and activate all ${totalConduits} conduit levers across these halls to break the seals.`
+                    id: `note_entry_${floorIndex}`,
+                    title: storyData.title,
+                    text: `${storyData.text}\n\nThe Sealed Gate ahead is bound by ${conduitWord} RUNIC CONDUITS. Activate all ${totalConduits} conduit levers to break the seals.`
                 }
             });
 
@@ -624,7 +658,7 @@ function generateAttempt(options, forceAccept = false) {
     }
 
     return {
-        name: options.name || `Catacombs B${floorIndex} (Seed ${seed})`,
+        name: options.name || (FLOOR_NAMES[floorIndex] || `Catacombs Depth B${floorIndex}`),
         seed: seed,
         width: cols,
         height: rows,

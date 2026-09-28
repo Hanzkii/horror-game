@@ -341,7 +341,7 @@ export default class Scene {
             for (let c = startCol; c <= endCol; c++) {
                 if (r >= 0 && r < this.rows && c >= 0 && c < this.columns) {
                     const tile = this.mapData[r][c];
-                    if (tile === 1 || tile === 2) { // solid tiles
+                    if (tile === 1 || tile === 2 || tile === 6 || tile === 7) { // solid subterranean or surface tiles
                         return true;
                     }
                 }
@@ -397,6 +397,12 @@ export default class Scene {
                             SpriteRenderer.drawCrumblingPlatform(renderer, x, y, this.tileSize, seed, shakeOffset, crumble?.state === 'shaking');
                             break;
                         }
+                        case 6:
+                            SpriteRenderer.drawSurfaceGrass(renderer, x, y, this.tileSize, seed);
+                            break;
+                        case 7:
+                            SpriteRenderer.drawSurfaceDirt(renderer, x, y, this.tileSize, seed);
+                            break;
                         default: 
                             SpriteRenderer.drawStone(renderer, x, y, this.tileSize, seed);
                     }

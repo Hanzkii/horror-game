@@ -155,6 +155,11 @@ export class Interactable extends Entity {
     }
     
     render(renderer) {
+        if (this.properties.isBirchTree) {
+            SpriteRenderer.drawBirchTree(renderer, this.x, this.y);
+            return;
+        }
+
         if (this.interactType === INTERACTABLE_TYPES.NOTE) {
             SpriteRenderer.drawNote(renderer, this.x, this.y);
         } else if (this.interactType === INTERACTABLE_TYPES.DOOR) {

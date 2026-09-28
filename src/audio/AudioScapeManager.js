@@ -8,7 +8,9 @@ export const AUDIO_STATES = {
     EXPLORATION: 'exploration',
     TENSION: 'tension',
     CHASE: 'chase',
-    SANCTUARY: 'sanctuary'
+    SANCTUARY: 'sanctuary',
+    SURFACE_PEACEFUL: 'surface_peaceful',
+    FINALE_TWIST: 'finale_twist'
 };
 
 export class AudioScapeManager {
@@ -29,6 +31,7 @@ export class AudioScapeManager {
         // Proximity trackers
         this.lastHeartbeatTime = 0;
         this.heartbeatInterval = 1.0;
+        this.nextBirdChirpTime = 0;
     }
 
     setVolumes(volumes) {
@@ -86,7 +89,40 @@ export class AudioScapeManager {
 
         this.stateTimer += dt;
 
-        // Determine dynamic state based on proximity & sanctuary
+        // In finale scenes, maintain the scripted surface or twist state
+        if (this.currentState === AUDIO_STATES.SURFACE_PEACEFUL || this.currentState === AUDIO_STATES.FINALE_TWIST) {
+            if (this.currentState === AUDIO_STATES.SURFACE_PEACEFUL) {
+                if (this.studio.windGain) {
+                    this.studio.windGain.gain.setTargetAtTime(this.volumes.ambient * 0.15, time, 0.4);
+                }
+                if (this.studio.droneGain) {
+                    this.studio.droneGain.gain.setTargetAtTime(0, time, 0.4);
+                }
+                this.studio.params.heartbeatVol = 0;
+                // Periodic procedural morning bird chirps
+                if (time >= this.nextBirdChirpTime) {
+                    this.playBirdChirp();
+                    this.nextBirdChirpTime = time + 1.2 + Math.random() * 2.2;
+                }
+                return;
+            } else if (this.currentState === AUDIO_STATES.FINALE_TWIST) {
+                // Sudden dark discord cut
+                if (this.studio.windGain) {
+                    this.studio.windGain.gain.setTargetAtTime(this.volumes.ambient * 0.65, time, 0.1);
+                }
+                if (this.studio.droneGain) {
+                    this.studio.droneGain.gain.setTargetAtTime(this.volumes.ambient * 0.5, time, 0.1);
+                }
+                if (this.studio.droneOsc1 && this.studio.droneOsc1.frequency) {
+                    this.studio.droneOsc1.frequency.setTargetAtTime(28, time, 0.1);
+                }
+                this.studio.params.heartbeatVol = 0.95;
+                this.studio.params.heartbeatBpm = 135;
+                return;
+            }
+        }
+
+        // Determine dynamic subterranean state based on proximity & sanctuary
         let targetState = AUDIO_STATES.EXPLORATION;
         if (options.isNearTorch) {
             targetState = AUDIO_STATES.SANCTUARY;
@@ -183,6 +219,37 @@ export class AudioScapeManager {
             const targetPitch = Math.max(30, 38 - (floorIndex - 1) * 2);
             this.studio.droneOsc1.frequency.setTargetAtTime(targetPitch, time, 0.6);
         }
+    }
+
+    /**
+     * Synthesizes an organic morning birdsong chirp using Web Audio oscillators.
+     */
+    playBirdChirp() {
+        if (!this.studio || !this.studio.ctx) return;
+        const ctx = this.studio.ctx;
+        const now = ctx.currentTime;
+        
+        try {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+
+            const baseFreq = 2200 + Math.random() * 800;
+            osc.frequency.setValueAtTime(baseFreq, now);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq + 850, now + 0.05);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq - 300, now + 0.14);
+
+            const vol = (this.volumes.ambient || 0.8) * 0.14;
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.linearRampToValueAtTime(vol, now + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+
+            osc.connect(gain);
+            gain.connect(this.studio.masterGain || ctx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.16);
+        } catch (e) {}
     }
 }
 

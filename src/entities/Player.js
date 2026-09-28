@@ -215,7 +215,7 @@ export class Player extends Entity {
                 // Moving right: check right leading edge
                 for (let r = topRow; r <= bottomRow; r++) {
                     const tile = scene.getTile(rightCol, r);
-                    if (tile === 1 || tile === 2) {
+                    if (tile === 1 || tile === 2 || tile === 6 || tile === 7) {
                         this.x = rightCol * tileSize - this.width;
                         this.vx = 0;
                         this.touchingWallRight = true;
@@ -226,7 +226,7 @@ export class Player extends Entity {
                 // Moving left: check left leading edge
                 for (let r = topRow; r <= bottomRow; r++) {
                     const tile = scene.getTile(leftCol, r);
-                    if (tile === 1 || tile === 2) {
+                    if (tile === 1 || tile === 2 || tile === 6 || tile === 7) {
                         this.x = (leftCol + 1) * tileSize;
                         this.vx = 0;
                         this.touchingWallLeft = true;
@@ -252,7 +252,7 @@ export class Player extends Entity {
                 for (let r = topRow; r <= bottomRow; r++) {
                     for (let c = leftCol; c <= rightCol; c++) {
                         const tile = scene.getTile(c, r);
-                        if (tile === 1 || tile === 2) { // solid stone or brick
+                        if (tile === 1 || tile === 2 || tile === 6 || tile === 7) { // solid stone, brick, grass, or dirt
                             this.y = r * tileSize - this.height;
                             this.vy = 0;
                             this.grounded = true;
@@ -280,7 +280,7 @@ export class Player extends Entity {
                 for (let r = bottomRow; r >= topRow; r--) {
                     for (let c = leftCol; c <= rightCol; c++) {
                         const tile = scene.getTile(c, r);
-                        if (tile === 1 || tile === 2) {
+                        if (tile === 1 || tile === 2 || tile === 6 || tile === 7) {
                             this.y = (r + 1) * tileSize;
                             this.vy = 0;
                             this.jumpTimer = 0;
@@ -303,7 +303,7 @@ export class Player extends Entity {
         const centerCol = Math.floor((this.x + this.width / 2) / tileSize);
         const centerRow = Math.floor((this.y + this.height / 2) / tileSize);
         const centerTile = scene.getTile(centerCol, centerRow);
-        if (centerTile === 1 || centerTile === 2) {
+        if (centerTile === 1 || centerTile === 2 || centerTile === 6 || centerTile === 7) {
             let unstuck = false;
             for (let r = centerRow - 1; r >= Math.max(0, centerRow - 8); r--) {
                 if (scene.getTile(centerCol, r) === 0 && scene.getTile(centerCol, r - 1) === 0) {

@@ -75,10 +75,77 @@ export default class SpriteRenderer {
             renderer.drawRect(x + 2, y + 2, size - 4, size - 4, '#101018');
         }
         
-        if (this.getRandom(seed + 1) > 0.8) {
-            renderer.drawRect(x, y, 1, size, '#09090d');
-            renderer.drawRect(x, y, size, 1, '#09090d');
+    static drawSurfaceGrass(renderer, x, y, size, seed) {
+        // Vibrant rolling hill grass
+        renderer.drawRect(x, y, size, size, '#255428'); // deep rich undergrowth
+        renderer.drawRect(x, y, size, 4, '#388e3c');     // mid grass band
+        renderer.drawRect(x, y, size, 2, '#4caf50');     // lush sunlit top edge
+
+        // Tiny grass blades
+        const r1 = Math.floor(this.getRandom(seed) * 12);
+        const r2 = Math.floor(this.getRandom(seed + 3) * 12);
+        renderer.drawRect(x + r1, y - 2, 1, 3, '#81c784');
+        renderer.drawRect(x + r2, y - 1, 1, 2, '#66bb6a');
+
+        // Occasional wildflowers (buttercups, daisies, forget-me-nots)
+        if (seed % 6 === 0) {
+            const flowerColors = ['#fff59d', '#ffffff', '#90caf9', '#f48fb1'];
+            const flowerColor = flowerColors[seed % flowerColors.length];
+            renderer.drawRect(x + (seed % 11) + 2, y - 3, 2, 2, flowerColor);
+            renderer.drawRect(x + (seed % 11) + 2, y - 1, 1, 2, '#388e3c'); // stem
         }
+    }
+
+    static drawSurfaceDirt(renderer, x, y, size, seed) {
+        // Rich warm earth and pebbles
+        renderer.drawRect(x, y, size, size, '#3e2723');
+        renderer.drawRect(x, y, size, 2, '#4e342e');
+
+        // Embedded stone fragments
+        const px = Math.floor(this.getRandom(seed) * 11) + 2;
+        const py = Math.floor(this.getRandom(seed + 1) * 10) + 3;
+        renderer.drawRect(x + px, y + py, 2, 2, '#5d4037');
+    }
+
+    static drawBirchTree(renderer, x, y) {
+        // 1. Birch trunk (cream white with dark grey horizontal notches)
+        const trunkW = 8;
+        const trunkH = 80;
+        renderer.drawRect(x + 20, y - trunkH, trunkW, trunkH, '#ede8df');
+        renderer.drawRect(x + 20, y - trunkH, 2, trunkH, '#cfc8be'); // left shadow
+        // Bark notches
+        for (let i = 8; i < trunkH - 8; i += 7) {
+            const ny = y - trunkH + i;
+            renderer.drawRect(x + 21, ny, 3, 1, '#37322d');
+            renderer.drawRect(x + 24, ny + 3, 3, 1, '#37322d');
+        }
+
+        // 2. Voluminous Emerald Leaf Canopy
+        const canopyX = x - 10;
+        const canopyY = y - trunkH - 35;
+        // Deep interior shade (where eyes will lurk)
+        renderer.drawRect(canopyX + 6, canopyY + 12, 56, 36, '#133019');
+        // Mid green foliage clumps
+        renderer.drawRect(canopyX + 2, canopyY + 6, 64, 30, '#1b4d24');
+        renderer.drawRect(canopyX + 8, canopyY, 52, 20, '#256b33');
+        // Sunlit highlights
+        renderer.drawRect(canopyX + 12, canopyY - 4, 38, 12, '#388e3c');
+        renderer.drawRect(canopyX + 18, canopyY - 6, 24, 6, '#4caf50');
+        // Leaf cluster dapples
+        renderer.drawRect(canopyX + 4, canopyY + 18, 14, 14, '#2e7d32');
+        renderer.drawRect(canopyX + 50, canopyY + 16, 16, 16, '#2e7d32');
+    }
+
+    static drawWatchingEyes(renderer, x, y, alpha = 1.0) {
+        const a = Math.max(0, Math.min(1, alpha));
+        // Sinister luminous white eyes with vertical pupils
+        renderer.drawRect(x, y, 4, 2, `rgba(255, 255, 255, ${a})`);
+        renderer.drawRect(x + 7, y, 4, 2, `rgba(255, 255, 255, ${a})`);
+        // Pupils
+        renderer.drawRect(x + 2, y, 1, 2, `rgba(20, 20, 20, ${a * 0.9})`);
+        renderer.drawRect(x + 9, y, 1, 2, `rgba(20, 20, 20, ${a * 0.9})`);
+        // Faint void miasma aura around the eyes
+        renderer.drawRect(x - 2, y - 2, 15, 6, `rgba(15, 5, 25, ${a * 0.45})`);
     }
 
     static drawPlayer(renderer, x, y, state, frame, facingRight, breathTimer, isBlinking = false, custom = null) {

@@ -96,9 +96,9 @@ export const Level1 = {
             y: 240,
             properties: {
                 interactType: 0, // Note
-                id: 'note_start',
-                title: 'ANCIENT INSCRIPTION',
-                text: "The Iron Gate is bound by twin runic conduits.\n\nOne lever awaits in the high sanctum above the climbing shaft.\nThe second lever lies beyond the pendulums and crumbling stone of the lower crypt."
+                id: 'note_entry_1',
+                title: 'ANCIENT INSCRIPTION: ENTRY I',
+                text: "If your eyes can read these scratches, you have awakened upon the cold stone just as I did.\n\nDo not panic. Panic quickens the pulse, and it hears every heartbeat.\n\nThis subterranean vault is older than memory. The torches are your only sanctuary. Whatever you do, do not linger in the dark. It watches from the edges of your vision.\n\nThe Iron Gate is bound by twin runic conduits. One lever awaits high in the vertical shaft; the second beyond the pendulum blades in the lower crypt.\n\n— Althea's Journal, Entry I"
             }
         },
 

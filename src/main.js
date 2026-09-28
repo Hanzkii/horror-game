@@ -18,6 +18,7 @@ import { Shadow } from './entities/Shadow.js';
 // Import Content & Tools
 import { Level1 } from './levels/Level1.js';
 import { TutorialLevel } from './levels/TutorialLevel.js';
+import { SurfaceFinale } from './levels/SurfaceFinale.js';
 import { GameState } from './game/GameState.js';
 import { generateProceduralLevel } from './generator/LevelGenerator.js';
 import LevelEditor from './editor/LevelEditor.js';
@@ -38,6 +39,7 @@ const GAME_STATES = {
     LOADING: 'loading',
     MENU: 'menu',
     STORY: 'story',
+    FINALE: 'finale',
     DESIGN_LEVEL: 'design_level',
     DESIGN_SOUND: 'design_sound',
     PAUSED: 'paused'
@@ -150,6 +152,12 @@ async function init() {
         // Emit Stage Clear milestone before advancing floor
         events.emit('STAGE_CLEAR', { floorIndex: gameState.floorIndex, sanity: gameState.sanity });
 
+        if (gameState.floorIndex >= 4) {
+            // Player unlocked the final gate on Depth B4 — emerge to the surface!
+            startSurfaceFinale();
+            return;
+        }
+
         gameState.floorIndex = (gameState.floorIndex || 1) + 1;
         gameState.save('auto'); // Milestone autosave!
 
@@ -158,6 +166,33 @@ async function init() {
         editor.loadLevel(nextLevel);
         hud.fadeIn(0.5);
     };
+
+    // Surface Finale Director State
+    const finaleState = {
+        phase: 'emerge', // 'emerge' -> 'meadow' -> 'overlook' -> 'twist' -> 'title_drop'
+        timer: 0,
+        twistTimer: 0,
+        textTimer: 0,
+        dialogue: "The oppressive stone is behind you...\nWarm morning air fills your lungs.",
+        shadowEyesAlpha: 0,
+        shadowDetached: false
+    };
+
+    function startSurfaceFinale() {
+        currentState = GAME_STATES.FINALE;
+        loadLevel(scene, SurfaceFinale, gameState, renderer);
+        audioScape.setState(AUDIO_STATES.SURFACE_PEACEFUL);
+        hud.fadeIn(1.0);
+
+        finaleState.phase = 'emerge';
+        finaleState.timer = 0;
+        finaleState.twistTimer = 0;
+        finaleState.textTimer = 0;
+        finaleState.dialogue = "The oppressive stone is behind you...\nWarm morning air fills your lungs.";
+        finaleState.shadowEyesAlpha = 0;
+        finaleState.shadowDetached = false;
+        gameState.currentLevel = "The Surface — A New Dawn";
+    }
 
     // Initialize Level Architect (Editor & Procedural Generator)
     const editor = new LevelEditor(canvas, scene, renderer, (customLevel) => {
@@ -476,6 +511,172 @@ async function init() {
                     currentState = GAME_STATES.PAUSED;
                     gameState.isPaused = true;
                     hud.pauseSubmenu = 'main';
+                }
+                break;
+
+            case GAME_STATES.FINALE:
+                canvas.style.cursor = finaleState.phase === 'title_drop' ? 'default' : 'none';
+                finaleState.timer += dt;
+                finaleState.textTimer += dt;
+
+                // Update player movement and camera during gameplay phases
+                if (finaleState.phase !== 'title_drop') {
+                    scene.update(dt, input, gameState);
+                    if (scene.player) {
+                        renderer.lookAt(scene.player.x + scene.player.width / 2, scene.player.y + scene.player.height / 2);
+                        renderer.updateCamera(dt);
+                    }
+                    audioScape.update(dt, gameState, 9999, 1, {});
+
+                    // Phase transitions based on player exploration
+                    if (scene.player) {
+                        if (finaleState.phase === 'emerge' && scene.player.x > 320) {
+                            finaleState.phase = 'meadow';
+                            finaleState.textTimer = 0;
+                            finaleState.dialogue = "The birds are singing in the high canopy.\nAgainst all odds, the nightmare is over.";
+                        } else if (finaleState.phase === 'meadow' && scene.player.x > 780) {
+                            finaleState.phase = 'overlook';
+                            finaleState.textTimer = 0;
+                            finaleState.dialogue = "You did it.\nYou escaped the Abyssal Vault.";
+                        } else if (finaleState.phase === 'overlook' && finaleState.textTimer > 3.6) {
+                            finaleState.phase = 'twist';
+                            finaleState.twistTimer = 0;
+                            finaleState.textTimer = 0;
+                            audioScape.setState(AUDIO_STATES.FINALE_TWIST);
+                            if (audio) {
+                                try { audio.play('stinger_sharp'); } catch (e) {}
+                            }
+                            postProcessing.addTrauma(0.65);
+                        } else if (finaleState.phase === 'twist') {
+                            finaleState.twistTimer += dt;
+                            finaleState.shadowEyesAlpha = Math.min(1.0, finaleState.twistTimer * 0.6);
+                            finaleState.shadowDetached = true;
+                            finaleState.dialogue = "A cold shiver crawls down your spine...\n\nIt was never bound to the stone.\nIt was bound to you.";
+                            if (finaleState.twistTimer > 6.0) {
+                                finaleState.phase = 'title_drop';
+                                audioScape.setState(AUDIO_STATES.MENU);
+                            }
+                        }
+                    }
+                }
+
+                // Render Surface Visuals
+                renderer.clear();
+                
+                if (finaleState.phase !== 'title_drop') {
+                    // Draw serene morning sky gradient directly to canvas
+                    const skyGrad = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+                    skyGrad.addColorStop(0, '#5da0d6'); // sky blue
+                    skyGrad.addColorStop(0.65, '#a1d2f0');
+                    skyGrad.addColorStop(1, '#ffe082'); // golden sunrise glow
+                    ctx.fillStyle = skyGrad;
+                    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+                    // Sun disk and warm rays
+                    ctx.fillStyle = 'rgba(255, 245, 200, 0.95)';
+                    ctx.beginPath();
+                    ctx.arc(GAME_WIDTH * 0.78, 48, 22, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(255, 235, 150, 0.25)';
+                    ctx.beginPath();
+                    ctx.arc(GAME_WIDTH * 0.78, 48, 48, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Render World (Tiles, Birch tree, Player)
+                    scene.render(renderer);
+
+                    // If in twist phase, draw the watching eyes in the birch tree canopy and detached shadow
+                    if (finaleState.phase === 'twist' && finaleState.shadowEyesAlpha > 0) {
+                        renderer.beginCamera();
+                        // Birch tree canopy position: x: 56 * 16 + 28, y: 13 * 16 - 95
+                        const treeEyesX = 56 * 16 + 28;
+                        const treeEyesY = 13 * 16 - 95;
+                        SpriteRenderer.drawWatchingEyes(renderer, treeEyesX, treeEyesY, finaleState.shadowEyesAlpha);
+
+                        // Detached elongated shadow standing in the sunny grass behind player
+                        if (scene.player) {
+                            const shadX = scene.player.x - 24;
+                            const shadY = scene.player.y;
+                            renderer.drawRect(shadX, shadY + 4, 12, 16, `rgba(10, 5, 15, ${finaleState.shadowEyesAlpha * 0.9})`);
+                            renderer.drawRect(shadX + 2, shadY - 4, 8, 8, `rgba(10, 5, 15, ${finaleState.shadowEyesAlpha * 0.9})`);
+                            // Shadow eyes glowing
+                            renderer.drawRect(shadX + 3, shadY - 2, 2, 2, `rgba(255, 255, 255, ${finaleState.shadowEyesAlpha})`);
+                            renderer.drawRect(shadX + 6, shadY - 2, 2, 2, `rgba(255, 255, 255, ${finaleState.shadowEyesAlpha})`);
+                        }
+                        renderer.endCamera();
+                    }
+
+                    // Blit pixel world to display canvas
+                    renderer.present();
+
+                    // Draw Crisp Epilogue Narration Banner
+                    const finaleUiCtx = renderer.getUIContext();
+                    const { width: fW, height: fH } = renderer.getDisplaySize();
+                    
+                    if (finaleState.dialogue) {
+                        const bannerW = Math.min(740, fW * 0.85);
+                        const bannerH = 100;
+                        const bannerX = fW / 2 - bannerW / 2;
+                        const bannerY = fH - 140;
+
+                        finaleUiCtx.save();
+                        finaleUiCtx.fillStyle = finaleState.phase === 'twist' ? 'rgba(10, 2, 8, 0.92)' : 'rgba(15, 23, 42, 0.88)';
+                        finaleUiCtx.fillRect(bannerX, bannerY, bannerW, bannerH);
+                        finaleUiCtx.strokeStyle = finaleState.phase === 'twist' ? '#e11d48' : '#38bdf8';
+                        finaleUiCtx.lineWidth = 2;
+                        finaleUiCtx.strokeRect(bannerX, bannerY, bannerW, bannerH);
+
+                        const lines = finaleState.dialogue.split('\n');
+                        const startY = bannerY + (lines.length > 2 ? 26 : 38);
+                        lines.forEach((line, idx) => {
+                            finaleUiCtx.font = '600 17px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                            finaleUiCtx.fillStyle = finaleState.phase === 'twist' ? '#fecdd3' : '#f8fafc';
+                            finaleUiCtx.textAlign = 'center';
+                            finaleUiCtx.fillText(line, fW / 2, startY + idx * 24);
+                        });
+                        finaleUiCtx.restore();
+                    }
+                } else {
+                    // Phase: Title Drop / Sequel Teaser
+                    renderer.present();
+                    const finaleUiCtx = renderer.getUIContext();
+                    const { width: fW, height: fH } = renderer.getDisplaySize();
+
+                    finaleUiCtx.fillStyle = '#050208';
+                    finaleUiCtx.fillRect(0, 0, fW, fH);
+
+                    // Glowing sequel title
+                    finaleUiCtx.save();
+                    finaleUiCtx.textAlign = 'center';
+
+                    // Title
+                    finaleUiCtx.font = '900 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    finaleUiCtx.fillStyle = '#f43f5e';
+                    finaleUiCtx.fillText('ECHO II', fW / 2, fH * 0.38);
+
+                    // Subtitle
+                    finaleUiCtx.font = '700 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    finaleUiCtx.fillStyle = '#cbd5e1';
+                    finaleUiCtx.fillText('THE WATCHER REMAINS', fW / 2, fH * 0.46);
+
+                    // Epilogue quote
+                    finaleUiCtx.font = 'italic 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    finaleUiCtx.fillStyle = '#94a3b8';
+                    finaleUiCtx.fillText('"You escaped the stone. But the shadow never leaves."', fW / 2, fH * 0.56);
+
+                    // Return to title prompt
+                    const pulse = (Math.sin(Date.now() / 350) + 1) * 0.5;
+                    finaleUiCtx.font = '600 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    finaleUiCtx.fillStyle = `rgba(248, 250, 252, ${0.4 + pulse * 0.6})`;
+                    finaleUiCtx.fillText('[ CLICK OR PRESS SPACE TO RETURN TO TITLE ]', fW / 2, fH * 0.74);
+                    finaleUiCtx.restore();
+
+                    // Click or space to return to Main Menu
+                    if (input.isJustPressed('jump') || (input.isMouseClicked && input.isMouseClicked())) {
+                        currentState = GAME_STATES.MENU;
+                        audioScape.setState(AUDIO_STATES.MENU);
+                        gameState.reset();
+                    }
                 }
                 break;
                 
