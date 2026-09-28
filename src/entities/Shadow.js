@@ -375,23 +375,36 @@ export class Shadow extends Entity {
             }
         }
 
+        // Check if player is at 0 sanity or out of lantern oil
+        const isOutOfOil = player.lanternOil !== undefined && player.lanternOil <= 0;
+        const isZeroSanity = scene?.gameState?.sanity !== undefined && scene.gameState.sanity <= 0;
+        const canEscapeByDistance = !isZeroSanity && !isOutOfOil;
+
         // --- ESCAPE MECHANIC 2: OUTRUNNING / BREAKING DISTANCE ---
-        // If the player creates distance (>280px) and maintains it, the shadow loses the trail!
-        if (dist > 280) {
-            this.escapeTimer += dt;
-            if (this.escapeTimer >= 3.5) {
-                this.banish('distance', scene);
+        // If the player creates distance (>280px) and maintains it, the shadow loses the trail.
+        // BUT: At 0 sanity or out of lantern oil, the shadow locks onto the player's soul and CANNOT be escaped
+        // until the player finds sanctuary in a lit torch or relights their lantern with an oil flask!
+        if (canEscapeByDistance) {
+            if (dist > 280) {
+                this.escapeTimer += dt;
+                if (this.escapeTimer >= 3.5) {
+                    this.banish('distance', scene);
+                    return;
+                }
+            } else {
+                this.escapeTimer = Math.max(0, this.escapeTimer - dt * 2);
+            }
+
+            // --- ESCAPE MECHANIC 3: HUNT TIMER EXPIRATION ---
+            this.stalkTimer -= dt;
+            if (this.stalkTimer <= 0) {
+                this.banish('timeout', scene);
                 return;
             }
         } else {
-            this.escapeTimer = Math.max(0, this.escapeTimer - dt * 2);
-        }
-
-        // --- ESCAPE MECHANIC 3: HUNT TIMER EXPIRATION ---
-        this.stalkTimer -= dt;
-        if (this.stalkTimer <= 0) {
-            this.banish('timeout', scene);
-            return;
+            // Relentless Pursuit mode: stalk timer never expires!
+            this.escapeTimer = 0;
+            this.stalkTimer = 30.0;
         }
 
         // Light Interference when lurking nearby
@@ -406,29 +419,33 @@ export class Shadow extends Entity {
         // --- ACTIVE STALKING LOGIC ---
         // Sensory perception: Frantic sprinting/gasping noise draws the stalker from across the map;
         // Holding breath in darkness collapses detection range down to 36px so it glides right past!
+        // At 0 sanity or empty oil, detection is INFINITE and the stalker hunts relentlessly.
         let detectionRange = 500;
-        if (player.isMakingLoudNoise) {
+        if (isOutOfOil || isZeroSanity) {
+            detectionRange = Infinity;
+        } else if (player.isMakingLoudNoise) {
             detectionRange = 750;
         } else if (player.isHidingInShadows) {
             detectionRange = 36;
         }
 
         if (dist < detectionRange) {
-            if (!facingShadow && dist > 55) {
-                // Player's back is turned or noise made: HUNT CLOSER!
+            const isFrenzyAttack = isOutOfOil || isZeroSanity;
+            if (isFrenzyAttack || (!facingShadow && dist > 55)) {
+                // Player's back is turned, out of oil, or zero sanity: HUNT RUTHLESSLY!
                 const dir = Math.sign(dx);
                 let speed = this.stalkSpeed;
-                if (player.isMakingLoudNoise || (scene.gameState && scene.gameState.sanity < 0.5)) {
+                if (isFrenzyAttack || player.isMakingLoudNoise || (scene.gameState && scene.gameState.sanity < 50)) {
                     speed = this.rushSpeed;
                 } else if (player.lanternOil !== undefined && player.lanternOil < 25) {
                     speed = this.stalkSpeed * 1.35; // Emboldened by sputtering light
                 }
                 
                 this.x += dir * speed * dt;
-                this.eyeGlow = Math.min(1.0, this.eyeGlow + dt * 2);
+                this.eyeGlow = 1.0;
 
-                if (Math.random() < 0.005) {
-                    this.freezeTimer = 0.5; // Occasional hesitation
+                if (!isFrenzyAttack && Math.random() < 0.005) {
+                    this.freezeTimer = 0.5; // Occasional hesitation when player still has sanity
                 }
             } else if (facingShadow) {
                 // Player stares down the shadow: freezes and wavers
@@ -484,19 +501,22 @@ export class Shadow extends Entity {
                         scene.audio.play('stalker_shriek');
                     }
 
-                    if (scene.gameState) {
-                        scene.gameState.takeDamage(45);
-                        scene.gameState.drainSanity(35);
+                    if (scene.postProcessing) {
+                        scene.postProcessing.addTrauma(1.0);
+                    }
 
-                        // If lethal, respawn and reset all puzzles!
-                        if (scene.gameState.health <= 0) {
+                    // If caught while sanity is 0 or out of oil: fatal execution!
+                    if (isZeroSanity || isOutOfOil) {
+                        this.jumpScareTimer = 0.55;
+                        if (scene.respawnPlayer) {
                             scene.respawnPlayer();
                             return;
                         }
                     }
 
-                    if (scene.postProcessing) {
-                        scene.postProcessing.addTrauma(1.0);
+                    // Otherwise, severe psychological trauma and sanity shock
+                    if (scene.gameState) {
+                        scene.gameState.drainSanity(40);
                     }
 
                     this.jumpScareTimer = 0.45;

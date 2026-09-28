@@ -61,23 +61,24 @@ Trapped deep within an abyssal subterranean labyrinth, you awaken into suffocati
 
 ### 1. The Shadow Stalker
 - **Lurking Predator**: Stalks the player from the shadows. Freezes when looked directly in the eyes; creeps closer and rushes when the player's back is turned.
-- **Auditory & Light Interference**: As the Stalker draws near, wall torches flicker or snuff out, the air grows icy cold, and chromatic aberration tears across reality.
+- **Lantern Depletion Aggression**: If your lantern runs out of oil, the Stalker instantly awakens and relentlessly hunts you in the pitch darkness!
+- **Zero-Sanity Relentless Pursuit**: If your sanity drops to 0%, the Stalker locks onto your soul and **cannot be shaken off by distance or timeout**. It will pursue you until you reach sanctuary in a lit wall torch or relight your lantern with oil!
 - **Escape Tactics**:
-  - *Holy Flame*: Step into the radius of lit torches or light sources to incinerate and banish the Stalker back into darkness.
-  - *Sneak*: Hold breath (`C` / `Ctrl`) while stationary in shadows to avoid detection.
-  - *Sprint*: Break line-of-sight and outdistance the entity by >280px for 3.5 seconds.
+  - *Holy Flame Sanctuary*: Step into the radius of lit torches or sacred flame sources to incinerate and banish the Stalker back into darkness.
+  - *Relight Lantern*: Collect a Lantern Oil Flask (`E`) to restore light and escape frenzy pursuit.
+  - *Sneak*: Hold breath (`C` / `Ctrl`) while stationary in shadows to collapse sensory detection down to 36px.
+  - *Sprint*: Break line-of-sight and outdistance the entity by >280px for 3.5 seconds (only when sanity > 0 and lantern is lit).
 
-### 2. Lantern Oil & Darkness
-- Your oil lantern constantly consumes fuel.
-- **>50% Oil**: Warm, bright sanctuary radius (150px).
-- **20%–50% Oil**: Dimmable radius (110px).
-- **0%–20% Oil**: Sputtering, violent flickers (65px); sanity slowly erodes.
-- **0% Empty**: Lantern dies, leaving only a sputtering match (26px). In total darkness, sanity drains rapidly. Gather **Lantern Oil Flasks** scattered throughout the ruins.
+### 2. Handheld Lantern & Darkness
+- The player holds a visible, vintage brass lantern in their forward hand.
+- **Lit (>0% Oil)**: Warm golden glow with an animated dancing flame pixel.
+- **Extinguished (0% Empty)**: Cold, rusted dark iron cage with an unlit wick and rising smoke wisps.
+- **Sanity Decay**: In total darkness without oil, sanity drains 3x faster (`7.5%/sec`). Gather **Lantern Oil Flasks** scattered throughout the ruins.
 
-### 3. Sanity & Psychological Hallucinations
-- Sanity decreases in darkness and near the Stalker.
-- **Auditory Hallucinations**: When sanity drops below 75%, stopping suddenly will play a delayed footstep behind you, simulating being followed.
-- **Heartbeat Sensor**: As sanity collapses or during adrenaline pursuit, a visceral biological heartbeat accelerates and rings in your ears.
+### 3. Vitals & Psychological Hallucinations
+- **No Generic HP**: Survival depends on **Sanity**, **Stamina**, and **Lantern Oil** displayed via custom high-res vector glyphs and stylized meters.
+- **Auditory Hallucinations**: When sanity drops below 75%, stopping suddenly plays a delayed footstep behind you, simulating being followed.
+- **Heartbeat Sensor**: As sanity collapses or during adrenaline pursuit, a visceral biological heartbeat accelerates in your ears.
 - **Visual Glitches**: Chromatic screen tears, CRT scanline instability, and screen trauma flashes intensify at low sanity.
 
 ---
@@ -89,7 +90,7 @@ Available **exclusively while playing inside the game** via the **Pause Menu** (
 - **16-Channel SFX Soundboard**: Interactive test triggers for footsteps (stone/water), visceral heartbeat, ragged breathing, bone fracture, flesh tear, stalker shrieks & lunges, phantom whispers, hallucinations, gate grinds, pendulum whooshes, horror stingers, and door mechanisms.
 - **Atmosphere State Mixer**: Real-time auditioning of Exploration Ambience, Tension Soundscape, Pursuit/Chase Dread, Holy Torch Sanctuary, and Surface Sunrise.
 - **Cheats & Diagnostics**:
-  - `🛡️ GOD MODE: ON/OFF`: Absolute immortality (immune to spikes, falling traps, pendulum blades, void abyss pits, and shadow attacks; locks stamina, oil, health, and sanity to 100%).
+  - `🛡️ GOD MODE: ON/OFF`: Absolute immortality (immune to spikes, falling traps, pendulum blades, void abyss pits, and shadow attacks; locks stamina, oil, and sanity to 100%).
   - `💧 REFILL OIL, STAMINA & SANITY`: Instantly restores all vitals.
   - `👻 SPAWN SHADOW STALKER`: Summons the Stalker directly behind the player for live chase testing.
 - **Stratum Level Warps**: Fast-travel directly to major campaign milestones: `TUTORIAL`, `B1` (Upper Catacombs), `B7` (Sunken Aqueducts), `B13` (Clockwork Foundry), `B19` (Obsidian Necropolis), `B25` (Abyssal Crucible), `B30` (Final Gate), or the `SURFACE` escape finale.

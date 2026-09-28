@@ -149,10 +149,18 @@ export class Player extends Entity {
                 scene.gameState.drainSanity(dt * 2.0); // gloom drains sanity
             }
         } else {
-            // Out of oil: Sputtering dying match
-            this.lightRadius = 26 + Math.sin(Date.now() * 0.05) * 4;
+            // Out of oil: Lantern is extinguished! Pitch blackness engulfs player
+            this.lightRadius = 14 + Math.sin(Date.now() * 0.05) * 2;
             if (scene?.gameState) {
-                scene.gameState.drainSanity(dt * 4.5); // terrifying darkness
+                scene.gameState.drainSanity(dt * 7.5); // terrifying darkness: 3x faster sanity loss!
+            }
+            // Awaken any dormant shadow stalkers immediately upon oil depletion
+            if (scene?.entities) {
+                for (const ent of scene.entities) {
+                    if (ent.type === 'shadow' && typeof ent.awaken === 'function' && ent.state === 0) {
+                        ent.awaken(this, scene, 'oil_depleted');
+                    }
+                }
             }
         }
 
@@ -629,7 +637,9 @@ export class Player extends Entity {
         SpriteRenderer.drawPlayer(renderer, this.x, this.y, this.state, this.walkFrame, this.facingRight, this.breathTimer, this.isBlinking, {
             isScared: this.isScared,
             isLookingBack: this.isLookingBack,
-            isCrouched: this.isHoldingBreath
+            isCrouched: this.isHoldingBreath,
+            isLanternLit: this.lanternOil > 0,
+            lanternOil: this.lanternOil
         });
     }
 }

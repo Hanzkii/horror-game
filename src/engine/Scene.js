@@ -122,7 +122,6 @@ export default class Scene {
         // 1. Reset game state and puzzle flags
         if (this.gameState) {
             this.gameState.sanity = this.gameState.maxSanity || 100;
-            this.gameState.health = this.gameState.maxHealth || 100;
             if (this.gameState.flags) {
                 if (typeof this.gameState.flags.clear === 'function') {
                     this.gameState.flags.clear();

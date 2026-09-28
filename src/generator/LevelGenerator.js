@@ -6,6 +6,8 @@
  * crumbling platform chasms, environmental storytelling, and a 2D platformer BFS validator.
  */
 
+import { solvePlatformerReachability } from './PlatformerSolver.js';
+
 // Deterministic Mulberry32 PRNG
 function createRNG(seed) {
     let s = typeof seed === 'number' ? seed : 0;
@@ -295,92 +297,6 @@ export function getStratumInfo(floorIndex = 1) {
     }
 }
 
-/**
- * Multi-goal platformer-aware Breadth-First-Search solver.
- * Verifies that the player can reach ALL conduit levers and the exit gate across the 2D grid.
- */
-function runBFS(grid, startC, startR, levers = [], exitC = null, exitR = null) {
-    const rows = grid.length;
-    const cols = grid[0].length;
-    const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
-    
-    const queue = [{ c: startC, r: startR }];
-    if (startR >= 0 && startR < rows && startC >= 0 && startC < cols) {
-        visited[startR][startC] = true;
-    }
-
-    const isPassable = (tile) => {
-        return tile === 0 || tile === 3 || tile === 4 || tile === 5 || tile === 12 || tile === 13 || tile === 14;
-    };
-
-    const isSolidGround = (tile) => {
-        return tile === 1 || tile === 2 || tile === 3 || tile === 5 || tile === 6 || tile === 7 || tile === 8 || tile === 9 || tile === 10 || tile === 11;
-    };
-
-    const canPlayerFit = (c, r) => {
-        if (r < 1 || r >= rows || c < 0 || c >= cols) return false;
-        return isPassable(grid[r][c]) && isPassable(grid[r - 1][c]);
-    };
-
-    const isStanding = (c, r) => {
-        if (r + 1 >= rows) return true;
-        return isSolidGround(grid[r + 1][c]) && canPlayerFit(c, r);
-    };
-
-    while (queue.length > 0) {
-        const { c, r } = queue.shift();
-        
-        const tryAdd = (nc, nr) => {
-            if (nc >= 0 && nc < cols && nr >= 1 && nr < rows && !visited[nr][nc] && canPlayerFit(nc, nr)) {
-                visited[nr][nc] = true;
-                queue.push({ c: nc, r: nr });
-            }
-        };
-
-        // Horizontal traversal
-        tryAdd(c - 1, r);
-        tryAdd(c + 1, r);
-        // Falling
-        tryAdd(c, r + 1);
-
-        // Jumping up to 3 tiles high when standing on solid ground or one-way platform
-        if (isStanding(c, r)) {
-            if (canPlayerFit(c, r - 1)) {
-                tryAdd(c, r - 1);
-                if (canPlayerFit(c, r - 2)) {
-                    tryAdd(c, r - 2);
-                    if (canPlayerFit(c, r - 3)) {
-                        tryAdd(c, r - 3);
-                    }
-                }
-            }
-        }
-    }
-
-    const isReached = (tc, tr) => {
-        if (tc === null || tr === null) return true;
-        for (let dc = -2; dc <= 2; dc++) {
-            for (let dr = -2; dr <= 2; dr++) {
-                let nc = tc + dc;
-                let nr = tr + dr;
-                if (nc >= 0 && nc < cols && nr >= 0 && nr < rows && visited[nr][nc]) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    };
-
-    const allLeversReached = levers.every(l => isReached(l.c, l.r));
-    const exitReached = isReached(exitC, exitR);
-
-    return {
-        valid: allLeversReached && exitReached,
-        allLeversReached,
-        exitReached,
-        visited
-    };
-}
 
 /**
  * Attempts to generate a single 2D Macro-Chamber level configuration.
@@ -585,7 +501,15 @@ function generateAttempt(options, forceAccept = false) {
             const altarCol = Math.floor((ch.cStart + ch.cEnd) / 2);
             const altarRow = ch.floorRow - 4;
 
-            // Altar steps
+            // Intermediate steps on both sides so the 4-tile high altar dais is easily jumpable
+            for (let c = altarCol - 7; c <= altarCol - 5; c++) {
+                grid[ch.floorRow - 2][c] = 3;
+            }
+            for (let c = altarCol + 5; c <= altarCol + 7; c++) {
+                grid[ch.floorRow - 2][c] = 3;
+            }
+
+            // Altar dais
             for (let c = altarCol - 4; c <= altarCol + 4; c++) {
                 grid[altarRow][c] = 3; // wooden/stone platform
             }
@@ -775,15 +699,21 @@ function generateAttempt(options, forceAccept = false) {
                 const shaftC = (gc % 2 === 0) ? topRoom.cStart + 6 : topRoom.cEnd - 8;
                 const shaftW = 5;
 
-                // Carve opening through top floor down into lower room
-                for (let r = topRoom.floorRow; r <= botRoom.rStart + 3; r++) {
+                // Carve opening through top floor all the way down to bottom floor
+                for (let r = topRoom.floorRow - 2; r < botRoom.floorRow; r++) {
                     for (let c = shaftC; c < shaftC + shaftW; c++) {
                         grid[r][c] = 0; // air shaft
                     }
                 }
 
-                // Place jumpable one-way platforms inside shaft
-                for (let r = topRoom.floorRow; r <= botRoom.rStart + 3; r += 3) {
+                // Ensure solid floor beneath bottom of shaft
+                for (let c = shaftC; c < shaftC + shaftW; c++) {
+                    grid[botRoom.floorRow][c] = stratum.solidTile;
+                }
+
+                // Place jumpable one-way platforms inside shaft, spaced strictly every 3 tiles vertically
+                // from botRoom.floorRow - 3 all the way up to topRoom.floorRow - 1
+                for (let r = botRoom.floorRow - 3; r >= topRoom.floorRow - 1; r -= 3) {
                     for (let c = shaftC + 1; c < shaftC + shaftW - 1; c++) {
                         grid[r][c] = 3; // platform
                     }
@@ -822,26 +752,67 @@ function generateAttempt(options, forceAccept = false) {
         exitPos = { c: cols - 8, r: rows - 6 };
     }
 
-    // === RUN PLATFORMER BFS SOLVER ===
-    const bfs = runBFS(grid, playerTilePos.c, playerTilePos.r, placedLevers, exitPos.c, exitPos.r);
+    // === RUN REALISTIC PLATFORMER REACHABILITY SOLVER ===
+    const solverResult = solvePlatformerReachability(grid, playerTilePos.c, playerTilePos.r, placedLevers, exitPos.c, exitPos.r);
 
-    if (!bfs.valid && !forceAccept) {
+    if (!solverResult.valid && !forceAccept) {
         // Return null to signal retry with next seed
         return null;
     }
 
-    // If force accepting, bridge any unreachable targets with solid floor and platforms
-    if (!bfs.valid && forceAccept) {
-        placedLevers.forEach(l => {
-            if (!bfs.allLeversReached) {
-                for (let c = Math.min(playerTilePos.c, l.c); c <= Math.max(playerTilePos.c, l.c); c++) {
-                    grid[l.r + 1][c] = 3;
+    // If force accepting, bridge any unreachable targets with carved air and stepped platforms
+    if (!solverResult.valid && forceAccept) {
+        // For any unreachable lever or the exit door, carve access steps
+        const unreachedTargets = [];
+        if (solverResult.reachedLevers) {
+            solverResult.reachedLevers.filter(l => !l.reachable).forEach(l => unreachedTargets.push(l));
+        }
+        if (!solverResult.exitReached && exitPos.c !== null) {
+            unreachedTargets.push({ c: exitPos.c, r: exitPos.r });
+        }
+
+        unreachedTargets.forEach(target => {
+            // Find closest reachable standing position
+            let bestDist = Infinity;
+            let bestPos = null;
+            if (solverResult.standingVisited) {
+                for (let r = 1; r < rows - 1; r++) {
+                    for (let c = 1; c < cols - 1; c++) {
+                        if (solverResult.standingVisited[r][c]) {
+                            const d = Math.hypot(c - target.c, r - target.r);
+                            if (d < bestDist) {
+                                bestDist = d;
+                                bestPos = { c, r };
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (bestPos) {
+                // Carve a stepping bridge between bestPos and target
+                const minC = Math.min(bestPos.c, target.c);
+                const maxC = Math.max(bestPos.c, target.c);
+                const minR = Math.min(bestPos.r, target.r);
+                const maxR = Math.max(bestPos.r, target.r);
+
+                // Carve passage
+                for (let c = minC; c <= maxC; c++) {
+                    for (let r = minR - 2; r <= maxR + 1; r++) {
+                        if (r > 0 && r < rows - 1) grid[r][c] = 0;
+                    }
+                }
+                // Step platforms
+                for (let c = minC; c <= maxC; c += 2) {
+                    const progress = (maxC > minC) ? (c - minC) / (maxC - minC) : 0;
+                    const platR = Math.round(bestPos.r + progress * (target.r - bestPos.r));
+                    if (platR > 0 && platR < rows - 1) {
+                        grid[platR + 1][c] = 3;
+                        if (c + 1 < cols - 1) grid[platR + 1][c + 1] = 3;
+                    }
                 }
             }
         });
-        for (let c = Math.min(playerTilePos.c, exitPos.c); c <= Math.max(playerTilePos.c, exitPos.c); c++) {
-            grid[exitPos.r + 1][c] = 3;
-        }
     }
 
     // === SPAWN ENEMIES BASED ON DEPTH SCALING ===
@@ -897,7 +868,7 @@ function generateAttempt(options, forceAccept = false) {
 export function generateProceduralLevel(options = {}) {
     let currentSeed = options.seed !== undefined ? options.seed : Math.floor(Math.random() * 1000000);
     
-    for (let attempt = 0; attempt < 5; attempt++) {
+    for (let attempt = 0; attempt < 8; attempt++) {
         const level = generateAttempt({ ...options, seed: currentSeed }, false);
         if (level) {
             return level;

@@ -26,7 +26,6 @@ export class SaveManager {
                 checkpointId: 'start',
                 x: 48,
                 y: 200,
-                health: 100,
                 sanity: 100
             },
             inventory: {

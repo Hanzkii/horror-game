@@ -406,13 +406,37 @@ export default class SpriteRenderer {
         renderer.drawRect(px + 2, y + 4 + crouchY - breathScale, 7, (isCrouched ? 5 : 6) + breathScale, hTorso);
         renderer.drawRect(px + 3, y + 5 + crouchY - breathScale, 5, isCrouched ? 3 : 4, '#384150'); // jacket inner highlight
         
-        // Draw right arm (front) holding fragile lantern
+        // Draw right arm (front) holding handheld lantern
         renderer.drawRect(px + 8, rightArmY - breathScale, 2, isCrouched ? 4 : 5, '#1e232b');
-        // Small handheld lantern (held lower and closer to body when crouching)
-        const lanternX = facingRight ? px + (isCrouched ? 7 : 9) : px + (isCrouched ? 1 : -1);
-        const lanternY = rightArmY + (isCrouched ? 1 : 3) - breathScale;
-        renderer.drawRect(lanternX, lanternY, 2, 3, '#475569'); // iron cage
-        renderer.drawRect(lanternX + 0.5, lanternY + 1, 1, 1, isCrouched ? '#b45309' : '#f59e0b'); // amber wick flame
+        
+        // Handheld Lantern
+        const isLanternLit = options?.isLanternLit !== false && (options?.lanternOil === undefined || options.lanternOil > 0);
+        const lanternX = facingRight ? px + (isCrouched ? 8 : 10) : px + (isCrouched ? 0 : -2);
+        const lanternY = rightArmY + (isCrouched ? 2 : 3) - breathScale;
+
+        // Wire handle / bail
+        renderer.drawRect(lanternX + 1, lanternY - 2, 1, 2, isLanternLit ? '#d97706' : '#475569');
+
+        if (isLanternLit) {
+            // Lit Lantern: Brass cap, warm glass, and vibrant dancing flame
+            renderer.drawRect(lanternX, lanternY, 3, 1, '#b45309'); // brass cap
+            renderer.drawRect(lanternX, lanternY + 1, 3, 3, '#78350f'); // brass cage frame
+            renderer.drawRect(lanternX + 1, lanternY + 1, 1, 2, '#fef08a'); // inner glowing glass
+            // Animated dancing flame pixel
+            const flameColor = (Date.now() % 240 < 120) ? '#f59e0b' : '#fbbf24';
+            renderer.drawRect(lanternX + 1, lanternY + 2, 1, 1, flameColor);
+            renderer.drawRect(lanternX, lanternY + 4, 3, 1, '#92400e'); // brass base
+        } else {
+            // Extinguished Lantern: Cold dark iron cage, empty dark glass, no flame
+            renderer.drawRect(lanternX, lanternY, 3, 1, '#334155'); // iron cap
+            renderer.drawRect(lanternX, lanternY + 1, 3, 3, '#1e293b'); // dark frame
+            renderer.drawRect(lanternX + 1, lanternY + 2, 1, 1, '#0f172a'); // cold unlit wick
+            renderer.drawRect(lanternX, lanternY + 4, 3, 1, '#1e293b'); // dark iron base
+            // Faint rising smoke particle
+            if (Date.now() % 400 < 200) {
+                renderer.drawRect(lanternX + 1, lanternY - 3, 1, 1, '#64748b');
+            }
+        }
 
         // Fragile pale human head & tattered hood
         renderer.drawRect(px + 2, y - 1 + crouchY - breathScale, 7, 5, '#222731'); // hood back

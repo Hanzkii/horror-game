@@ -106,12 +106,17 @@ async function init() {
     // Handler for descending deeper when unlocking exit doors
     scene.onNextLevel = () => {
         if (gameState.isTutorialLevel) {
-            // Tutorial chamber completed!
+            // Tutorial chamber completed! Transition directly into Floor B1
             if (audio) audio.play('stinger_sharp');
+            events.emit('STAGE_CLEAR', { floorIndex: 0, sanity: gameState.sanity });
             gameState.isTutorialLevel = false;
-            currentState = GAME_STATES.MENU;
-            audioScape.setState(AUDIO_STATES.MENU);
-            gameState.activeNote = "TRIAL COMPLETED!\n\nYou have mastered ancient movement, mechanisms, and banishing shadows with holy flame.\n\nYou are ready to descend into the abyss.";
+            gameState.floorIndex = 1;
+            gameState.save('auto'); // Autosave at start of Depth B1
+            const nextLevel = getNextDungeonLevel(1);
+            loadLevel(scene, nextLevel, gameState, renderer);
+            hud.fadeIn(0.6);
+            toastNotification.add("ENTERING DEPTH B1 — THE UPPER CATACOMBS", 5.0);
+            audioScape.setState(AUDIO_STATES.EXPLORATION);
             return;
         }
 
@@ -197,26 +202,19 @@ async function init() {
                     audioScape.setState(AUDIO_STATES.EXPLORATION);
                 } else if (sel === 'story') { 
                     currentState = GAME_STATES.STORY; 
-                    gameState.isTutorialLevel = false;
                     gameState.reset();
-                    gameState.floorIndex = 1;
-                    gameState.isPublishedMap = false;
-                    const nextLevel = getNextDungeonLevel(1);
-                    loadLevel(scene, nextLevel, gameState, renderer);
-                    gameState.save('auto');
-                    audioScape.setState(AUDIO_STATES.EXPLORATION);
-                } else if (sel === 'tutorial') {
-                    currentState = GAME_STATES.STORY;
                     gameState.isTutorialLevel = true;
                     gameState.floorIndex = 0;
+                    gameState.isPublishedMap = false;
                     loadLevel(scene, TutorialLevel, gameState, renderer);
+                    hud.fadeIn(0.6);
+                    toastNotification.add("THE CRYPT OF TRIALS — LEARN TO SURVIVE", 4.5);
                     audioScape.setState(AUDIO_STATES.EXPLORATION);
                 }
                 break;
                 
             case GAME_STATES.STORY:
                 if (gameState.godMode) {
-                    gameState.health = 100;
                     gameState.sanity = 100;
                 }
 
@@ -706,13 +704,12 @@ async function init() {
                 } else if (input.isJustPressed('pause')) {
                     hud.pauseSubmenu = 'main';
                 } else if (pauseAction === 'refill_stats') {
-                    gameState.health = 100;
                     gameState.sanity = 100;
                     if (scene.player) {
                         scene.player.stamina = 100;
                         scene.player.lanternOil = 100;
                     }
-                    toastNotification.show('Refilled Health, Sanity, Stamina & Lantern Oil!', 'success');
+                    toastNotification.show('Refilled Sanity, Stamina & Lantern Oil!', 'success');
                 } else if (pauseAction === 'spawn_stalker') {
                     let shadow = scene.entities.find(e => e.type === 'shadow' || e instanceof Shadow);
                     if (!shadow && scene.player) {

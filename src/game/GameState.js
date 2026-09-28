@@ -8,9 +8,6 @@ import { events } from '../core/EventBus.js';
 
 export class GameState {
     constructor() {
-        this.maxHealth = 100;
-        this.health = 100;
-        
         this.maxSanity = 100;
         this.sanity = 100;
         
@@ -38,24 +35,20 @@ export class GameState {
     
     update(dt) {
         if (this.godMode) {
-            this.health = this.maxHealth;
             this.sanity = this.maxSanity;
         }
 
         // Clamp values
-        this.health = Math.max(0, Math.min(this.maxHealth, this.health));
         this.sanity = Math.max(0, Math.min(this.maxSanity, this.sanity));
 
         // Track active playtime
         this.stats.playtimeSeconds += dt;
     }
     
-    takeDamage(amount) {
+    takeDamage(amount = 100) {
         if (this.godMode) return;
-        this.health -= amount;
-        if (this.health <= 0) {
-            this.handleDeath();
-        }
+        // In psychological horror without vitality, lethal hazards trigger death directly
+        this.handleDeath();
     }
     
     drainSanity(amount) {
@@ -86,8 +79,7 @@ export class GameState {
     handleDeath() {
         console.log("[GameState] Player died...");
         this.stats.deaths++;
-        this.health = this.maxHealth;
-        this.sanity = Math.max(50, this.sanity);
+        this.sanity = this.maxSanity;
 
         events.emit('PLAYER_DIED', { deaths: this.stats.deaths });
 
@@ -104,7 +96,6 @@ export class GameState {
             player: {
                 floorIndex: this.floorIndex,
                 currentLevel: this.currentLevel,
-                health: this.health,
                 sanity: this.sanity
             },
             inventory: {
@@ -122,7 +113,6 @@ export class GameState {
         const saved = saveManager.load(slot);
         if (saved) {
             if (saved.player) {
-                this.health = saved.player.health ?? this.maxHealth;
                 this.sanity = saved.player.sanity ?? this.maxSanity;
                 this.floorIndex = saved.player.floorIndex || 1;
                 this.currentLevel = saved.player.currentLevel || null;
@@ -145,7 +135,6 @@ export class GameState {
     }
     
     reset() {
-        this.health = this.maxHealth;
         this.sanity = this.maxSanity;
         this.notesCollected = [];
         this.visitedAreas = [];

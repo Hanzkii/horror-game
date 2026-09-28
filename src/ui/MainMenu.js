@@ -136,7 +136,7 @@ export default class MainMenu {
         const enterPressed = input.isJustPressed('confirm') || input.isJustPressed('jump');
 
         if (this.mode === 'main') {
-            const maxOptions = this.hasSavedGame ? 6 : 5;
+            const maxOptions = this.hasSavedGame ? 5 : 4;
             if (upPressed) {
                 this.selectedIndex = (this.selectedIndex - 1 + maxOptions) % maxOptions;
                 this.playSfx('click');
@@ -154,18 +154,16 @@ export default class MainMenu {
             switch (index) {
                 case 0: this.selectedAction = 'continue'; break;
                 case 1: this.selectedAction = 'story'; break;
-                case 2: this.selectedAction = 'tutorial'; break;
-                case 3: this.mode = 'achievements'; break;
-                case 4: this.mode = 'settings'; break;
-                case 5: this.mode = 'controls'; break;
+                case 2: this.mode = 'achievements'; break;
+                case 3: this.mode = 'settings'; break;
+                case 4: this.mode = 'controls'; break;
             }
         } else {
             switch (index) {
                 case 0: this.selectedAction = 'story'; break;
-                case 1: this.selectedAction = 'tutorial'; break;
-                case 2: this.mode = 'achievements'; break;
-                case 3: this.mode = 'settings'; break;
-                case 4: this.mode = 'controls'; break;
+                case 1: this.mode = 'achievements'; break;
+                case 2: this.mode = 'settings'; break;
+                case 3: this.mode = 'controls'; break;
             }
         }
         this.inputCooldown = 0.25;
@@ -255,14 +253,12 @@ export default class MainMenu {
             ? [
                 `CONTINUE  •  ${this.saveSummary}`,
                 'NEW DESCENT',
-                'TUTORIAL CHAMBER',
                 'ACHIEVEMENTS',
                 'SETTINGS & AUDIO',
                 'CONTROLS'
             ]
             : [
                 'DESCEND INTO ABYSS',
-                'TUTORIAL CHAMBER',
                 'ACHIEVEMENTS',
                 'SETTINGS & AUDIO',
                 'CONTROLS'

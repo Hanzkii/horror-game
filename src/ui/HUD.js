@@ -106,82 +106,180 @@ export default class HUD {
             ctx.fillRect(0, 0, width, height);
         }
 
-        // 2. Health & Sanity Status Indicators (Top-Left)
-        if (gameState.health !== undefined) {
-            const maxHp = gameState.maxHealth || 100;
-            const hpNorm = Math.max(0, Math.min(1, gameState.health / maxHp));
-            const maxSanity = gameState.maxSanity || 100;
-            const sanNorm = Math.max(0, Math.min(1, gameState.sanity / maxSanity));
+        // 2. Core Horror Vitals: Sanity, Stamina, and Lantern Oil (Top-Left)
+        const maxSanity = gameState.maxSanity || 100;
+        const sanNorm = Math.max(0, Math.min(1, (gameState.sanity ?? 100) / maxSanity));
+        const stamNorm = player ? Math.max(0, Math.min(1, (player.stamina ?? 100) / (player.maxStamina || 100))) : 1.0;
+        const oilNorm = player ? Math.max(0, Math.min(1, (player.lanternOil ?? 100) / (player.maxOil || 100))) : 1.0;
 
-            const barX = 28;
-            const barW = 160;
+        const startX = 24;
+        const startY = 22;
+        const barW = 165;
+        const isLowSanity = sanNorm < 0.28;
+        const glitchShift = isLowSanity && Math.sin(Date.now() * 0.03) > 0.6 ? (Math.random() - 0.5) * 4 : 0;
 
-            // Health Bar
-            ctx.fillStyle = 'rgba(12, 16, 24, 0.85)';
-            ctx.fillRect(barX, 24, barW, 10);
-            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(barX, 24, barW, 10);
-            ctx.fillStyle = hpNorm < 0.35 ? '#ef4444' : '#e11d48';
-            ctx.fillRect(barX + 1, 25, Math.round((barW - 2) * hpNorm), 8);
+        // --- GAUGE 1: SANITY (Vector Eye / Psyche Glyph + Ethereal Bar) ---
+        const eyeX = startX + 10 + glitchShift;
+        const eyeY = startY + 8;
+        
+        // Vector Eye Icon
+        ctx.save();
+        ctx.strokeStyle = isLowSanity ? '#ef4444' : '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        // Eye shape (almond)
+        ctx.ellipse(eyeX, eyeY, 8, 5, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(10, 16, 28, 0.9)';
+        ctx.fill();
+        ctx.stroke();
 
-            // Psychological glitch text on low sanity
-            const isGlitched = sanNorm < 0.28 && Math.sin(Date.now() * 0.02) > 0.7;
-            const sanityLabel = isGlitched ? 'L̶O̷S̸T̶' : 'SANITY';
-            const vitalityLabel = isGlitched ? 'V̷I̸T̶A̸L̶I̷T̶Y̵' : 'VITALITY';
+        // Iris & Pupil
+        const pupilRadius = isLowSanity ? 3.5 : 2.2;
+        ctx.fillStyle = isLowSanity ? '#dc2626' : (sanNorm < 0.5 ? '#818cf8' : '#38bdf8');
+        ctx.beginPath();
+        ctx.arc(eyeX, eyeY, pupilRadius, 0, Math.PI * 2);
+        ctx.fill();
+        // Pupil center
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(eyeX, eyeY, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
 
-            Typography.drawText(ctx, vitalityLabel, barX + barW + 12, 33, {
-                font: FONT_STACKS.CAPTION,
-                color: '#f87171'
-            });
+        // Sanity Gauge Bar
+        const bar1X = startX + 26;
+        const bar1Y = startY + 2;
+        const bar1H = 11;
+        ctx.fillStyle = 'rgba(8, 12, 22, 0.92)';
+        ctx.fillRect(bar1X, bar11Y = bar1Y, barW, bar1H);
+        ctx.strokeStyle = isLowSanity ? 'rgba(239, 68, 68, 0.6)' : 'rgba(56, 189, 248, 0.45)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bar1X, bar1Y, barW, bar1H);
 
-            // Sanity Bar
-            ctx.fillStyle = 'rgba(12, 16, 24, 0.85)';
-            ctx.fillRect(barX, 42, barW, 8);
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(barX, 42, barW, 8);
-            ctx.fillStyle = sanNorm < 0.3 ? '#818cf8' : '#38bdf8';
-            ctx.fillRect(barX + 1, 43, Math.round((barW - 2) * sanNorm), 6);
-
-            Typography.drawText(ctx, sanityLabel, barX + barW + 12, 50, {
-                font: FONT_STACKS.CAPTION,
-                color: '#38bdf8'
-            });
-
-            // Stamina Bar (Shift to Sprint)
-            const stamNorm = player ? Math.max(0, Math.min(1, (player.stamina ?? 100) / (player.maxStamina || 100))) : 1.0;
-            ctx.fillStyle = 'rgba(12, 16, 24, 0.85)';
-            ctx.fillRect(barX, 57, barW, 6);
-            ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(barX, 57, barW, 6);
-            ctx.fillStyle = stamNorm < 0.25 ? '#ef4444' : '#f59e0b';
-            ctx.fillRect(barX + 1, 58, Math.round((barW - 2) * stamNorm), 4);
-
-            Typography.drawText(ctx, 'STAMINA', barX + barW + 12, 63, {
-                font: FONT_STACKS.CAPTION,
-                color: '#f59e0b'
-            });
-
-            // Lantern Oil Bar (Picked up from oil flasks)
-            if (!gameState.isTutorialLevel) {
-                const oilNorm = player ? Math.max(0, Math.min(1, (player.lanternOil ?? 100) / (player.maxOil || 100))) : 1.0;
-                ctx.fillStyle = 'rgba(12, 16, 24, 0.85)';
-                ctx.fillRect(barX, 70, barW, 6);
-                ctx.strokeStyle = 'rgba(249, 115, 22, 0.35)';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(barX, 70, barW, 6);
-                ctx.fillStyle = oilNorm < 0.20 ? ((Date.now() % 400 < 200) ? '#ef4444' : '#7f1d1d') : '#f97316';
-                ctx.fillRect(barX + 1, 71, Math.round((barW - 2) * oilNorm), 4);
-
-                const oilLabel = oilNorm <= 0 ? 'EMPTY (MATCHLIGHT)' : (oilNorm < 0.20 ? 'OIL CRITICAL' : 'LANTERN OIL');
-                Typography.drawText(ctx, oilLabel, barX + barW + 12, 76, {
-                    font: FONT_STACKS.CAPTION,
-                    color: oilNorm < 0.20 ? '#ef4444' : '#f97316'
-                });
+        // Gradient Fill
+        if (sanNorm > 0) {
+            const sanGrad = ctx.createLinearGradient(bar1X, 0, bar1X + barW * sanNorm, 0);
+            if (isLowSanity) {
+                sanGrad.addColorStop(0, '#ef4444');
+                sanGrad.addColorStop(1, '#dc2626');
+            } else {
+                sanGrad.addColorStop(0, '#0284c7');
+                sanGrad.addColorStop(0.6, '#38bdf8');
+                sanGrad.addColorStop(1, '#818cf8');
             }
+            ctx.fillStyle = sanGrad;
+            ctx.fillRect(bar1X + 1, bar1Y + 1, Math.round((barW - 2) * sanNorm), bar1H - 2);
         }
+
+        const sanityLabel = isLowSanity ? 'L̶O̷S̸T̶' : `SANITY ${Math.round(sanNorm * 100)}%`;
+        Typography.drawText(ctx, sanityLabel, bar1X + barW + 10, bar1Y + 9, {
+            font: FONT_STACKS.CAPTION,
+            color: isLowSanity ? '#ef4444' : '#38bdf8'
+        });
+
+        // --- GAUGE 2: STAMINA (Vector Swiftness Bolt + Energetic Amber Bar) ---
+        const stamY = startY + 20;
+        const boltX = startX + 10;
+        const boltY = stamY + 6;
+
+        // Vector Lightning / Wing Glyph
+        ctx.save();
+        ctx.fillStyle = stamNorm < 0.25 ? '#ef4444' : '#f59e0b';
+        ctx.beginPath();
+        ctx.moveTo(boltX - 3, boltY - 6);
+        ctx.lineTo(boltX + 2, boltY - 6);
+        ctx.lineTo(boltX - 1, boltY);
+        ctx.lineTo(boltX + 4, boltY);
+        ctx.lineTo(boltX - 3, boltY + 7);
+        ctx.lineTo(boltX - 1, boltY + 1);
+        ctx.lineTo(boltX - 4, boltY + 1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Stamina Gauge Bar
+        const bar2X = startX + 26;
+        const bar2Y = stamY + 1;
+        const bar2H = 9;
+        ctx.fillStyle = 'rgba(8, 12, 22, 0.92)';
+        ctx.fillRect(bar2X, bar2Y, barW, bar2H);
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bar2X, bar2Y, barW, bar2H);
+
+        if (stamNorm > 0) {
+            ctx.fillStyle = stamNorm < 0.25 ? ((Date.now() % 300 < 150) ? '#ef4444' : '#991b1b') : '#f59e0b';
+            ctx.fillRect(bar2X + 1, bar2Y + 1, Math.round((barW - 2) * stamNorm), bar2H - 2);
+        }
+
+        Typography.drawText(ctx, `STAMINA ${Math.round(stamNorm * 100)}%`, bar2X + barW + 10, bar2Y + 7, {
+            font: FONT_STACKS.CAPTION,
+            color: '#f59e0b'
+        });
+
+        // --- GAUGE 3: LANTERN OIL (Vector Lantern Icon with Animated Flame + Reservoir Bar) ---
+        const oilY = startY + 37;
+        const lantX = startX + 10;
+        const lantY = oilY + 6;
+
+        // Vector Handheld Lantern Icon
+        ctx.save();
+        const isOilEmpty = oilNorm <= 0;
+        // Wire bail handle
+        ctx.strokeStyle = isOilEmpty ? '#475569' : '#d97706';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(lantX, lantY - 4, 3, Math.PI, 0);
+        ctx.stroke();
+
+        // Lantern Cap
+        ctx.fillStyle = isOilEmpty ? '#334155' : '#b45309';
+        ctx.fillRect(lantX - 4, lantY - 4, 8, 2);
+
+        // Glass chamber
+        ctx.strokeStyle = isOilEmpty ? '#334155' : '#78350f';
+        ctx.strokeRect(lantX - 3.5, lantY - 2, 7, 7);
+        ctx.fillStyle = isOilEmpty ? 'rgba(30, 41, 59, 0.6)' : 'rgba(254, 243, 199, 0.2)';
+        ctx.fillRect(lantX - 3, lantY - 2, 6, 7);
+
+        // Wick Flame (animated flickers when lit)
+        if (!isOilEmpty) {
+            const flickerH = 2.5 + Math.sin(Date.now() * 0.02) * 1.0;
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.ellipse(lantX, lantY + 2, 1.5, flickerH, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#f97316';
+            ctx.fillRect(lantX - 0.5, lantY + 1.5, 1, 2);
+        } else {
+            // Rising smoke particle when unlit
+            const smokeY = lantY - 4 - ((Date.now() / 40) % 8);
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+            ctx.fillRect(lantX - 0.5, smokeY, 1, 1);
+        }
+        ctx.restore();
+
+        // Lantern Oil Reservoir Bar
+        const bar3X = startX + 26;
+        const bar3Y = oilY + 1;
+        const bar3H = 9;
+        ctx.fillStyle = 'rgba(8, 12, 22, 0.92)';
+        ctx.fillRect(bar3X, bar3Y, barW, bar3H);
+        ctx.strokeStyle = isOilEmpty ? 'rgba(239, 68, 68, 0.6)' : 'rgba(249, 115, 22, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bar3X, bar3Y, barW, bar3H);
+
+        if (oilNorm > 0) {
+            const isCritical = oilNorm < 0.20;
+            ctx.fillStyle = isCritical ? ((Date.now() % 400 < 200) ? '#ef4444' : '#7f1d1d') : '#f97316';
+            ctx.fillRect(bar3X + 1, bar3Y + 1, Math.round((barW - 2) * oilNorm), bar3H - 2);
+        }
+
+        const oilLabel = isOilEmpty ? 'EXTINGUISHED' : (oilNorm < 0.20 ? 'OIL CRITICAL' : `OIL ${Math.round(oilNorm * 100)}%`);
+        Typography.drawText(ctx, oilLabel, bar3X + barW + 10, bar3Y + 7, {
+            font: FONT_STACKS.CAPTION,
+            color: isOilEmpty || oilNorm < 0.20 ? '#ef4444' : '#f97316'
+        });
 
         // Stealth Breath-Holding Indicator Banner
         if (player && player.isHoldingBreath) {
@@ -273,19 +371,19 @@ export default class HUD {
         // 5. Tutorial In-Game Dynamic Guidance Banner
         if (gameState.isTutorialLevel && player) {
             let guideMsg = '';
-            if (player.x < 220) {
-                guideMsg = '[ A / D ] or Arrow Keys to walk across the chamber';
-            } else if (player.x < 460) {
-                guideMsg = '[ SPACE ] or [ W ] to leap across the chasm';
-            } else if (player.x < 740) {
+            if (player.x < 400) {
+                guideMsg = '[ A / D ] Walk  •  [ S / ↓ ] Drop Down Platform  •  [ SPACE ] Jump';
+            } else if (player.x < 750) {
+                guideMsg = 'Hold [ SHIFT ] to Sprint  •  Press [ E ] on Oil Flask to fuel Lantern';
+            } else if (player.x < 1100) {
+                guideMsg = 'Hold [ C ] or [ CTRL ] to Crouch & Hold Breath in Shadows';
+            } else if (player.x < 1450) {
                 const flag = gameState.getFlag('tutorial_gate');
                 guideMsg = flag 
-                    ? 'Gate Unlocked! Proceed through the ancient doorway'
-                    : 'Climb the steps and press [ E ] near the Lever';
-            } else if (player.x < 980) {
-                guideMsg = 'Darkness drains Sanity! Stand in Torchlight to stay calm';
+                    ? 'Conduit Activated! Proceed through the master portal'
+                    : 'Climb the Altar & Press [ E ] on the Conduit Lever';
             } else {
-                guideMsg = 'A Lurker stirs! Do NOT fight — lure it into the Torch flame!';
+                guideMsg = 'WARNING: Lurker in dark! Stare to freeze it • Lure into Torch flame to banish!';
             }
 
             if (guideMsg) {

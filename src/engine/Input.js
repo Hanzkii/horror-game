@@ -57,6 +57,15 @@ export default class Input {
             if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code) || e.key === ' ') {
                 e.preventDefault();
             }
+
+            // Prevent browser shortcut conflicts when holding Ctrl/Command
+            // E.g. Ctrl+S (Save Page), Ctrl+D (Bookmark modal), Ctrl+W (Close tab), Ctrl+P, Ctrl+F
+            if (e.ctrlKey || e.metaKey) {
+                const blockedCodes = ['KeyS', 'KeyD', 'KeyW', 'KeyP', 'KeyF', 'KeyA'];
+                if (blockedCodes.includes(e.code) || ['s', 'S', 'd', 'D', 'w', 'W', 'p', 'P', 'f', 'F', 'a', 'A'].includes(e.key)) {
+                    e.preventDefault();
+                }
+            }
         });
         
         window.addEventListener('keyup', (e) => {
@@ -189,5 +198,25 @@ export default class Input {
         const mappedKeys = this.mappings[action];
         if (!mappedKeys) return false;
         return mappedKeys.some(key => !this.keys[key] && !!this.prevKeys[key]);
+    }
+
+    /**
+     * Toggles browser fullscreen mode with cross-browser support.
+     */
+    toggleFullscreen() {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(() => {});
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(() => {});
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        }
     }
 }
