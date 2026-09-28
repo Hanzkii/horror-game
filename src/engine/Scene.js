@@ -176,15 +176,25 @@ export default class Scene {
             if (!ent.active) continue;
             const isTorch = ent.type === 'interactable' && (ent.interactType === 3 || ent.properties?.interactType === 3);
             if (isTorch) {
+                if (ent.extinguishTimer && ent.extinguishTimer > 0) {
+                    continue; // Extinguished torch produces no sanctuary light
+                }
                 const timer = ent.timer || 0;
-                const flicker = Math.sin(timer * 7) * 4 + Math.sin(timer * 19) * 2;
+                let flicker = Math.sin(timer * 7) * 4 + Math.sin(timer * 19) * 2;
+                if (ent.flickerIntensity && ent.flickerIntensity > 0) {
+                    flicker -= ent.flickerIntensity * (30 + Math.random() * 25);
+                }
                 const isFlared = Boolean(ent.flareTimer && ent.flareTimer > 0);
                 const baseRad = isFlared ? 150 : 85;
+                const radius = Math.max(12, baseRad + flicker);
+                const lightColor = isFlared
+                    ? 'rgba(255, 230, 140, 0.95)'
+                    : (ent.flickerIntensity > 0.3 ? 'rgba(210, 100, 30, 0.65)' : 'rgba(255, 175, 75, 0.85)');
                 lights.push({
                     x: ent.x + 8,
                     y: ent.y + 6,
-                    radius: baseRad + flicker,
-                    color: isFlared ? 'rgba(255, 230, 140, 0.95)' : 'rgba(255, 175, 75, 0.85)',
+                    radius: radius,
+                    color: lightColor,
                     flare: isFlared,
                     entity: ent
                 });

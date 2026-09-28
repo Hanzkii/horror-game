@@ -150,6 +150,34 @@ export class AudioScapeManager {
                 break;
         }
 
+        // Dynamic Heartbeat: As sanity drops, heartbeat rises in volume and accelerates in BPM!
+        if (this.studio && this.studio.params) {
+            const maxSanity = (gameState && gameState.maxSanity) || 100;
+            const currentSanity = (gameState && gameState.sanity !== undefined) ? gameState.sanity : 100;
+            const sanityNorm = Math.max(0, Math.min(1, currentSanity / maxSanity));
+            const panic = 1 - sanityNorm; // 0 = calm, 1 = terrified
+
+            const isChasing = (this.currentState === AUDIO_STATES.CHASE);
+            const isTense = (this.currentState === AUDIO_STATES.TENSION);
+
+            if (panic > 0.05 || isChasing || isTense) {
+                const threatBoost = isChasing ? 0.35 : (isTense ? 0.15 : 0);
+                const totalPanic = Math.min(1.0, panic + threatBoost);
+
+                // Heartbeat volume scales with panic & SFX bus
+                this.studio.params.heartbeatVol = totalPanic * 0.95 * (this.volumes.sfx ?? 0.85);
+                // Heartbeat BPM accelerates from 55 BPM (calm) up to 140 BPM (frantic panic)
+                this.studio.params.heartbeatBpm = Math.round(55 + totalPanic * 85);
+
+                if (!this.studio.heartbeatTimer && this.studio.startHeartbeatLoop) {
+                    this.studio.startHeartbeatLoop();
+                }
+            } else {
+                this.studio.params.heartbeatVol = 0;
+                this.studio.params.heartbeatBpm = 55;
+            }
+        }
+
         // Deeper floor pitch tuning
         if (this.studio.droneOsc1 && this.studio.droneOsc1.frequency) {
             const targetPitch = Math.max(30, 38 - (floorIndex - 1) * 2);

@@ -44,6 +44,8 @@ export class Shadow extends Entity {
         this.teleportBehindTimer = 15.0;
         this.stalkTimer = 0;       // Max duration of an active hunt
         this.escapeTimer = 0;      // Time held out of range before losing trail
+        this.extinguishCooldown = 0;
+        this.respawnCooldown = undefined;
         
         this.lastPlayerDist = Infinity;
         this.history = [];
@@ -106,12 +108,15 @@ export class Shadow extends Entity {
             this.originalLights = null;
         }
 
-        // Instantly banish back to dormancy!
+        // Instantly banish back to dormancy and schedule next atmospheric stalk
         this.state = SHADOW_STATES.DORMANT;
         this.alpha = 0;
         this.lastPlayerDist = Infinity;
         this.stalkTimer = 0;
         this.escapeTimer = 0;
+
+        const floor = scene && scene.gameState ? (scene.gameState.floorIndex || 1) : 1;
+        this.respawnCooldown = Math.max(16, 32 - floor * 3);
     }
 
     /**
@@ -137,13 +142,15 @@ export class Shadow extends Entity {
         this.state = SHADOW_STATES.AWAKENING;
         this.alpha = 0.1;
         this.eyeGlow = 1.0;
-        this.stalkTimer = 22.0; // 22-second stalking window before it naturally dissolves
+        this.stalkTimer = 25.0; // 25-second stalking window before it naturally dissolves
         this.escapeTimer = 0;
 
         // Suspense stinger audio cue
         if (scene && scene.audio) {
             if (reason === 'lever') {
                 scene.audio.play('stinger_sharp');
+            } else if (reason === 'ambient') {
+                scene.audio.play('whisper');
             } else {
                 scene.audio.play('dissonance');
             }
@@ -165,6 +172,9 @@ export class Shadow extends Entity {
         this.state = SHADOW_STATES.DISPERSING;
         this.stalkTimer = 0;
         this.escapeTimer = 0;
+
+        const floor = scene && scene.gameState ? (scene.gameState.floorIndex || 1) : 1;
+        this.respawnCooldown = Math.max(12, 26 - floor * 2.5);
 
         // Restore any flickering torchlights
         if (this.originalLights && scene && scene.lights) {
@@ -197,10 +207,24 @@ export class Shadow extends Entity {
             }
         }
 
-        // 1. DORMANT: Completely quiet and hidden
+        this.extinguishCooldown = Math.max(0, (this.extinguishCooldown || 0) - dt);
+
+        // 1. DORMANT: Waiting in shadows, then ambiently stalks the player
         if (this.state === SHADOW_STATES.DORMANT) {
             this.alpha = 0;
             this.lastPlayerDist = Infinity;
+
+            const floor = scene && scene.gameState ? (scene.gameState.floorIndex || 1) : 1;
+            if (this.respawnCooldown === undefined) {
+                // Initial level start delay: give player time to explore first (8-14s)
+                this.respawnCooldown = Math.max(6, 14 - floor * 2);
+            }
+
+            this.respawnCooldown -= dt;
+            if (this.respawnCooldown <= 0 && scene && scene.player) {
+                this.awaken(scene.player, scene, 'ambient');
+                this.respawnCooldown = Math.max(14, 28 - floor * 3);
+            }
             return;
         }
 
@@ -283,7 +307,9 @@ export class Shadow extends Entity {
         this.y = this.homeY + Math.sin(this.timer * 2.5) * 4;
 
         // --- ESCAPE / DESPAWN MECHANIC 1: TORCHES & SACRED FLAMES ---
-        // Torches automatically despawn shadow lurkers upon collision/proximity, and shadow lurkers actively avoid flames!
+        const floor = scene && scene.gameState ? (scene.gameState.floorIndex || 1) : 1;
+        const isHardLevel = floor >= 2 || (scene && scene.gameState && scene.gameState.isTestLevel);
+
         if (scene && scene.entities) {
             for (const ent of scene.entities) {
                 const isTorch = ent.type === 'interactable' && (ent.interactType === 3 || ent.properties?.interactType === 3);
@@ -299,22 +325,46 @@ export class Shadow extends Entity {
                 const distShadowToTorch = Math.hypot(shadowCenterX - torchCenterX, shadowCenterY - torchCenterY);
                 const distPlayerToTorch = Math.hypot(playerCenterX - torchCenterX, playerCenterY - torchCenterY);
 
-                // 1. DESPAWN / BANISH: If shadow collides with or approaches flame (<70px) OR player reaches sanctuary near torch (<60px):
-                if (distShadowToTorch < 70 || distPlayerToTorch < 60) {
+                // If this torch is already extinguished by the stalker, it emits no light and offers no sanctuary!
+                if (ent.extinguishTimer && ent.extinguishTimer > 0) {
+                    continue;
+                }
+
+                // 1. FLICKER: When shadow lurks within 220px, the torch violently flickers and dims
+                if (distShadowToTorch < 220) {
+                    ent.flickerIntensity = Math.max(ent.flickerIntensity || 0, Math.min(1.0, (220 - distShadowToTorch) / 120));
+                }
+
+                // 2. EXTINGUISH ON HARD LEVELS: Shadow stalks close and snuffs out the torch!
+                if (isHardLevel && this.extinguishCooldown <= 0 && distShadowToTorch < 95 && (this.state === SHADOW_STATES.STALKING || this.state === SHADOW_STATES.AWAKENING)) {
+                    ent.extinguishTimer = 8.0 + Math.min(6, floor * 1.5); // 8-14 seconds of cold darkness!
+                    ent.flickerIntensity = 0;
+                    this.extinguishCooldown = 18.0;
+                    if (scene.audio) {
+                        scene.audio.play('whisper');
+                        scene.audio.play('rumble');
+                    }
+                    if (scene.postProcessing) {
+                        scene.postProcessing.addTrauma(0.5);
+                    }
+                    continue; // Torch is now extinguished!
+                }
+
+                // 3. DESPAWN / BANISH: If shadow collides with active flame (<55px) OR player reaches lit sanctuary (<50px):
+                if (distShadowToTorch < 55 || distPlayerToTorch < 50) {
                     this.despawnInLight(scene, { x: torchCenterX, y: torchCenterY, radius: 85 });
                     return;
                 }
 
-                // 2. FLAME AVOIDANCE: If shadow gets near the flame (between 70px and 150px):
-                // Shadow actively fears fire — steers away with repellent force!
-                if (distShadowToTorch < 150) {
+                // 4. FLAME AVOIDANCE: Stalker fears active fire — steers away
+                if (distShadowToTorch < 130) {
                     const avoidDir = Math.sign(shadowCenterX - torchCenterX) || 1;
-                    this.x += avoidDir * (120 * dt);
+                    this.x += avoidDir * (110 * dt);
                     this.homeX = this.x;
                     
                     if (this.soundCooldown <= 0) {
                         if (scene && scene.audio) scene.audio.play('whisper');
-                        this.soundCooldown = 1.8;
+                        this.soundCooldown = 2.0;
                     }
                 }
             }
@@ -389,10 +439,10 @@ export class Shadow extends Entity {
                 this.breathCooldown = 2.5;
             }
             
-            // Drain sanity proportional to proximity
-            if (dist < 140 && scene.gameState) {
-                const drainMultiplier = (140 - dist) / 140;
-                scene.gameState.drainSanity(dt * (3 + drainMultiplier * 8));
+            // Drain sanity proportional to proximity (only when stalker is actively hunting/near)
+            if (dist < 180 && scene.gameState) {
+                const drainMultiplier = (180 - dist) / 180;
+                scene.gameState.drainSanity(dt * (4 + drainMultiplier * 14));
             }
             
             // CONFRONTATION: Caught the player!

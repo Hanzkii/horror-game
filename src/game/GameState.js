@@ -36,8 +36,7 @@ export class GameState {
     }
     
     update(dt) {
-        // Natural sanity drain
-        this.sanity -= 0.5 * dt;
+        // Sanity does not drain passively; only drains when stalkers prowl nearby or strike!
         
         // Clamp values
         this.health = Math.max(0, Math.min(this.maxHealth, this.health));

@@ -272,18 +272,17 @@ function generateAttempt(options, forceAccept = false) {
                     highestPlatCol = pColStart + 1;
                     highestPlatY = platY;
 
-                    if (platY % 4 === 0) {
-                        entities.push({
-                            type: 'interactable',
-                            x: (pColStart + 1) * tileSize,
-                            y: (platY - 2) * tileSize,
-                            properties: { interactType: 3 }
-                        });
-                    }
-
                     toggleSide = 1 - toggleSide;
                     platY -= Math.floor(2 + rng() * 1.5); 
                 }
+
+                // Single sanctuary torch at top of vertical shaft
+                entities.push({
+                    type: 'interactable',
+                    x: (highestPlatCol + 2) * tileSize,
+                    y: (highestPlatY - 2) * tileSize,
+                    properties: { interactType: 3 }
+                });
 
                 leverPlaced = true;
                 leverPos = { c: highestPlatCol, r: highestPlatY - 1 };
@@ -353,13 +352,15 @@ function generateAttempt(options, forceAccept = false) {
                     }
                 }
 
-                // Torch sanctuary near trench
-                entities.push({
-                    type: 'interactable',
-                    x: (startCol + 1) * tileSize,
-                    y: (baseFloorRow - 3) * tileSize,
-                    properties: { interactType: 3 }
-                });
+                // Rare torch sanctuary near trench (30% chance)
+                if (rng() < 0.3) {
+                    entities.push({
+                        type: 'interactable',
+                        x: (startCol + 1) * tileSize,
+                        y: (baseFloorRow - 3) * tileSize,
+                        properties: { interactType: 3 }
+                    });
+                }
 
             } else {
                 // Low ceiling corridor
@@ -371,13 +372,15 @@ function generateAttempt(options, forceAccept = false) {
                     grid[baseFloorRow][c] = (rng() < 0.3) ? 2 : 1;
                 }
 
-                // Torch sanctuary in corridor
-                entities.push({
-                    type: 'interactable',
-                    x: (startCol + Math.floor(roomWidth / 2)) * tileSize,
-                    y: (ceilingRow + 1) * tileSize,
-                    properties: { interactType: 3 }
-                });
+                // Rare torch sanctuary in corridor (25% chance)
+                if (rng() < 0.25) {
+                    entities.push({
+                        type: 'interactable',
+                        x: (startCol + Math.floor(roomWidth / 2)) * tileSize,
+                        y: (ceilingRow + 1) * tileSize,
+                        properties: { interactType: 3 }
+                    });
+                }
 
                 if (hazardDensity > 0.4) {
                     const trapCol = startCol + Math.floor(rng() * (roomWidth - 4)) + 2;
@@ -456,30 +459,14 @@ function generateAttempt(options, forceAccept = false) {
         return null; // Failed generation, request retry
     }
 
-    // Place Shadow stalkers
-    for (let s = 0; s < shadowCount; s++) {
-        const shadowCol = Math.floor(cols * 0.4 + (s * 0.3) * cols + (rng() * 6 - 3));
-        if (shadowCol > 15 && shadowCol < cols - 8) {
-            entities.push({
-                type: 'shadow',
-                x: shadowCol * tileSize,
-                y: (baseFloorRow - 2) * tileSize
-            });
-        }
-    }
-
-    // Optional: Place lore note at lever mechanism if specifically requested
-    if (noteCount > 1 && leverPos) {
+    // Place Shadow stalkers (guarantee at least 1 lurker per map in dark exploration zones)
+    const stalkerCount = Math.max(1, shadowCount);
+    for (let s = 0; s < stalkerCount; s++) {
+        const shadowCol = Math.min(cols - 6, Math.max(14, Math.floor(cols * (0.35 + s * 0.3) + (rng() * 4 - 2))));
         entities.push({
-            type: 'interactable',
-            x: (leverPos.c + 1) * tileSize,
-            y: leverPos.r * tileSize,
-            properties: {
-                interactType: 0,
-                id: `note_seed_${seed}_lever`,
-                title: 'SANCTUM MECHANISM',
-                text: "ARCHITECT'S CARVING:\n'The ancient gears groan beneath the mountain.\nPull the switch to break the gate's seal.'"
-            }
+            type: 'shadow',
+            x: shadowCol * tileSize,
+            y: (baseFloorRow - 2) * tileSize
         });
     }
 

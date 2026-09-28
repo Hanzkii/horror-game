@@ -24,6 +24,8 @@ export class Interactable extends Entity {
         this.isActivated = false;
         this.timer = Math.random() * 10;
         this.flareTimer = 0;
+        this.extinguishTimer = 0;
+        this.flickerIntensity = 0;
     }
     
     update(dt, input, scene) {
@@ -34,6 +36,12 @@ export class Interactable extends Entity {
         // Torches are pure ambient light sources and automatic sanctuaries (no interaction prompt)
         if (this.interactType === INTERACTABLE_TYPES.TORCH) {
             this.showPrompt = false;
+            if (this.extinguishTimer > 0) {
+                this.extinguishTimer = Math.max(0, this.extinguishTimer - dt);
+            }
+            if (this.flickerIntensity > 0) {
+                this.flickerIntensity = Math.max(0, this.flickerIntensity - dt * 0.8);
+            }
             return;
         }
         
@@ -101,21 +109,26 @@ export class Interactable extends Entity {
         } else if (this.interactType === INTERACTABLE_TYPES.SWITCH) {
             // Pull lever
             this.isActivated = !this.isActivated;
-            if (scene.audio) scene.audio.play('click');
+            if (scene.audio) {
+                scene.audio.play('click');
+                scene.audio.play('rumble');
+            }
             
             const flagKey = this.properties.flag || 'gate_unlocked';
             if (scene.gameState) {
                 scene.gameState.setFlag(flagKey, this.isActivated);
-                scene.gameState.activeNote = this.isActivated
-                    ? "CLANK! Heavy gears grind within the stone.\n\nThe Sealed Gate has opened!"
-                    : "The mechanism resets.";
-                scene.gameState.activeNoteTitle = "ANCIENT MECHANISM";
+                // No activeNote popup here: keeps gameplay fast and fluid!
             }
             if (this.properties.onToggle) {
                 this.properties.onToggle(scene);
             }
 
-            // Surprise element: Awakening the shadow lurker upon solving or triggering mechanisms!
+            // Mechanical trauma feedback
+            if (scene.postProcessing) {
+                scene.postProcessing.addTrauma(0.35);
+            }
+
+            // Awakening or alerting the shadow lurker upon pulling the ancient lever!
             if (this.isActivated && scene.entities) {
                 for (const ent of scene.entities) {
                     if (ent.type === 'shadow' && typeof ent.awaken === 'function') {
@@ -137,7 +150,7 @@ export class Interactable extends Entity {
         } else if (this.interactType === INTERACTABLE_TYPES.SWITCH) {
             SpriteRenderer.drawLever(renderer, this.x, this.y, this.isActivated);
         } else if (this.interactType === INTERACTABLE_TYPES.TORCH) {
-            SpriteRenderer.drawTorch(renderer, this.x, this.y, this.timer);
+            SpriteRenderer.drawTorch(renderer, this.x, this.y, this.timer, this.extinguishTimer > 0);
         }
         
         // In-world interaction glint (no floating text tooltips)

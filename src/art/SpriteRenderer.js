@@ -153,10 +153,19 @@ export default class SpriteRenderer {
         }
     }
 
-    static drawTorch(renderer, x, y, timer) {
+    static drawTorch(renderer, x, y, timer, isExtinguished = false) {
         // Stone bracket
         renderer.drawRect(x + 6, y + 10, 4, 3, '#555566');
         
+        if (isExtinguished) {
+            // Extinguished torch: burnt dark wick with faint grey smoke puff
+            renderer.drawRect(x + 7, y + 8, 2, 2, '#22222a');
+            const smokeCycle = (timer * 2.5) % 1;
+            const smokeY = y + 7 - Math.floor(smokeCycle * 5);
+            renderer.drawRect(x + 7 + Math.sin(timer * 4) * 1.5, smokeY, 1, 1, 'rgba(130, 130, 145, 0.45)');
+            return;
+        }
+
         // Flame body
         const frame = Math.floor(timer * 10) % 3;
         const hOffsets = [0, 1, 0];

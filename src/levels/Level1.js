@@ -135,17 +135,6 @@ export const Level1 = {
         },
         {
             type: 'interactable',
-            x: 752,
-            y: 96,
-            properties: {
-                interactType: 0, // Note
-                id: 'note_sanctum',
-                title: "ARCHITECT'S JOURNAL",
-                text: "ARCHITECT'S JOURNAL:\n'The gate has been secured.\nNo creature from the depths shall pass upward.'"
-            }
-        },
-        {
-            type: 'interactable',
             x: 640,
             y: 96,
             properties: { interactType: 3 } // Torch in sanctum

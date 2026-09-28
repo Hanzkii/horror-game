@@ -382,6 +382,11 @@ async function init() {
                     }
                 }
 
+                if (isNearTorch && gameState.sanity < (gameState.maxSanity || 100)) {
+                    // Holy torch sanctuary steadily calms the trembling mind
+                    gameState.sanity = Math.min(gameState.maxSanity || 100, gameState.sanity + 12 * dt);
+                }
+
                 audioScape.update(dt, gameState, shadowDistance, gameState.floorIndex || 1, {
                     isNearTorch,
                     leverDist,
