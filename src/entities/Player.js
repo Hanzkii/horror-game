@@ -194,76 +194,131 @@ export class Player extends Entity {
                 this.vy = this.maxFallSpeed;
             }
         }
-        
-        // --- 1. HORIZONTAL MOVEMENT & COLLISION RESOLUTION ---
-        this.x += this.vx * dt;
-        this.touchingWallLeft = false;
-        this.touchingWallRight = false;
-        
-        let leftCol = Math.floor(this.x / tileSize);
-        let rightCol = Math.floor((this.x + this.width - 0.001) / tileSize);
-        let topRow = Math.floor(this.y / tileSize);
-        let bottomRow = Math.floor((this.y + this.height - 0.001) / tileSize);
-        
-        for (let r = topRow; r <= bottomRow; r++) {
-            for (let c = leftCol; c <= rightCol; c++) {
-                const tile = scene.getTile(c, r);
-                if (tile === 1 || tile === 2) { // solid stone or brick wall
-                    if (this.vx > 0) {
-                        this.x = c * tileSize - this.width;
+
+        // Sub-stepping to prevent high-speed tunneling through thin or stacked floors
+        const stepDist = Math.max(Math.abs(this.vx * dt), Math.abs(this.vy * dt));
+        const numSteps = Math.max(1, Math.min(4, Math.ceil(stepDist / 8)));
+        const subDt = dt / numSteps;
+
+        for (let s = 0; s < numSteps; s++) {
+            // --- 1. HORIZONTAL MOVEMENT & COLLISION RESOLUTION ---
+            this.x += this.vx * subDt;
+            this.touchingWallLeft = false;
+            this.touchingWallRight = false;
+            
+            let leftCol = Math.floor(this.x / tileSize);
+            let rightCol = Math.floor((this.x + this.width - 0.001) / tileSize);
+            let topRow = Math.floor(this.y / tileSize);
+            let bottomRow = Math.floor((this.y + this.height - 0.001) / tileSize);
+            
+            if (this.vx > 0) {
+                // Moving right: check right leading edge
+                for (let r = topRow; r <= bottomRow; r++) {
+                    const tile = scene.getTile(rightCol, r);
+                    if (tile === 1 || tile === 2) {
+                        this.x = rightCol * tileSize - this.width;
                         this.vx = 0;
                         this.touchingWallRight = true;
-                    } else if (this.vx < 0) {
-                        this.x = (c + 1) * tileSize;
+                        break;
+                    }
+                }
+            } else if (this.vx < 0) {
+                // Moving left: check left leading edge
+                for (let r = topRow; r <= bottomRow; r++) {
+                    const tile = scene.getTile(leftCol, r);
+                    if (tile === 1 || tile === 2) {
+                        this.x = (leftCol + 1) * tileSize;
                         this.vx = 0;
                         this.touchingWallLeft = true;
+                        break;
                     }
                 }
             }
-        }
-        
-        // --- 2. VERTICAL MOVEMENT & COLLISION RESOLUTION ---
-        const prevY = this.y;
-        const movingDown = this.vy >= 0;
-        this.y += this.vy * dt;
-        this.grounded = false;
-        
-        leftCol = Math.floor(this.x / tileSize);
-        rightCol = Math.floor((this.x + this.width - 0.001) / tileSize);
-        topRow = Math.floor(this.y / tileSize);
-        bottomRow = Math.floor((this.y + this.height - 0.001) / tileSize);
-        
-        for (let r = topRow; r <= bottomRow; r++) {
-            for (let c = leftCol; c <= rightCol; c++) {
-                const tile = scene.getTile(c, r);
-                if (tile === 1 || tile === 2) { // solid stone or brick
-                    if (movingDown) {
-                        // Landing on floor
-                        this.y = r * tileSize - this.height;
-                        this.vy = 0;
-                        this.grounded = true;
-                    } else {
-                        // Bumping ceiling when jumping upward
-                        this.y = (r + 1) * tileSize;
-                        this.vy = 0;
-                        this.jumpTimer = 0;
-                    }
-                } else if (tile === 3) { // one-way semi-solid platform
-                    if (movingDown) {
-                        const platTop = r * tileSize;
-                        // Only land if previous bottom was at or above platform top (with 8px tolerance)
-                        if (prevY + this.height <= platTop + 8) {
-                            this.y = platTop - this.height;
+            
+            // --- 2. VERTICAL MOVEMENT & COLLISION RESOLUTION ---
+            const prevY = this.y;
+            const movingDown = this.vy >= 0;
+            this.y += this.vy * subDt;
+            this.grounded = false;
+            
+            leftCol = Math.floor(this.x / tileSize);
+            rightCol = Math.floor((this.x + this.width - 0.001) / tileSize);
+            topRow = Math.floor(this.y / tileSize);
+            bottomRow = Math.floor((this.y + this.height - 0.001) / tileSize);
+            
+            if (movingDown) {
+                // Moving DOWN: Search from highest row to lowest row, land on the FIRST solid surface encountered
+                let landed = false;
+                for (let r = topRow; r <= bottomRow; r++) {
+                    for (let c = leftCol; c <= rightCol; c++) {
+                        const tile = scene.getTile(c, r);
+                        if (tile === 1 || tile === 2) { // solid stone or brick
+                            this.y = r * tileSize - this.height;
                             this.vy = 0;
                             this.grounded = true;
+                            landed = true;
+                            break;
+                        } else if (tile === 3) { // one-way semi-solid platform
+                            const platTop = r * tileSize;
+                            if (prevY + this.height <= platTop + 8) {
+                                this.y = platTop - this.height;
+                                this.vy = 0;
+                                this.grounded = true;
+                                landed = true;
+                                break;
+                            }
                         }
                     }
+                    if (landed) break; // STOP checking lower rows so we never penetrate into bedrock!
+                }
+            } else {
+                // Moving UP: Search from bottom to top, bump ceiling on the lowest ceiling tile
+                let bumped = false;
+                for (let r = bottomRow; r >= topRow; r--) {
+                    for (let c = leftCol; c <= rightCol; c++) {
+                        const tile = scene.getTile(c, r);
+                        if (tile === 1 || tile === 2) {
+                            this.y = (r + 1) * tileSize;
+                            this.vy = 0;
+                            this.jumpTimer = 0;
+                            bumped = true;
+                            break;
+                        }
+                    }
+                    if (bumped) break;
                 }
             }
         }
 
-        // --- 3. ABYSS PIT-FALL BOUNDARY SAFETY ---
-        if (scene.height > 0 && this.y > scene.height + 24) {
+        // --- 3. HORIZONTAL BOUNDARY CLAMPING ---
+        if (scene.width > 0) {
+            this.x = Math.max(0, Math.min(scene.width - this.width, this.x));
+        }
+
+        // --- 4. ANTI-STUCK EJECTION SAFETY ---
+        // If player's center is ever embedded inside solid rock (e.g. from an edge glitch), eject upward to air
+        const centerCol = Math.floor((this.x + this.width / 2) / tileSize);
+        const centerRow = Math.floor((this.y + this.height / 2) / tileSize);
+        const centerTile = scene.getTile(centerCol, centerRow);
+        if (centerTile === 1 || centerTile === 2) {
+            let unstuck = false;
+            for (let r = centerRow - 1; r >= Math.max(0, centerRow - 8); r--) {
+                if (scene.getTile(centerCol, r) === 0 && scene.getTile(centerCol, r - 1) === 0) {
+                    this.y = (r + 1) * tileSize - this.height;
+                    this.vy = 0;
+                    this.grounded = true;
+                    unstuck = true;
+                    break;
+                }
+            }
+            if (!unstuck && scene.respawnPlayer) {
+                // If completely encased in solid terrain with no air above, safely respawn
+                scene.respawnPlayer();
+            }
+        }
+
+        // --- 5. ABYSS PIT-FALL BOUNDARY SAFETY ---
+        if (scene.height > 0 && this.y > scene.height + 16) {
             if (scene.audio) {
                 try { scene.audio.play('shadow_hit'); } catch (e) {}
             }

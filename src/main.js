@@ -86,10 +86,10 @@ async function init() {
     setupProceduralAudio(audio);
 
     // Initialize Procedural Sound Studio & AudioScape Manager
-    const soundStudio = new SoundStudio(audio);
     const audioScape = new AudioScapeManager(audio, soundStudio);
     const savedSettings = saveManager.loadSettings();
     audioScape.setVolumes(savedSettings);
+    hud.setAudioScape(audioScape);
 
     let isTestLevelMode = false;
 
@@ -300,6 +300,7 @@ async function init() {
                     if (input.isJustPressed('pause') || hud.getRequestedPause()) {
                         currentState = GAME_STATES.PAUSED;
                         gameState.isPaused = true;
+                        hud.pauseSubmenu = 'main';
                     }
                 }
 
@@ -469,6 +470,7 @@ async function init() {
                 if (hud.getRequestedPause()) {
                     currentState = GAME_STATES.PAUSED;
                     gameState.isPaused = true;
+                    hud.pauseSubmenu = 'main';
                 }
                 break;
                 
@@ -486,9 +488,14 @@ async function init() {
 
                 const pauseAction = hud.getPauseAction();
                 if (pauseAction === 'resume' || input.isJustPressed('pause')) {
-                    gameState.isPaused = false;
-                    currentState = GAME_STATES.STORY;
+                    if (hud.pauseSubmenu === 'settings') {
+                        hud.pauseSubmenu = 'main';
+                    } else {
+                        gameState.isPaused = false;
+                        currentState = GAME_STATES.STORY;
+                    }
                 } else if (pauseAction === 'quit' || input.keys['KeyQ']) {
+                    hud.pauseSubmenu = 'main';
                     gameState.isPaused = false;
                     audioScape.setState(AUDIO_STATES.MENU);
                     if (isTestLevelMode) {

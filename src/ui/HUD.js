@@ -5,6 +5,7 @@
  */
 
 import { Typography, FONT_STACKS } from './Typography.js';
+import { saveManager } from '../managers/SaveManager.js';
 
 export default class HUD {
     constructor(ctx, width, height) {
@@ -16,6 +17,22 @@ export default class HUD {
         this.fadeSpeed = 1;
         this.pauseAction = null;
         this.requestedPause = false;
+        this.pauseSubmenu = 'main'; // 'main' or 'settings'
+        this.settings = saveManager.loadSettings();
+        this.audioScape = null;
+    }
+
+    setAudioScape(audioScape) {
+        this.audioScape = audioScape;
+    }
+
+    adjustVolume(bus, delta) {
+        const key = `${bus}Vol`;
+        this.settings[key] = Math.max(0, Math.min(1.0, Math.round(((this.settings[key] ?? 0.8) + delta) * 10) / 10));
+        saveManager.saveSettings(this.settings);
+        if (this.audioScape && typeof this.audioScape.setVolumes === 'function') {
+            this.audioScape.setVolumes({ [bus]: this.settings[key] });
+        }
     }
 
     getPauseAction() {
@@ -131,7 +148,7 @@ export default class HUD {
             this.requestedPause = true;
         }
 
-        Typography.drawButton(ctx, 'PAUSE [ESC]', pauseX, pauseY, pauseW, pauseH, {
+        Typography.drawButton(ctx, 'PAUSE', pauseX, pauseY, pauseW, pauseH, {
             isHovered: isHoverPause,
             font: FONT_STACKS.CAPTION
         });
@@ -273,7 +290,7 @@ export default class HUD {
                 gameState.activeNoteTimer = 0;
             }
 
-            Typography.drawButton(ctx, 'CLOSE [ESC]', closeBtnX, closeBtnY, closeBtnW, closeBtnH, {
+            Typography.drawButton(ctx, 'CLOSE', closeBtnX, closeBtnY, closeBtnW, closeBtnH, {
                 isHovered: isHoverClose,
                 borderColor: '#785f37',
                 textColor: '#d4af37'
@@ -288,7 +305,7 @@ export default class HUD {
             });
 
             // Footer hint
-            Typography.drawText(ctx, 'MOVE [A / D]  •  JUMP [SPACE]  •  [ESC] OR CLICK CLOSE', width / 2, modalY + modalH - 24, {
+            Typography.drawText(ctx, 'MOVE [A / D]  •  JUMP [SPACE]  •  CLICK CLOSE TO RESUME', width / 2, modalY + modalH - 24, {
                 font: FONT_STACKS.CAPTION,
                 color: '#a1a1aa',
                 align: 'center'
@@ -297,44 +314,162 @@ export default class HUD {
 
         // 8. In-Game Pause Menu
         if (gameState.isPaused) {
-            ctx.fillStyle = 'rgba(3, 7, 18, 0.88)';
+            ctx.fillStyle = 'rgba(3, 7, 18, 0.90)';
             ctx.fillRect(0, 0, width, height);
 
-            Typography.drawText(ctx, 'PAUSED', width / 2, height * 0.32, {
-                font: FONT_STACKS.TITLE,
-                color: '#ffffff',
-                align: 'center',
-                shadowColor: 'rgba(255, 255, 255, 0.2)'
-            });
+            if (this.pauseSubmenu === 'settings') {
+                // SETTINGS SUBMENU
+                Typography.drawText(ctx, 'SETTINGS & AUDIO', width / 2, height * 0.20, {
+                    font: FONT_STACKS.TITLE,
+                    color: '#ffffff',
+                    align: 'center',
+                    shadowColor: 'rgba(255, 255, 255, 0.2)'
+                });
 
-            const btnW = 280;
-            const btnH = 46;
-            const btnX = width / 2 - btnW / 2;
+                const startY = height * 0.28;
+                const panelW = Math.min(540, width * 0.85);
+                const startX = width / 2 - panelW / 2;
 
-            // Resume
-            const resumeY = height * 0.44;
-            const isHoverResume = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= resumeY && mouse.y <= resumeY + btnH;
-            if (isHoverResume && isClick) {
-                this.pauseAction = 'resume';
+                const sliders = [
+                    { label: 'MASTER VOLUME', bus: 'master', val: this.settings.masterVol ?? 0.8 },
+                    { label: 'MUSIC BUS', bus: 'music', val: this.settings.musicVol ?? 0.7 },
+                    { label: 'AMBIENT CAVERN & WIND', bus: 'ambient', val: this.settings.ambientVol ?? 0.85 },
+                    { label: 'SFX & HORROR STINGERS', bus: 'sfx', val: this.settings.sfxVol ?? 0.85 }
+                ];
+
+                for (let i = 0; i < sliders.length; i++) {
+                    const s = sliders[i];
+                    const y = startY + i * 56;
+
+                    Typography.drawText(ctx, s.label, startX, y + 24, {
+                        font: FONT_STACKS.BODY_BOLD,
+                        color: '#cbd5e1'
+                    });
+
+                    // Minus button
+                    const minusW = 36;
+                    const minusH = 36;
+                    const minusX = startX + panelW - 240;
+                    const isHoverMinus = mouse.x >= minusX && mouse.x <= minusX + minusW && mouse.y >= y + 4 && mouse.y <= y + 4 + minusH;
+                    if (isHoverMinus && isClick) {
+                        this.adjustVolume(s.bus, -0.1);
+                    }
+                    Typography.drawButton(ctx, '-', minusX, y + 4, minusW, minusH, {
+                        isHovered: isHoverMinus,
+                        font: FONT_STACKS.BODY_BOLD
+                    });
+
+                    // Progress bar
+                    const barX = minusX + minusW + 10;
+                    const barW = 120;
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+                    ctx.fillRect(barX, y + 14, barW, 16);
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.fillRect(barX + 2, y + 16, Math.max(0, Math.round((barW - 4) * s.val)), 12);
+
+                    // Plus button
+                    const plusX = barX + barW + 10;
+                    const plusW = 36;
+                    const plusH = 36;
+                    const isHoverPlus = mouse.x >= plusX && mouse.x <= plusX + plusW && mouse.y >= y + 4 && mouse.y <= y + 4 + plusH;
+                    if (isHoverPlus && isClick) {
+                        this.adjustVolume(s.bus, 0.1);
+                    }
+                    Typography.drawButton(ctx, '+', plusX, y + 4, plusW, plusH, {
+                        isHovered: isHoverPlus,
+                        font: FONT_STACKS.BODY_BOLD
+                    });
+
+                    // Percentage
+                    Typography.drawText(ctx, `${Math.round(s.val * 100)}%`, plusX + plusW + 14, y + 24, {
+                        font: FONT_STACKS.CAPTION,
+                        color: '#94a3b8'
+                    });
+                }
+
+                // Fullscreen toggle
+                const fsY = startY + sliders.length * 56 + 14;
+                const fsW = 240;
+                const fsH = 40;
+                const fsX = width / 2 - fsW / 2;
+                const isHoverFs = mouse.x >= fsX && mouse.x <= fsX + fsW && mouse.y >= fsY && mouse.y <= fsY + fsH;
+                if (isHoverFs && isClick) {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(() => {});
+                    } else {
+                        document.exitFullscreen().catch(() => {});
+                    }
+                }
+                Typography.drawButton(ctx, 'TOGGLE FULLSCREEN', fsX, fsY, fsW, fsH, {
+                    isHovered: isHoverFs,
+                    font: FONT_STACKS.BODY_BOLD
+                });
+
+                // Back to Pause Menu
+                const backY = fsY + 54;
+                const backW = 200;
+                const backH = 42;
+                const backX = width / 2 - backW / 2;
+                const isHoverBack = mouse.x >= backX && mouse.x <= backX + backW && mouse.y >= backY && mouse.y <= backY + backH;
+                if (isHoverBack && isClick) {
+                    this.pauseSubmenu = 'main';
+                }
+                Typography.drawButton(ctx, '< BACK TO PAUSE', backX, backY, backW, backH, {
+                    isHovered: isHoverBack,
+                    isSelected: true,
+                    font: FONT_STACKS.BODY_BOLD
+                });
+
+            } else {
+                // MAIN PAUSE MENU
+                Typography.drawText(ctx, 'PAUSED', width / 2, height * 0.30, {
+                    font: FONT_STACKS.TITLE,
+                    color: '#ffffff',
+                    align: 'center',
+                    shadowColor: 'rgba(255, 255, 255, 0.2)'
+                });
+
+                const btnW = 280;
+                const btnH = 46;
+                const btnX = width / 2 - btnW / 2;
+
+                // 1. Resume
+                const resumeY = height * 0.40;
+                const isHoverResume = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= resumeY && mouse.y <= resumeY + btnH;
+                if (isHoverResume && isClick) {
+                    this.pauseAction = 'resume';
+                }
+                Typography.drawButton(ctx, 'RESUME RUN', btnX, resumeY, btnW, btnH, {
+                    isHovered: isHoverResume,
+                    font: FONT_STACKS.BODY_BOLD
+                });
+
+                // 2. Settings
+                const settingsY = height * 0.50;
+                const isHoverSettings = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= settingsY && mouse.y <= settingsY + btnH;
+                if (isHoverSettings && isClick) {
+                    this.pauseSubmenu = 'settings';
+                    this.settings = saveManager.loadSettings();
+                }
+                Typography.drawButton(ctx, 'SETTINGS', btnX, settingsY, btnW, btnH, {
+                    isHovered: isHoverSettings,
+                    font: FONT_STACKS.BODY_BOLD
+                });
+
+                // 3. Return to Main Menu / Exit to Editor
+                const quitY = height * 0.60;
+                const isHoverQuit = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= quitY && mouse.y <= quitY + btnH;
+                if (isHoverQuit && isClick) {
+                    this.pauseAction = 'quit';
+                }
+                const quitLabel = gameState.isTestLevel ? 'EXIT TO EDITOR' : 'RETURN TO MAIN MENU';
+                Typography.drawButton(ctx, quitLabel, btnX, quitY, btnW, btnH, {
+                    isHovered: isHoverQuit,
+                    font: FONT_STACKS.BODY_BOLD,
+                    borderColor: isHoverQuit ? '#ef4444' : 'rgba(239, 68, 68, 0.3)',
+                    textColor: isHoverQuit ? '#f87171' : '#cbd5e1'
+                });
             }
-            Typography.drawButton(ctx, 'RESUME RUN [ESC]', btnX, resumeY, btnW, btnH, {
-                isHovered: isHoverResume,
-                font: FONT_STACKS.BODY_BOLD
-            });
-
-            // Quit
-            const quitY = height * 0.54;
-            const isHoverQuit = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= quitY && mouse.y <= quitY + btnH;
-            if (isHoverQuit && isClick) {
-                this.pauseAction = 'quit';
-            }
-            const quitLabel = gameState.isTestLevel ? 'EXIT TO EDITOR [Q]' : 'RETURN TO MAIN MENU [Q]';
-            Typography.drawButton(ctx, quitLabel, btnX, quitY, btnW, btnH, {
-                isHovered: isHoverQuit,
-                font: FONT_STACKS.BODY_BOLD,
-                borderColor: isHoverQuit ? '#ef4444' : 'rgba(239, 68, 68, 0.3)',
-                textColor: isHoverQuit ? '#f87171' : '#cbd5e1'
-            });
         }
 
         // 9. Full Screen Fade Transition

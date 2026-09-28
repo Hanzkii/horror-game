@@ -353,7 +353,7 @@ export default class MainMenu {
                 'CHARACTER DESIGN',
                 'ACHIEVEMENTS',
                 'SETTINGS & AUDIO',
-                'DESIGN STUDIO [DEV]'
+                'DESIGN STUDIO'
             ]
             : [
                 'DESCEND INTO ABYSS',
@@ -361,7 +361,7 @@ export default class MainMenu {
                 'CHARACTER DESIGN',
                 'ACHIEVEMENTS',
                 'SETTINGS & AUDIO',
-                'DESIGN STUDIO [DEV]'
+                'DESIGN STUDIO'
             ];
 
         const startY = height * 0.35;
@@ -388,7 +388,7 @@ export default class MainMenu {
         }
 
         // Footer hint
-        Typography.drawText(ctx, '[ W / S / ARROWS ] Navigate  •  [ ENTER / SPACE / CLICK ] Select', width / 2, height - 32, {
+        Typography.drawText(ctx, 'Navigate with mouse or keyboard  •  Click to select', width / 2, height - 32, {
             font: FONT_STACKS.CAPTION,
             color: '#64748b',
             align: 'center'

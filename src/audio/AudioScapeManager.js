@@ -32,7 +32,16 @@ export class AudioScapeManager {
     }
 
     setVolumes(volumes) {
-        Object.assign(this.volumes, volumes);
+        if (!volumes) return;
+        if (volumes.masterVol !== undefined) this.volumes.master = volumes.masterVol;
+        if (volumes.musicVol !== undefined) this.volumes.music = volumes.musicVol;
+        if (volumes.ambientVol !== undefined) this.volumes.ambient = volumes.ambientVol;
+        if (volumes.sfxVol !== undefined) this.volumes.sfx = volumes.sfxVol;
+        if (volumes.master !== undefined) this.volumes.master = volumes.master;
+        if (volumes.music !== undefined) this.volumes.music = volumes.music;
+        if (volumes.ambient !== undefined) this.volumes.ambient = volumes.ambient;
+        if (volumes.sfx !== undefined) this.volumes.sfx = volumes.sfx;
+
         if (this.audio) {
             if (this.audio.setMasterVolume) this.audio.setMasterVolume(this.volumes.master);
             if (this.audio.setMusicVolume) this.audio.setMusicVolume(this.volumes.music);
