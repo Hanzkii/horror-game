@@ -229,11 +229,12 @@ async function init() {
                     }
                     gameState.activeNoteTimer += dt;
 
-                    // Close ONLY on movement (A/D/arrows), jump (Space), pause (Escape), or mouse click
-                    // Never close automatically on 'E' or 'Enter'
+                    // Close on E, Enter, movement (A/D/arrows), jump (Space), pause (Escape), or mouse click
+                    // Timer cooldown prevents the same E-press that opened the note from closing it
                     let isClosePressed = false;
-                    if (gameState.activeNoteTimer > 0.15) {
+                    if (gameState.activeNoteTimer > 0.3) {
                         isClosePressed = 
+                            input.isJustPressed('interact') ||
                             input.isJustPressed('left') || 
                             input.isJustPressed('right') || 
                             input.isJustPressed('jump') || 
@@ -244,6 +245,8 @@ async function init() {
                             Boolean(input.keys['ArrowRight']) ||
                             Boolean(input.keys['Space']) ||
                             Boolean(input.keys['Escape']) ||
+                            Boolean(input.keys['Enter']) ||
+                            Boolean(input.keys['KeyE']) ||
                             (input.isMouseClicked && input.isMouseClicked());
                     }
 

@@ -53,42 +53,53 @@ export class Typography {
      * @returns {number} Total height of rendered text
      */
     static drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, options = {}) {
-        ctx.save();
-        ctx.font = options.font || FONT_STACKS.BODY;
-        ctx.fillStyle = options.color || '#ffffff';
-        ctx.textAlign = options.align || 'left';
-        ctx.textBaseline = options.baseline || 'top';
+        // Safety: coerce to string, bail gracefully on null/undefined/empty
+        if (text === null || text === undefined) return 0;
+        const safeText = typeof text === 'string' ? text : (text.text || String(text));
+        if (!safeText) return 0;
 
-        const paragraphs = text.split('\n');
-        let currentY = y;
+        try {
+            ctx.save();
+            ctx.font = options.font || FONT_STACKS.BODY;
+            ctx.fillStyle = options.color || '#ffffff';
+            ctx.textAlign = options.align || 'left';
+            ctx.textBaseline = options.baseline || 'top';
 
-        for (const paragraph of paragraphs) {
-            if (paragraph.trim() === '') {
-                currentY += lineHeight * 0.7;
-                continue;
-            }
+            const paragraphs = safeText.split('\n');
+            let currentY = y;
 
-            const words = paragraph.split(' ');
-            let line = '';
-
-            for (let n = 0; n < words.length; n++) {
-                const testLine = line + words[n] + ' ';
-                const metrics = ctx.measureText(testLine);
-                const testWidth = metrics.width;
-                if (testWidth > maxWidth && n > 0) {
-                    ctx.fillText(line, Math.round(x), Math.round(currentY));
-                    line = words[n] + ' ';
-                    currentY += lineHeight;
-                } else {
-                    line = testLine;
+            for (const paragraph of paragraphs) {
+                if (paragraph.trim() === '') {
+                    currentY += lineHeight * 0.7;
+                    continue;
                 }
-            }
-            ctx.fillText(line, Math.round(x), Math.round(currentY));
-            currentY += lineHeight;
-        }
 
-        ctx.restore();
-        return currentY - y;
+                const words = paragraph.split(' ');
+                let line = '';
+
+                for (let n = 0; n < words.length; n++) {
+                    const testLine = line + words[n] + ' ';
+                    const metrics = ctx.measureText(testLine);
+                    const testWidth = metrics.width;
+                    if (testWidth > maxWidth && n > 0) {
+                        ctx.fillText(line, Math.round(x), Math.round(currentY));
+                        line = words[n] + ' ';
+                        currentY += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                ctx.fillText(line, Math.round(x), Math.round(currentY));
+                currentY += lineHeight;
+            }
+
+            ctx.restore();
+            return currentY - y;
+        } catch (err) {
+            console.error('Typography.drawWrappedText error:', err);
+            try { ctx.restore(); } catch (_) {}
+            return 0;
+        }
     }
 
     /**

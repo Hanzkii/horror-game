@@ -335,8 +335,8 @@ export class Player extends Entity {
             this.jumpTimer = 0;
         }
         
-        // Interaction (Keyboard 'E' only when standing near object)
-        if (input.isJustPressed('interact')) {
+        // Interaction (Keyboard 'E' only when standing near object and no note is open)
+        if (input.isJustPressed('interact') && !(scene.gameState && scene.gameState.activeNote)) {
             this.tryInteract(scene);
         }
     }

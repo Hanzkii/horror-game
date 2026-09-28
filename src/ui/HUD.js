@@ -324,6 +324,12 @@ export default class HUD {
 
         // 7. Lore Note Reading Modal Overlay
         if (gameState.activeNote) {
+            // Capture text BEFORE any close logic can null it — prevents mid-frame crash
+            const noteText = typeof gameState.activeNote === 'string'
+                ? gameState.activeNote
+                : (gameState.activeNote?.text || String(gameState.activeNote || ''));
+            const noteTitle = gameState.activeNoteTitle || 'ANCIENT INSCRIPTION';
+
             const modalW = Math.min(680, width * 0.85);
             const modalH = Math.min(460, height * 0.82);
             const modalX = width / 2 - modalW / 2;
@@ -359,12 +365,19 @@ export default class HUD {
             const closeBtnY = modalY + 22;
             const isHoverClose = mouse.x >= closeBtnX && mouse.x <= closeBtnX + closeBtnW && mouse.y >= closeBtnY && mouse.y <= closeBtnY + closeBtnH;
 
-            // Keyboard dismissal check ([E], [ESC], or [SPACE])
-            const isKeyClose = input && (input.isJustPressed('interact') || input.isJustPressed('pause'));
+            // Dismissal: require a cooldown so the same E-press that OPENED the note can't also CLOSE it
+            const noteTimer = gameState.activeNoteTimer || 0;
+            const canDismiss = noteTimer > 0.3;
 
-            if ((isHoverClose && isClick) || isKeyClose) {
-                gameState.activeNote = null;
-                gameState.activeNoteTimer = 0;
+            if (canDismiss) {
+                const isKeyClose = input && (input.isJustPressed('interact') || input.isJustPressed('pause') || input.isJustPressed('jump'));
+                const isAnyClick = isClick; // click anywhere dismisses
+
+                if (isKeyClose || isAnyClick) {
+                    gameState.activeNote = null;
+                    gameState.activeNoteTimer = 0;
+                    // Don't return — still render this frame with captured text
+                }
             }
 
             Typography.drawButton(ctx, 'CLOSE [E]', closeBtnX, closeBtnY, closeBtnW, closeBtnH, {
@@ -375,8 +388,7 @@ export default class HUD {
             });
 
             // Header Title (fits cleanly without colliding with CLOSE button)
-            const modalTitle = gameState.activeNoteTitle || 'ANCIENT INSCRIPTION';
-            Typography.drawText(ctx, modalTitle, modalX + 32, modalY + 56, {
+            Typography.drawText(ctx, noteTitle, modalX + 32, modalY + 56, {
                 font: FONT_STACKS.HEADING,
                 color: '#f59e0b'
             });
@@ -389,10 +401,10 @@ export default class HUD {
             ctx.lineTo(modalX + modalW - 32, modalY + 68);
             ctx.stroke();
 
-            // Note Content with crisp typography & smooth multiline wrapping
+            // Note Content — uses captured noteText (never null)
             const noteTextY = modalY + 92;
             const maxTextW = modalW - 64;
-            Typography.drawWrappedText(ctx, gameState.activeNote, modalX + 32, noteTextY, maxTextW, 24, {
+            Typography.drawWrappedText(ctx, noteText, modalX + 32, noteTextY, maxTextW, 24, {
                 font: FONT_STACKS.PARCHMENT,
                 color: '#e2e8f0'
             });
