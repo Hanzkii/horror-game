@@ -1,5 +1,9 @@
+// Import Core Architecture & Persistence
+import { events } from './core/EventBus.js';
+import { saveManager } from './managers/SaveManager.js';
+import { achievementManager } from './managers/AchievementManager.js';
+
 // Import Engine Components
-import Game from './engine/Game.js';
 import Renderer from './engine/Renderer.js';
 import Input from './engine/Input.js';
 import AudioManager from './engine/AudioManager.js';
@@ -19,11 +23,12 @@ import { generateProceduralLevel } from './generator/LevelGenerator.js';
 import LevelEditor from './editor/LevelEditor.js';
 import SoundStudio from './audio/SoundStudio.js';
 
-// Import visual systems
+// Import visual & audio systems
 import PostProcessing from './effects/PostProcessing.js';
 import HUD from './ui/HUD.js';
 import MainMenu from './ui/MainMenu.js';
-import AdaptiveAudio from './audio/AdaptiveAudio.js';
+import ToastNotification from './ui/ToastNotification.js';
+import { AudioScapeManager, AUDIO_STATES } from './audio/AudioScapeManager.js';
 
 // Configuration
 const GAME_WIDTH = 480;
@@ -41,14 +46,14 @@ let currentState = GAME_STATES.LOADING;
 
 async function init() {
     const canvas = document.getElementById('gameCanvas');
-    canvas.width = GAME_WIDTH;
-    canvas.height = GAME_HEIGHT;
 
-    // Resize handler to maintain pixel aspect ratio
+    // High-DPI Display Canvas Resize Handler
     function resize() {
-        const scale = Math.min(window.innerWidth / GAME_WIDTH, window.innerHeight / GAME_HEIGHT);
-        canvas.style.width = `${GAME_WIDTH * scale}px`;
-        canvas.style.height = `${GAME_HEIGHT * scale}px`;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(window.innerWidth * dpr);
+        canvas.height = Math.floor(window.innerHeight * dpr);
+        canvas.style.width = `${window.innerWidth}px`;
+        canvas.style.height = `${window.innerHeight}px`;
     }
     window.addEventListener('resize', resize);
     resize();
@@ -60,7 +65,10 @@ async function init() {
     const renderer = new Renderer(canvas, GAME_WIDTH, GAME_HEIGHT);
     const gameState = new GameState();
 
-    const ctx = renderer.bctx; // Offscreen buffer context
+    const toastNotification = new ToastNotification(audio);
+    achievementManager.setToastManager(toastNotification);
+
+    const ctx = renderer.bctx; // Offscreen 480x270 pixel art buffer
     const postProcessing = new PostProcessing(ctx, GAME_WIDTH, GAME_HEIGHT);
     const hud = new HUD(ctx, GAME_WIDTH, GAME_HEIGHT);
     const mainMenu = new MainMenu(ctx, GAME_WIDTH, GAME_HEIGHT, audio, canvas);
@@ -72,13 +80,16 @@ async function init() {
     scene.ui = hud;
     scene.gameState = gameState;
     scene.input = input;
+    gameState.scene = scene;
 
     // Procedural sound effects synthesizer
     setupProceduralAudio(audio);
 
-    // Initialize Procedural Sound Studio & Ambient Generator
+    // Initialize Procedural Sound Studio & AudioScape Manager
     const soundStudio = new SoundStudio(audio);
-    const adaptiveAudio = new AdaptiveAudio(audio, soundStudio);
+    const audioScape = new AudioScapeManager(audio, soundStudio);
+    const savedSettings = saveManager.loadSettings();
+    audioScape.setVolumes(savedSettings);
 
     let isTestLevelMode = false;
 
@@ -120,7 +131,7 @@ async function init() {
             isTestLevelMode = false;
             gameState.isTestLevel = false;
             currentState = GAME_STATES.DESIGN_LEVEL;
-            adaptiveAudio.stopAmbient();
+            audioScape.setState(AUDIO_STATES.MENU);
             editor.toggle(true);
             editor.showTooltipMsg('🎉 Test Level Completed! Exit door reached successfully.');
             return;
@@ -131,12 +142,17 @@ async function init() {
             if (audio) audio.play('stinger_sharp');
             gameState.isTutorialLevel = false;
             currentState = GAME_STATES.MENU;
-            adaptiveAudio.stopAmbient();
+            audioScape.setState(AUDIO_STATES.MENU);
             gameState.activeNote = "TRIAL COMPLETED!\n\nYou have mastered ancient movement, mechanisms, and banishing shadows with holy flame.\n\nYou are ready to descend into the abyss.";
             return;
         }
 
+        // Emit Stage Clear milestone before advancing floor
+        events.emit('STAGE_CLEAR', { floorIndex: gameState.floorIndex, sanity: gameState.sanity });
+
         gameState.floorIndex = (gameState.floorIndex || 1) + 1;
+        gameState.save('auto'); // Milestone autosave!
+
         const nextLevel = getNextDungeonLevel(gameState.floorIndex);
         loadLevel(scene, nextLevel, gameState, renderer);
         editor.loadLevel(nextLevel);
@@ -147,9 +163,10 @@ async function init() {
     const editor = new LevelEditor(canvas, scene, renderer, (customLevel) => {
         isTestLevelMode = true;
         gameState.isTestLevel = true;
+        events.emit('MAP_TESTED');
         loadLevel(scene, customLevel, gameState, renderer);
         currentState = GAME_STATES.STORY;
-        adaptiveAudio.startAmbient();
+        audioScape.setState(AUDIO_STATES.EXPLORATION);
         hud.fadeIn(0.5);
     });
     
@@ -181,22 +198,45 @@ async function init() {
             case GAME_STATES.MENU:
                 canvas.style.cursor = 'default';
                 mainMenu.update(dt, input);
+                toastNotification.update(dt);
+
                 renderer.clear();
-                mainMenu.render();
                 renderer.present();
+
+                const menuUiCtx = renderer.getUIContext();
+                const { width: menuW, height: menuH } = renderer.getDisplaySize();
+                mainMenu.renderHighRes(menuUiCtx, menuW, menuH);
+                toastNotification.render(menuUiCtx, menuW, menuH);
                 
                 const sel = mainMenu.getSelection();
-                if (sel === 'story') { 
+                if (sel === 'continue') {
+                    currentState = GAME_STATES.STORY;
+                    isTestLevelMode = false;
+                    gameState.isTestLevel = false;
+                    gameState.isTutorialLevel = false;
+                    if (gameState.load('auto')) {
+                        if (gameState.floorIndex === 1) {
+                            loadLevel(scene, Level1, gameState, renderer);
+                        } else {
+                            const nextLevel = getNextDungeonLevel(gameState.floorIndex);
+                            loadLevel(scene, nextLevel, gameState, renderer);
+                        }
+                    } else {
+                        gameState.floorIndex = 1;
+                        loadLevel(scene, Level1, gameState, renderer);
+                    }
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
+                } else if (sel === 'story') { 
                     currentState = GAME_STATES.STORY; 
                     isTestLevelMode = false;
                     gameState.isTestLevel = false;
                     gameState.isTutorialLevel = false;
-                    if (!gameState.currentLevel || gameState.currentLevel.includes('TUTORIAL')) {
-                        gameState.floorIndex = 1;
-                        gameState.isPublishedMap = false;
-                        loadLevel(scene, Level1, gameState, renderer);
-                    }
-                    adaptiveAudio.startAmbient();
+                    gameState.reset();
+                    gameState.floorIndex = 1;
+                    gameState.isPublishedMap = false;
+                    loadLevel(scene, Level1, gameState, renderer);
+                    gameState.save('auto');
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
                 } else if (sel === 'tutorial') {
                     currentState = GAME_STATES.STORY;
                     isTestLevelMode = false;
@@ -204,7 +244,7 @@ async function init() {
                     gameState.isTutorialLevel = true;
                     gameState.floorIndex = 0;
                     loadLevel(scene, TutorialLevel, gameState, renderer);
-                    adaptiveAudio.startAmbient();
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
                 } else if (sel === 'design_level') {
                     currentState = GAME_STATES.DESIGN_LEVEL;
                     editor.toggle(true);
@@ -318,7 +358,18 @@ async function init() {
                     }
                 }
 
-                adaptiveAudio.update(dt, gameState, shadowDistance, gameState.floorIndex || 1, {
+                let isNearTorch = false;
+                if (scene.lights) {
+                    for (const l of scene.lights) {
+                        if (scene.player && Math.hypot(scene.player.x - l.x, scene.player.y - l.y) < 70) {
+                            isNearTorch = true;
+                            break;
+                        }
+                    }
+                }
+
+                audioScape.update(dt, gameState, shadowDistance, gameState.floorIndex || 1, {
+                    isNearTorch,
                     leverDist,
                     doorDist,
                     isLeverPulled
@@ -392,8 +443,15 @@ async function init() {
                 // Mouse cursor hidden during gameplay (shown only in menus and active note screens)
                 canvas.style.cursor = (gameState.activeNote || gameState.isPaused) ? 'default' : 'none';
 
-                hud.render(gameState, input, scene.player);
+                // Blit low-res pixel art to display canvas
                 renderer.present();
+
+                // Draw high-resolution anti-aliased vector HUD, lore notes, and toasts
+                const storyUiCtx = renderer.getUIContext();
+                const { width: sW, height: sH } = renderer.getDisplaySize();
+                hud.renderHighRes(storyUiCtx, sW, sH, gameState, input, scene.player);
+                toastNotification.update(dt);
+                toastNotification.render(storyUiCtx, sW, sH);
 
                 if (hud.getRequestedPause()) {
                     currentState = GAME_STATES.PAUSED;
@@ -405,16 +463,21 @@ async function init() {
                 canvas.style.cursor = 'default';
                 renderer.clear();
                 scene.render(renderer);
-                hud.render(gameState, input);
                 renderer.present();
                 
+                const pauseUiCtx = renderer.getUIContext();
+                const { width: pW, height: pH } = renderer.getDisplaySize();
+                hud.renderHighRes(pauseUiCtx, pW, pH, gameState, input);
+                toastNotification.update(dt);
+                toastNotification.render(pauseUiCtx, pW, pH);
+
                 const pauseAction = hud.getPauseAction();
                 if (pauseAction === 'resume' || input.isJustPressed('pause')) {
                     gameState.isPaused = false;
                     currentState = GAME_STATES.STORY;
                 } else if (pauseAction === 'quit' || input.keys['KeyQ']) {
                     gameState.isPaused = false;
-                    adaptiveAudio.stopAmbient();
+                    audioScape.setState(AUDIO_STATES.MENU);
                     if (isTestLevelMode) {
                         isTestLevelMode = false;
                         gameState.isTestLevel = false;
@@ -470,14 +533,24 @@ async function init() {
         }
         
         // Ensure main menu is completely quiet (no droning sound)
-        adaptiveAudio.stopAmbient();
-        if (soundStudio && soundStudio.stopAmbient) {
-            soundStudio.stopAmbient();
-        }
+        audioScape.setState(AUDIO_STATES.MENU);
         
         currentState = GAME_STATES.MENU;
         requestAnimationFrame(loop);
     }
+
+    // Tab blur/focus safety: prevent physics warp upon returning to backgrounded tab
+    window.addEventListener('blur', () => {
+        lastTime = 0;
+    });
+    window.addEventListener('focus', () => {
+        lastTime = performance.now();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            lastTime = performance.now();
+        }
+    });
 
     // Awaken on explicit click or keypress
     loadingOverlay.addEventListener('click', startGame);

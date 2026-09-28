@@ -1,3 +1,11 @@
+/**
+ * @file GameState.js
+ * @description Central player and run state manager, wired to SaveManager and EventBus.
+ */
+
+import { saveManager } from '../managers/SaveManager.js';
+import { events } from '../core/EventBus.js';
+
 export class GameState {
     constructor() {
         this.maxHealth = 100;
@@ -11,6 +19,20 @@ export class GameState {
         this.flags = {};
         
         this.currentLevel = null;
+        this.floorIndex = 1;
+        this.isPublishedMap = false;
+        this.isTestLevel = false;
+        this.isTutorialLevel = false;
+
+        this.stats = {
+            playtimeSeconds: 0,
+            deaths: 0,
+            lurkersBanished: 0,
+            notesRead: 0,
+            deepestFloor: 1
+        };
+
+        this.scene = null;
     }
     
     update(dt) {
@@ -20,6 +42,9 @@ export class GameState {
         // Clamp values
         this.health = Math.max(0, Math.min(this.maxHealth, this.health));
         this.sanity = Math.max(0, Math.min(this.maxSanity, this.sanity));
+
+        // Track active playtime
+        this.stats.playtimeSeconds += dt;
     }
     
     takeDamage(amount) {
@@ -31,18 +56,22 @@ export class GameState {
     
     drainSanity(amount) {
         this.sanity -= amount;
+        if (this.sanity <= 15) {
+            events.emit('SANITY_CRITICAL', { sanity: this.sanity });
+        }
     }
     
     collectNote(id) {
         if (!this.notesCollected.includes(id)) {
             this.notesCollected.push(id);
+            this.stats.notesRead++;
+            events.emit('NOTE_COLLECTED', { id });
             this.save();
         }
     }
     
     setFlag(key, value) {
         this.flags[key] = value;
-        this.save();
     }
     
     getFlag(key) {
@@ -50,45 +79,61 @@ export class GameState {
     }
     
     handleDeath() {
-        console.log("Player died...");
+        console.log("[GameState] Player died...");
+        this.stats.deaths++;
         this.health = this.maxHealth;
-        this.sanity = Math.max(50, this.sanity); // restore some sanity on respawn
+        this.sanity = Math.max(50, this.sanity);
+
+        events.emit('PLAYER_DIED', { deaths: this.stats.deaths });
+
+        if (this.scene && typeof this.scene.respawnPlayer === 'function') {
+            this.scene.respawnPlayer();
+        }
     }
     
-    save() {
+    save(slot = 'auto') {
         const data = {
-            health: this.health,
-            sanity: this.sanity,
-            notesCollected: this.notesCollected,
-            visitedAreas: this.visitedAreas,
-            flags: this.flags,
-            currentLevel: this.currentLevel
+            player: {
+                floorIndex: this.floorIndex,
+                currentLevel: this.currentLevel,
+                health: this.health,
+                sanity: this.sanity
+            },
+            inventory: {
+                notesCollected: this.notesCollected,
+                visitedAreas: this.visitedAreas,
+                flags: this.flags
+            },
+            stats: this.stats
         };
         
-        try {
-            localStorage.setItem('horror_game_save', JSON.stringify(data));
-        } catch (e) {
-            console.error('Failed to save game state:', e);
-        }
+        return saveManager.save(slot, data);
     }
     
-    load() {
-        try {
-            const dataStr = localStorage.getItem('horror_game_save');
-            if (dataStr) {
-                const data = JSON.parse(dataStr);
-                this.health = data.health || this.maxHealth;
-                this.sanity = data.sanity || this.maxSanity;
-                this.notesCollected = data.notesCollected || [];
-                this.visitedAreas = data.visitedAreas || [];
-                this.flags = data.flags || {};
-                this.currentLevel = data.currentLevel;
-                return true;
+    load(slot = 'auto') {
+        const saved = saveManager.load(slot);
+        if (saved) {
+            if (saved.player) {
+                this.health = saved.player.health ?? this.maxHealth;
+                this.sanity = saved.player.sanity ?? this.maxSanity;
+                this.floorIndex = saved.player.floorIndex || 1;
+                this.currentLevel = saved.player.currentLevel || null;
             }
-        } catch (e) {
-            console.error('Failed to load game state:', e);
+            if (saved.inventory) {
+                this.notesCollected = saved.inventory.notesCollected || [];
+                this.visitedAreas = saved.inventory.visitedAreas || [];
+                this.flags = saved.inventory.flags || {};
+            }
+            if (saved.stats) {
+                Object.assign(this.stats, saved.stats);
+            }
+            return true;
         }
         return false;
+    }
+
+    hasSave(slot = 'auto') {
+        return saveManager.hasSave(slot);
     }
     
     reset() {
@@ -98,6 +143,13 @@ export class GameState {
         this.visitedAreas = [];
         this.flags = {};
         this.currentLevel = null;
-        this.save();
+        this.floorIndex = 1;
+        this.stats = {
+            playtimeSeconds: 0,
+            deaths: 0,
+            lurkersBanished: 0,
+            notesRead: 0,
+            deepestFloor: 1
+        };
     }
 }

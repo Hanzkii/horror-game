@@ -13,24 +13,31 @@ export default class AudioManager {
         this.masterGain = this.context.createGain();
         this.sfxGain = this.context.createGain();
         this.musicGain = this.context.createGain();
+        this.ambientGain = this.context.createGain();
         
         // Routing
         this.sfxGain.connect(this.masterGain);
         this.musicGain.connect(this.masterGain);
+        this.ambientGain.connect(this.masterGain);
         this.masterGain.connect(this.context.destination);
         
         // Active sources
         this.activeSources = [];
         this.ambientSource = null;
-        this.ambientGain = null;
+        this.activeAmbientGain = null;
         
         // Listener for spatial audio
         this.listener = this.context.listener;
     }
     
+    setMasterVolume(value) { this.setVolume('master', value); }
+    setMusicVolume(value) { this.setVolume('music', value); }
+    setAmbientVolume(value) { this.setVolume('ambient', value); }
+    setSfxVolume(value) { this.setVolume('sfx', value); }
+
     /**
      * Sets volume for a specific bus.
-     * @param {string} bus - 'master', 'sfx', or 'music'
+     * @param {string} bus - 'master', 'sfx', 'music', or 'ambient'
      * @param {number} value - 0.0 to 1.0
      */
     setVolume(bus, value) {
@@ -39,6 +46,7 @@ export default class AudioManager {
             case 'master': this.masterGain.gain.value = clamped; break;
             case 'sfx': this.sfxGain.gain.value = clamped; break;
             case 'music': this.musicGain.gain.value = clamped; break;
+            case 'ambient': this.ambientGain.gain.value = clamped; break;
         }
     }
     

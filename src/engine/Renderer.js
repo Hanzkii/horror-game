@@ -246,10 +246,12 @@ export default class Renderer {
     }
     
     /**
-     * Scales and draws the internal buffer to the display canvas.
+     * Scales and draws the internal pixel buffer to the display canvas.
      */
     present() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.imageSmoothingEnabled = false;
+        this.ctx.fillStyle = '#000000';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
         // Calculate aspect ratio preserving dimensions
         const scale = Math.min(
@@ -257,11 +259,45 @@ export default class Renderer {
             this.canvas.height / this.height
         );
         
-        const dw = this.width * scale;
-        const dh = this.height * scale;
-        const dx = (this.canvas.width - dw) / 2;
-        const dy = (this.canvas.height - dh) / 2;
+        const dw = Math.floor(this.width * scale);
+        const dh = Math.floor(this.height * scale);
+        const dx = Math.floor((this.canvas.width - dw) / 2);
+        const dy = Math.floor((this.canvas.height - dh) / 2);
         
         this.ctx.drawImage(this.buffer, 0, 0, this.width, this.height, dx, dy, dw, dh);
+        this.viewport = { scale, dx, dy, dw, dh };
+        return this.viewport;
+    }
+
+    /**
+     * Prepares display context for vector UI rendering (antialiased fonts, high resolution).
+     * @returns {CanvasRenderingContext2D}
+     */
+    getUIContext() {
+        this.ctx.imageSmoothingEnabled = true;
+        this.ctx.imageSmoothingQuality = 'high';
+        return this.ctx;
+    }
+
+    /**
+     * Returns the physical resolution of the display canvas.
+     */
+    getDisplaySize() {
+        return {
+            width: this.canvas.width,
+            height: this.canvas.height
+        };
+    }
+
+    /**
+     * Converts screen client coordinates to game buffer coordinates (480x270).
+     */
+    screenToBuffer(screenX, screenY) {
+        if (!this.viewport) return { x: screenX, y: screenY };
+        return {
+            x: (screenX - this.viewport.dx) / this.viewport.scale,
+            y: (screenY - this.viewport.dy) / this.viewport.scale
+        };
     }
 }
+

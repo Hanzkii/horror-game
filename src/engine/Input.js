@@ -24,6 +24,8 @@ export default class Input {
         this.mouse = {
             x: -999,
             y: -999,
+            clientX: -999,
+            clientY: -999,
             isDown: false,
             wasDown: false,
             isClicked: false
@@ -88,8 +90,10 @@ export default class Input {
             if (rect.width > 0 && rect.height > 0) {
                 const scaleX = width / rect.width;
                 const scaleY = height / rect.height;
-                this.mouse.x = (e.clientX - rect.left) * scaleX;
-                this.mouse.y = (e.clientY - rect.top) * scaleY;
+                this.mouse.clientX = e.clientX - rect.left;
+                this.mouse.clientY = e.clientY - rect.top;
+                this.mouse.x = this.mouse.clientX * scaleX;
+                this.mouse.y = this.mouse.clientY * scaleY;
             }
         };
 
@@ -120,6 +124,10 @@ export default class Input {
 
     getMousePos() {
         return { x: this.mouse.x, y: this.mouse.y };
+    }
+
+    getClientMousePos() {
+        return { x: this.mouse.clientX, y: this.mouse.clientY };
     }
     
     /**

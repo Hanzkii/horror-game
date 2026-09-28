@@ -6,6 +6,7 @@
  */
 
 import Entity from '../engine/Entity.js';
+import { events } from '../core/EventBus.js';
 
 export const SHADOW_STATES = {
     DORMANT: 0,
@@ -86,10 +87,14 @@ export class Shadow extends Entity {
             scene.postProcessing.addTrauma(0.5);
         }
 
-        // Notify HUD
+        // Notify HUD and stats
         if (scene && scene.gameState) {
             scene.gameState.sanctuaryPromptTimer = 2.5;
+            if (scene.gameState.stats) {
+                scene.gameState.stats.lurkersBanished++;
+            }
         }
+        events.emit('ENEMY_BANISHED');
 
         // Restore any flickering torchlights
         if (this.originalLights && scene && scene.lights) {

@@ -261,6 +261,19 @@ export class Player extends Entity {
                 }
             }
         }
+
+        // --- 3. ABYSS PIT-FALL BOUNDARY SAFETY ---
+        if (scene.height > 0 && this.y > scene.height + 24) {
+            if (scene.audio) {
+                try { scene.audio.play('shadow_hit'); } catch (e) {}
+            }
+            if (scene.gameState) {
+                scene.gameState.takeDamage(100);
+            }
+            if (scene.respawnPlayer) {
+                scene.respawnPlayer();
+            }
+        }
     }
     
     updateState(dt) {

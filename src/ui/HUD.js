@@ -1,6 +1,14 @@
+/**
+ * @file HUD.js
+ * @description High-resolution vector HUD and modal overlay system.
+ * Renders anti-aliased, razor-sharp text and interfaces at display resolution.
+ */
+
+import { Typography, FONT_STACKS } from './Typography.js';
+
 export default class HUD {
     constructor(ctx, width, height) {
-        this.ctx = ctx;
+        this.ctx = ctx; // fallback buffer context
         this.width = width;
         this.height = height;
         this.fadeAlpha = 1;
@@ -43,316 +51,308 @@ export default class HUD {
         this.fadeSpeed = speed;
     }
 
-    render(gameState, input = null, player = null) {
-        const { ctx, width, height } = this;
+    /**
+     * Renders vector UI elements at high resolution directly on the display canvas.
+     * @param {CanvasRenderingContext2D} ctx - High-resolution display context
+     * @param {number} width - Display canvas width
+     * @param {number} height - Display canvas height
+     * @param {GameState} gameState 
+     * @param {Input} input 
+     * @param {Player} player 
+     */
+    renderHighRes(ctx, width, height, gameState, input = null, player = null) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
 
-        // Sanity indicator
+        // 1. Sanity edge tint vignette
         const sanityNorm = (gameState.sanity > 1) ? (gameState.sanity / (gameState.maxSanity || 100)) : gameState.sanity;
         if (sanityNorm < 1) {
             const intensity = 1 - sanityNorm;
             const gradient = ctx.createRadialGradient(
-                width / 2, height / 2, height * 0.3,
-                width / 2, height / 2, height * 0.7
+                width / 2, height / 2, height * 0.35,
+                width / 2, height / 2, height * 0.75
             );
             gradient.addColorStop(0, 'rgba(100, 0, 0, 0)');
-            gradient.addColorStop(1, `rgba(150, 0, 0, ${intensity * 0.5})`);
+            gradient.addColorStop(1, `rgba(160, 10, 10, ${intensity * 0.6})`);
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, width, height);
         }
 
-        // Survival HUD (Health & Sanity indicators)
+        // 2. Health & Sanity Status Indicators (Top-Left)
         if (gameState.health !== undefined) {
             const maxHp = gameState.maxHealth || 100;
             const hpNorm = Math.max(0, Math.min(1, gameState.health / maxHp));
-            
-            // Health bar container
-            ctx.fillStyle = 'rgba(10, 10, 15, 0.7)';
-            ctx.fillRect(10, 8, 62, 6);
-            ctx.strokeStyle = '#442222';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(10, 8, 62, 6);
-            
-            // Health fill
-            ctx.fillStyle = hpNorm < 0.35 ? '#ff2222' : '#cc3344';
-            ctx.fillRect(11, 9, Math.round(hpNorm * 60), 4);
-
-            // Sanity bar container
             const maxSanity = gameState.maxSanity || 100;
             const sanNorm = Math.max(0, Math.min(1, gameState.sanity / maxSanity));
-            ctx.fillStyle = 'rgba(10, 10, 15, 0.7)';
-            ctx.fillRect(10, 17, 62, 5);
-            ctx.strokeStyle = '#223344';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(10, 17, 62, 5);
 
-            // Sanity fill
-            ctx.fillStyle = '#6688cc';
-            ctx.fillRect(11, 18, Math.round(sanNorm * 60), 3);
+            const barX = 28;
+            const barW = 160;
+
+            // Health Bar
+            ctx.fillStyle = 'rgba(12, 16, 24, 0.85)';
+            ctx.fillRect(barX, 24, barW, 10);
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, 24, barW, 10);
+            ctx.fillStyle = hpNorm < 0.35 ? '#ef4444' : '#e11d48';
+            ctx.fillRect(barX + 1, 25, Math.round((barW - 2) * hpNorm), 8);
+
+            Typography.drawText(ctx, 'VITALITY', barX + barW + 12, 33, {
+                font: FONT_STACKS.CAPTION,
+                color: '#f87171'
+            });
+
+            // Sanity Bar
+            ctx.fillStyle = 'rgba(12, 16, 24, 0.85)';
+            ctx.fillRect(barX, 42, barW, 8);
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, 42, barW, 8);
+            ctx.fillStyle = sanNorm < 0.3 ? '#818cf8' : '#38bdf8';
+            ctx.fillRect(barX + 1, 43, Math.round((barW - 2) * sanNorm), 6);
+
+            Typography.drawText(ctx, 'SANITY', barX + barW + 12, 50, {
+                font: FONT_STACKS.CAPTION,
+                color: '#38bdf8'
+            });
         }
 
-        // Sanctuary Banner
+        // 3. Top-Right Badges & Pause Button
+        const mouse = input && input.getClientMousePos ? input.getClientMousePos() : { x: -999, y: -999 };
+        const isClick = input && input.isMouseClicked ? input.isMouseClicked() : false;
+
+        const pauseW = 90;
+        const pauseH = 32;
+        const pauseX = width - pauseW - 28;
+        const pauseY = 24;
+        const isHoverPause = mouse.x >= pauseX && mouse.x <= pauseX + pauseW && mouse.y >= pauseY && mouse.y <= pauseY + pauseH;
+
+        if (isHoverPause && isClick) {
+            this.requestedPause = true;
+        }
+
+        Typography.drawButton(ctx, 'PAUSE [ESC]', pauseX, pauseY, pauseW, pauseH, {
+            isHovered: isHoverPause,
+            font: FONT_STACKS.CAPTION
+        });
+
+        // Floor / Mode Badge
+        let badgeText = '';
+        let badgeColor = '#94a3b8';
+        if (gameState.isTestLevel) {
+            badgeText = 'TEST LEVEL MODE';
+            badgeColor = '#fbbf24';
+        } else if (gameState.isTutorialLevel) {
+            badgeText = 'TUTORIAL TRIAL';
+            badgeColor = '#34d399';
+        } else if (gameState.currentLevel && gameState.floorIndex) {
+            badgeText = gameState.isPublishedMap ? `DEPTH B${gameState.floorIndex} [COMMUNITY]` : `DEPTH B${gameState.floorIndex}`;
+            badgeColor = gameState.isPublishedMap ? '#38bdf8' : '#cbd5e1';
+        }
+
+        if (badgeText) {
+            Typography.drawText(ctx, badgeText, pauseX - 16, pauseY + 21, {
+                font: FONT_STACKS.BODY_BOLD,
+                color: badgeColor,
+                align: 'right'
+            });
+        }
+
+        // 4. Sanctuary Prompt Banner
         if (gameState.sanctuaryPromptTimer && gameState.sanctuaryPromptTimer > 0) {
             gameState.sanctuaryPromptTimer = Math.max(0, gameState.sanctuaryPromptTimer - 0.016);
             const bannerAlpha = Math.min(1.0, gameState.sanctuaryPromptTimer);
-            ctx.fillStyle = `rgba(255, 215, 110, ${bannerAlpha * 0.95})`;
-            ctx.font = '10px monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('SANCTUARY — The holy flame banished the shadow', width / 2, 28);
+            ctx.save();
+            ctx.globalAlpha = bannerAlpha;
+            Typography.drawText(ctx, 'SANCTUARY — Holy flame banished the shadow', width / 2, 70, {
+                font: FONT_STACKS.HEADING,
+                color: '#fbbf24',
+                align: 'center',
+                shadowColor: 'rgba(251, 191, 36, 0.4)'
+            });
+            ctx.restore();
         }
 
-        // Floor indicator & Clickable Pause Button in top right
-        if (gameState.isTestLevel) {
-            ctx.fillStyle = '#ffaa44';
-            ctx.font = '10px monospace';
-            ctx.textAlign = 'right';
-            ctx.fillText('[TEST LEVEL MODE]', width - 62, 16);
-        } else if (gameState.isTutorialLevel) {
-            ctx.fillStyle = '#58f0c0';
-            ctx.font = '10px monospace';
-            ctx.textAlign = 'right';
-            ctx.fillText('[TUTORIAL TRIAL]', width - 62, 16);
-
-            // Contextual floating guidance banner in tutorial level
-            if (player) {
-                let guideMsg = '';
-                if (player.x < 220) {
-                    guideMsg = '[ A / D ] Walk across the chamber';
-                } else if (player.x < 460) {
-                    guideMsg = '[ SPACE ] or [ W ] Leap across the chasm';
-                } else if (player.x < 740) {
-                    const flag = gameState.getFlag('tutorial_gate');
-                    guideMsg = flag 
-                        ? 'Gate Unlocked! Proceed through the archway'
-                        : 'Climb the steps & press [ E ] on the Lever';
-                } else if (player.x < 980) {
-                    guideMsg = 'Darkness drains Sanity! Stand in Torchlight to stay calm';
-                } else {
-                    guideMsg = 'A Lurker stirs! Do NOT fight — lure it into the Torch flame!';
-                }
-
-                if (guideMsg) {
-                    ctx.font = '9px monospace';
-                    const tw = ctx.measureText(guideMsg).width;
-                    const pw = Math.round(tw + 20);
-                    const px = Math.round(width / 2 - pw / 2);
-                    const py = 24;
-
-                    ctx.fillStyle = 'rgba(6, 12, 22, 0.9)';
-                    ctx.fillRect(px, py, pw, 17);
-                    ctx.strokeStyle = '#38bdf8';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(px, py, pw, 17);
-
-                    ctx.fillStyle = '#e0f2fe';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(guideMsg, width / 2, py + 12);
-                }
+        // 5. Tutorial In-Game Dynamic Guidance Banner
+        if (gameState.isTutorialLevel && player) {
+            let guideMsg = '';
+            if (player.x < 220) {
+                guideMsg = '[ A / D ] or Arrow Keys to walk across the chamber';
+            } else if (player.x < 460) {
+                guideMsg = '[ SPACE ] or [ W ] to leap across the chasm';
+            } else if (player.x < 740) {
+                const flag = gameState.getFlag('tutorial_gate');
+                guideMsg = flag 
+                    ? 'Gate Unlocked! Proceed through the ancient doorway'
+                    : 'Climb the steps and press [ E ] near the Lever';
+            } else if (player.x < 980) {
+                guideMsg = 'Darkness drains Sanity! Stand in Torchlight to stay calm';
+            } else {
+                guideMsg = 'A Lurker stirs! Do NOT fight — lure it into the Torch flame!';
             }
-        } else if (gameState.currentLevel && gameState.floorIndex) {
-            ctx.fillStyle = gameState.isPublishedMap ? '#58a6ff' : 'rgba(255, 255, 255, 0.6)';
-            ctx.font = '10px monospace';
-            ctx.textAlign = 'right';
-            ctx.fillText(gameState.isPublishedMap ? `B${gameState.floorIndex} [COMMUNITY]` : `FLOOR B${gameState.floorIndex}`, width - 62, 16);
-        }
 
-        // Clickable Pause Button in top right
-        const pauseBtnX = width - 54;
-        const pauseBtnY = 6;
-        const pauseBtnW = 44;
-        const pauseBtnH = 15;
-        let isHoverPause = false;
-        if (input) {
-            const m = input.getMousePos();
-            if (m.x >= pauseBtnX && m.x <= pauseBtnX + pauseBtnW && m.y >= pauseBtnY && m.y <= pauseBtnY + pauseBtnH) {
-                isHoverPause = true;
-                if (input.isMouseClicked && input.isMouseClicked()) {
-                    this.requestedPause = true;
-                }
+            if (guideMsg) {
+                const bannerY = 64;
+                ctx.save();
+                ctx.font = FONT_STACKS.BODY_BOLD;
+                const tw = ctx.measureText(guideMsg).width;
+                const bw = tw + 40;
+                const bx = width / 2 - bw / 2;
+
+                ctx.fillStyle = 'rgba(8, 14, 26, 0.9)';
+                ctx.fillRect(bx, bannerY - 14, bw, 32);
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(bx, bannerY - 14, bw, 32);
+
+                Typography.drawText(ctx, guideMsg, width / 2, bannerY + 6, {
+                    font: FONT_STACKS.BODY_BOLD,
+                    color: '#e0f2fe',
+                    align: 'center'
+                });
+                ctx.restore();
             }
         }
-        ctx.fillStyle = isHoverPause ? 'rgba(255, 255, 255, 0.2)' : 'rgba(20, 20, 30, 0.6)';
-        ctx.fillRect(pauseBtnX, pauseBtnY, pauseBtnW, pauseBtnH);
-        ctx.strokeStyle = isHoverPause ? '#ffffff' : '#444455';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(pauseBtnX, pauseBtnY, pauseBtnW, pauseBtnH);
-        ctx.fillStyle = isHoverPause ? '#ffffff' : '#888899';
-        ctx.font = '9px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('PAUSE', pauseBtnX + pauseBtnW / 2, pauseBtnY + 11);
 
-        // Subtle Floor 1 controls hint (smoothly fades out after 6 seconds)
-        if (gameState.floorIndex === 1) {
-            if (gameState.introTipTimer === undefined) gameState.introTipTimer = 6.0;
+        // 6. Floor 1 Controls Intro Tip
+        if (gameState.floorIndex === 1 && !gameState.isTutorialLevel) {
+            if (gameState.introTipTimer === undefined) gameState.introTipTimer = 7.0;
             if (gameState.introTipTimer > 0) {
                 gameState.introTipTimer -= 0.016;
                 const tipAlpha = Math.min(1.0, gameState.introTipTimer);
-                ctx.fillStyle = `rgba(200, 215, 240, ${tipAlpha * 0.75})`;
-                ctx.font = '9px monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText('[A/D] Walk  •  [SPACE] Jump  •  [E] Interact near objects', width / 2, 28);
+                ctx.save();
+                ctx.globalAlpha = tipAlpha;
+                Typography.drawText(ctx, '[A/D] Walk  •  [SPACE] Jump  •  [E] Interact near objects', width / 2, 70, {
+                    font: FONT_STACKS.BODY_BOLD,
+                    color: '#cbd5e1',
+                    align: 'center'
+                });
+                ctx.restore();
             }
         }
 
-        // Note Reading Overlay with responsive word-wrapping
+        // 7. Lore Note Reading Modal Overlay
         if (gameState.activeNote) {
-            const boxX = Math.round(width * 0.08);
-            const boxY = Math.round(height * 0.08);
-            const boxW = Math.round(width * 0.84);
-            const boxH = Math.round(height * 0.84);
-            
-            // Dark parchment box background
-            ctx.fillStyle = 'rgba(12, 12, 16, 0.95)';
-            ctx.fillRect(boxX, boxY, boxW, boxH);
-            
-            // Double decorative border
-            ctx.strokeStyle = '#4a443a';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
-            
-            ctx.strokeStyle = '#2d2922';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(boxX + 3, boxY + 3, boxW - 6, boxH - 6);
+            const modalW = Math.min(680, width * 0.85);
+            const modalH = Math.min(460, height * 0.82);
+            const modalX = width / 2 - modalW / 2;
+            const modalY = height / 2 - modalH / 2;
 
-            // Corner ornamental accents
-            ctx.fillStyle = '#6a5e4d';
-            ctx.fillRect(boxX + 2, boxY + 2, 4, 4);
-            ctx.fillRect(boxX + boxW - 6, boxY + 2, 4, 4);
-            ctx.fillRect(boxX + 2, boxY + boxH - 6, 4, 4);
-            ctx.fillRect(boxX + boxW - 6, boxY + boxH - 6, 4, 4);
-
-            // Note Text styling
-            ctx.font = '10px monospace';
-            ctx.textAlign = 'left';
-            
-            const paddingX = 18;
-            const startX = boxX + paddingX;
-            const maxLineWidth = boxW - paddingX * 2;
-            let currentY = boxY + 24;
-            const lineHeight = 14;
-
-            // Full paragraph and word-wrapping algorithm
-            const paragraphs = gameState.activeNote.split('\n');
-            for (let p = 0; p < paragraphs.length; p++) {
-                const paragraph = paragraphs[p];
-                if (paragraph.trim() === '') {
-                    currentY += lineHeight * 0.6;
-                    continue;
-                }
-
-                // Give header/title lines subtle warm accent
-                const isHeader = paragraph.startsWith('Seed #') || paragraph.includes('JOURNAL') || paragraph.includes('SEALED');
-                ctx.fillStyle = isHeader ? '#e8d8b8' : '#c8c2b5';
-
-                const words = paragraph.split(' ');
-                let currentLine = '';
-
-                for (let i = 0; i < words.length; i++) {
-                    const word = words[i];
-                    const testLine = currentLine.length === 0 ? word : currentLine + ' ' + word;
-                    const testWidth = ctx.measureText(testLine).width;
-
-                    if (testWidth > maxLineWidth && currentLine.length > 0) {
-                        ctx.fillText(currentLine, startX, currentY);
-                        currentY += lineHeight;
-                        currentLine = word;
-                    } else {
-                        currentLine = testLine;
-                    }
-                }
-
-                if (currentLine.length > 0) {
-                    ctx.fillText(currentLine, startX, currentY);
-                    currentY += lineHeight;
-                }
-            }
-            
-            // Top-right Close Button
-            const closeBtnW = 54;
-            const closeBtnH = 16;
-            const closeBtnX = boxX + boxW - closeBtnW - 8;
-            const closeBtnY = boxY + 8;
-            let isHoverClose = false;
-            if (input) {
-                const m = input.getMousePos();
-                if (m.x >= closeBtnX && m.x <= closeBtnX + closeBtnW && m.y >= closeBtnY && m.y <= closeBtnY + closeBtnH) {
-                    isHoverClose = true;
-                    if (input.isMouseClicked && input.isMouseClicked()) {
-                        gameState.activeNote = null;
-                    }
-                }
-            }
-            ctx.fillStyle = isHoverClose ? 'rgba(200, 50, 50, 0.45)' : 'rgba(30, 30, 40, 0.65)';
-            ctx.fillRect(closeBtnX, closeBtnY, closeBtnW, closeBtnH);
-            ctx.strokeStyle = isHoverClose ? '#ff7777' : '#554433';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(closeBtnX, closeBtnY, closeBtnW, closeBtnH);
-            ctx.fillStyle = isHoverClose ? '#ffffff' : '#c0b090';
-            ctx.font = '9px monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('✖ CLOSE', closeBtnX + closeBtnW / 2, closeBtnY + 11);
-
-            // Footer close hint
-            ctx.fillStyle = '#8a8075';
-            ctx.font = '9px monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('[ PRESS E / SPACE / ESC OR CLICK TO CLOSE ]', width / 2, boxY + boxH - 10);
-        }
-
-        // Pause Menu with full mouse interaction
-        if (gameState.isPaused) {
-            ctx.fillStyle = 'rgba(6, 6, 10, 0.85)';
+            // Dim backdrop
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
             ctx.fillRect(0, 0, width, height);
 
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '22px monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('PAUSED', width / 2, height * 0.35);
+            // Modal Parchment Body
+            ctx.fillStyle = 'rgba(15, 17, 23, 0.96)';
+            ctx.fillRect(modalX, modalY, modalW, modalH);
 
-            const m = input ? input.getMousePos() : { x: -999, y: -999 };
-            const isClick = input && input.isMouseClicked ? input.isMouseClicked() : false;
+            // Double antique gold / bronze border
+            ctx.strokeStyle = '#785f37';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(modalX, modalY, modalW, modalH);
 
-            const btnW = 170;
-            const btnH = 22;
+            ctx.strokeStyle = '#382f1f';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(modalX + 6, modalY + 6, modalW - 12, modalH - 12);
+
+            // Header Title
+            Typography.drawText(ctx, 'ANCIENT INSCRIPTION', modalX + 32, modalY + 44, {
+                font: FONT_STACKS.TITLE,
+                color: '#f59e0b'
+            });
+
+            // Close button in top-right of parchment
+            const closeBtnW = 90;
+            const closeBtnH = 30;
+            const closeBtnX = modalX + modalW - closeBtnW - 24;
+            const closeBtnY = modalY + 24;
+            const isHoverClose = mouse.x >= closeBtnX && mouse.x <= closeBtnX + closeBtnW && mouse.y >= closeBtnY && mouse.y <= closeBtnY + closeBtnH;
+
+            if (isHoverClose && isClick) {
+                gameState.activeNote = null;
+            }
+
+            Typography.drawButton(ctx, 'CLOSE [E]', closeBtnX, closeBtnY, closeBtnW, closeBtnH, {
+                isHovered: isHoverClose,
+                borderColor: '#785f37',
+                textColor: '#d4af37'
+            });
+
+            // Note Content with crisp typography & smooth multiline wrapping
+            const noteTextY = modalY + 85;
+            const maxTextW = modalW - 64;
+            Typography.drawWrappedText(ctx, gameState.activeNote, modalX + 32, noteTextY, maxTextW, 24, {
+                font: FONT_STACKS.PARCHMENT,
+                color: '#e2e8f0'
+            });
+
+            // Footer hint
+            Typography.drawText(ctx, 'PRESS [E], [SPACE], [ESC] OR CLICK CLOSE TO CONTINUE', width / 2, modalY + modalH - 24, {
+                font: FONT_STACKS.CAPTION,
+                color: '#a1a1aa',
+                align: 'center'
+            });
+        }
+
+        // 8. In-Game Pause Menu
+        if (gameState.isPaused) {
+            ctx.fillStyle = 'rgba(3, 7, 18, 0.88)';
+            ctx.fillRect(0, 0, width, height);
+
+            Typography.drawText(ctx, 'PAUSED', width / 2, height * 0.32, {
+                font: FONT_STACKS.TITLE,
+                color: '#ffffff',
+                align: 'center',
+                shadowColor: 'rgba(255, 255, 255, 0.2)'
+            });
+
+            const btnW = 280;
+            const btnH = 46;
             const btnX = width / 2 - btnW / 2;
 
-            // 1. Resume Button
-            const resumeY = height * 0.48;
-            const isHoverResume = m.x >= btnX && m.x <= btnX + btnW && m.y >= resumeY && m.y <= resumeY + btnH;
+            // Resume
+            const resumeY = height * 0.44;
+            const isHoverResume = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= resumeY && mouse.y <= resumeY + btnH;
             if (isHoverResume && isClick) {
                 this.pauseAction = 'resume';
             }
+            Typography.drawButton(ctx, 'RESUME RUN [ESC]', btnX, resumeY, btnW, btnH, {
+                isHovered: isHoverResume,
+                font: FONT_STACKS.BODY_BOLD
+            });
 
-            ctx.fillStyle = isHoverResume ? 'rgba(255, 255, 255, 0.15)' : 'rgba(20, 24, 32, 0.7)';
-            ctx.fillRect(btnX, resumeY, btnW, btnH);
-            ctx.strokeStyle = isHoverResume ? '#ffffff' : '#444c66';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(btnX, resumeY, btnW, btnH);
-            ctx.fillStyle = isHoverResume ? '#ffffff' : '#99aacc';
-            ctx.font = '11px monospace';
-            ctx.fillText('RESUME [CLICK/ESC]', width / 2, resumeY + 15);
-
-            // 2. Quit Button
-            const quitY = height * 0.62;
-            const isHoverQuit = m.x >= btnX && m.x <= btnX + btnW && m.y >= quitY && m.y <= quitY + btnH;
+            // Quit
+            const quitY = height * 0.54;
+            const isHoverQuit = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= quitY && mouse.y <= quitY + btnH;
             if (isHoverQuit && isClick) {
                 this.pauseAction = 'quit';
             }
-
-            const quitLabel = gameState.isTestLevel ? 'EXIT TO EDITOR [CLICK/Q]' : 'QUIT TO MENU [CLICK/Q]';
-            ctx.fillStyle = isHoverQuit ? 'rgba(180, 40, 40, 0.25)' : 'rgba(20, 24, 32, 0.7)';
-            ctx.fillRect(btnX, quitY, btnW, btnH);
-            ctx.strokeStyle = isHoverQuit ? '#ff5555' : '#444c66';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(btnX, quitY, btnW, btnH);
-            ctx.fillStyle = isHoverQuit ? '#ff7777' : '#99aacc';
-            ctx.font = '11px monospace';
-            ctx.fillText(quitLabel, width / 2, quitY + 15);
+            const quitLabel = gameState.isTestLevel ? 'EXIT TO EDITOR [Q]' : 'RETURN TO MAIN MENU [Q]';
+            Typography.drawButton(ctx, quitLabel, btnX, quitY, btnW, btnH, {
+                isHovered: isHoverQuit,
+                font: FONT_STACKS.BODY_BOLD,
+                borderColor: isHoverQuit ? '#ef4444' : 'rgba(239, 68, 68, 0.3)',
+                textColor: isHoverQuit ? '#f87171' : '#cbd5e1'
+            });
         }
 
-        // Fade Overlay
+        // 9. Full Screen Fade Transition
         if (this.fadeAlpha > 0) {
             ctx.fillStyle = `rgba(0, 0, 0, ${this.fadeAlpha})`;
             ctx.fillRect(0, 0, width, height);
+        }
+
+        ctx.restore();
+    }
+
+    /**
+     * Backwards-compatible buffer renderer.
+     */
+    render(gameState, input = null, player = null) {
+        // Fallback: minimal buffer indicator
+        if (this.fadeAlpha > 0) {
+            this.ctx.fillStyle = `rgba(0, 0, 0, ${this.fadeAlpha})`;
+            this.ctx.fillRect(0, 0, this.width, this.height);
         }
     }
 }
