@@ -18,7 +18,7 @@ export default class MainMenu {
         this.audio = audio;
         this.canvas = canvas;
 
-        this.mode = 'main'; // 'main', 'achievements', 'settings', 'character', 'controls', 'dev'
+        this.mode = 'main'; // 'main', 'achievements', 'settings', 'controls'
         this.selectedIndex = 0;
         this.timer = 0;
         this.particles = [];
@@ -30,9 +30,6 @@ export default class MainMenu {
 
         // Audio volumes
         this.settings = saveManager.loadSettings();
-
-        // Sound Test & Debug State
-        this.debugGodMode = false;
         this.audioScape = null;
 
         // Ambient soul motes
