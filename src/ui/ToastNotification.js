@@ -16,16 +16,78 @@ export class ToastNotification {
     }
 
     /**
-     * Show a new toast notification.
-     * @param {Object} toast - { title, description, icon, color }
+     * Add a simple message toast or custom toast.
+     * @param {string|Object} messageOrToast
+     * @param {number|string} [durationOrType]
+     * @param {string} [icon]
+     * @param {string} [color]
      */
-    show(toast) {
-        this.queue.push({
-            title: toast.title || 'NOTIFICATION',
-            description: toast.description || '',
-            icon: toast.icon || '🏆',
-            color: toast.color || '#f59e0b'
+    add(messageOrToast, durationOrType = 4.0, icon = '🕯️', color = '#38bdf8') {
+        if (typeof messageOrToast === 'object' && messageOrToast !== null) {
+            this.show(messageOrToast);
+            return;
+        }
+
+        const duration = typeof durationOrType === 'number' ? durationOrType : 4.0;
+        this.show({
+            title: 'SURVIVAL DISCOVERY',
+            description: String(messageOrToast || ''),
+            icon: icon,
+            color: color,
+            duration: duration
         });
+    }
+
+    /**
+     * Show a new toast notification.
+     * Supports both object ({ title, description, icon, color, duration })
+     * and string signatures (show(message, type)).
+     * @param {Object|string} toast - Toast object or message string
+     * @param {string} [typeOrColor] - Optional type ('success', 'warning', 'error', 'info') or hex color
+     */
+    show(toast, typeOrColor = null) {
+        let toastObj;
+        if (typeof toast === 'string') {
+            let color = '#38bdf8';
+            let icon = 'ℹ️';
+            let title = 'SYSTEM';
+
+            if (typeOrColor === 'success') {
+                color = '#10b981';
+                icon = '✨';
+                title = 'SUCCESS';
+            } else if (typeOrColor === 'warning') {
+                color = '#f59e0b';
+                icon = '⚠️';
+                title = 'WARNING';
+            } else if (typeOrColor === 'error') {
+                color = '#ef4444';
+                icon = '💀';
+                title = 'DANGER';
+            } else if (typeof typeOrColor === 'string' && typeOrColor.startsWith('#')) {
+                color = typeOrColor;
+            }
+
+            toastObj = {
+                title: title,
+                description: toast,
+                icon: icon,
+                color: color,
+                duration: 3.5
+            };
+        } else if (typeof toast === 'object' && toast !== null) {
+            toastObj = {
+                title: toast.title || 'NOTIFICATION',
+                description: toast.description || '',
+                icon: toast.icon || '🏆',
+                color: toast.color || '#f59e0b',
+                duration: toast.duration || this.duration
+            };
+        } else {
+            return;
+        }
+
+        this.queue.push(toastObj);
 
         if (!this.currentToast) {
             this.next();
@@ -50,7 +112,8 @@ export class ToastNotification {
         if (!this.currentToast) return;
 
         this.timer += dt;
-        if (this.timer >= this.duration) {
+        const currentDuration = this.currentToast.duration || this.duration;
+        if (this.timer >= currentDuration) {
             this.next();
         }
     }
@@ -66,10 +129,11 @@ export class ToastNotification {
 
         // Slide animation: slide down from top, hold, slide up
         let progress = 0;
+        const currentDuration = this.currentToast.duration || this.duration;
         if (this.timer < this.slideTime) {
             progress = this.timer / this.slideTime; // 0 -> 1
-        } else if (this.timer > this.duration - this.slideTime) {
-            progress = (this.duration - this.timer) / this.slideTime; // 1 -> 0
+        } else if (this.timer > currentDuration - this.slideTime) {
+            progress = (currentDuration - this.timer) / this.slideTime; // 1 -> 0
         } else {
             progress = 1.0;
         }
