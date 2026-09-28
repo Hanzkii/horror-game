@@ -7,6 +7,7 @@
 
 import Entity from '../engine/Entity.js';
 import { events } from '../core/EventBus.js';
+import SpriteRenderer from '../art/SpriteRenderer.js';
 
 export const SHADOW_STATES = {
     DORMANT: 0,
@@ -19,7 +20,7 @@ export const SHADOW_STATES = {
 
 export class Shadow extends Entity {
     constructor(x, y) {
-        super(x, y, 16, 32);
+        super(x, y, 16, 38); // Towering nightmare stalker
         this.type = 'shadow';
         
         this.homeX = x;
@@ -335,17 +336,17 @@ export class Shadow extends Entity {
                     ent.flickerIntensity = Math.max(ent.flickerIntensity || 0, Math.min(1.0, (220 - distShadowToTorch) / 120));
                 }
 
-                // 2. EXTINGUISH ON HARD LEVELS: Shadow stalks close and snuffs out the torch!
-                if (isHardLevel && this.extinguishCooldown <= 0 && distShadowToTorch < 95 && (this.state === SHADOW_STATES.STALKING || this.state === SHADOW_STATES.AWAKENING)) {
+                // 2. EXTINGUISH: Shadow stalks close and snuffs out the torch in a burst of darkness!
+                if (this.extinguishCooldown <= 0 && distShadowToTorch < 100 && (this.state === SHADOW_STATES.STALKING || this.state === SHADOW_STATES.AWAKENING)) {
                     ent.extinguishTimer = 8.0 + Math.min(6, floor * 1.5); // 8-14 seconds of cold darkness!
                     ent.flickerIntensity = 0;
-                    this.extinguishCooldown = 18.0;
+                    this.extinguishCooldown = 14.0;
                     if (scene.audio) {
+                        scene.audio.play('torch_snuff');
                         scene.audio.play('whisper');
-                        scene.audio.play('rumble');
                     }
                     if (scene.postProcessing) {
-                        scene.postProcessing.addTrauma(0.5);
+                        scene.postProcessing.addTrauma(0.55);
                     }
                     continue; // Torch is now extinguished!
                 }
@@ -454,8 +455,8 @@ export class Shadow extends Entity {
                     }
 
                     if (scene.audio) {
-                        scene.audio.play('shadow_hit');
-                        scene.audio.play('shadow_scream');
+                        scene.audio.play('bone_snap');
+                        scene.audio.play('stalker_shriek');
                     }
 
                     if (scene.gameState) {
@@ -489,72 +490,16 @@ export class Shadow extends Entity {
         }
 
         if (this.jumpScareTimer > 0) return;
-        if (this.alpha <= 0.01) return;
         
-        // Afterimage trail
-        this.history.forEach((hist, i) => {
-            const alphaMod = i === 0 ? 0.2 : (i === 1 ? 0.1 : 0.05);
-            renderer.drawRect(
-                hist.x, hist.y,
-                this.width, this.height,
-                `rgba(15, 12, 28, ${this.alpha * alphaMod})`
-            );
-        });
-
-        // Undulating waver offset
-        const waverX = Math.sin(this.tendrilTimer) * 2;
-        const waverY = Math.cos(this.tendrilTimer * 0.8) * 2;
-        
-        // 1. Dark Smoky Wisp Body
-        renderer.drawRect(
-            this.x + waverX - 2, this.y + waverY - 2,
-            this.width + 4, this.height + 4,
-            `rgba(25, 20, 45, ${this.alpha * 0.5})`
-        );
-        renderer.drawRect(
-            this.x + waverX, this.y + waverY,
+        SpriteRenderer.drawShadow(
+            renderer,
+            this.x, this.y,
             this.width, this.height,
-            `rgba(15, 12, 28, ${this.alpha})`
+            this.alpha,
+            this.tendrilTimer,
+            this.eyeGlow,
+            this.timer,
+            this.history
         );
-
-        // Pixel glitch effect
-        for (let i = 0; i < 4; i++) {
-            const gx = this.x + Math.random() * this.width * 1.5 - this.width * 0.25;
-            const gy = this.y + Math.random() * this.height;
-            const gw = 2 + Math.random() * 2;
-            const gh = 2 + Math.random() * 2;
-            renderer.drawRect(gx, gy, gw, gh, `rgba(15, 12, 28, ${this.alpha * 0.8})`);
-        }
-        
-        // 2. Trailing Tendrils
-        const tendrilLen = (this.state === SHADOW_STATES.STALKING) ? 14 : 8;
-        for (let i = 0; i < 3; i++) {
-            const tx = this.x + 3 + i * 4 + Math.sin(this.tendrilTimer + i) * 3;
-            renderer.drawRect(tx, this.y + this.height - 2, 2, tendrilLen + i * 2, `rgba(18, 14, 32, ${this.alpha * 0.7})`);
-        }
-        
-        // 3. Piercing Haunting Eyes
-        const eyeColor = `rgba(170, 190, 255, ${this.alpha * this.eyeGlow})`;
-        const pupilColor = `rgba(220, 120, 255, ${this.alpha * this.eyeGlow})`;
-        const splitEyes = (this.timer % 8 < 0.5);
-        
-        // Left eye
-        renderer.drawRect(this.x + 3 + waverX, this.y + 7 + waverY, 3, 3, eyeColor);
-        renderer.drawRect(this.x + 4 + waverX, this.y + 8 + waverY, 1, 1, pupilColor);
-        if (splitEyes) {
-            renderer.drawRect(this.x + 3 + waverX, this.y + 11 + waverY, 3, 3, eyeColor);
-            renderer.drawRect(this.x + 4 + waverX, this.y + 12 + waverY, 1, 1, pupilColor);
-        }
-        
-        // Right eye
-        renderer.drawRect(this.x + 9 + waverX, this.y + 7 + waverY, 3, 3, eyeColor);
-        renderer.drawRect(this.x + 10 + waverX, this.y + 8 + waverY, 1, 1, pupilColor);
-        if (splitEyes) {
-            renderer.drawRect(this.x + 9 + waverX, this.y + 11 + waverY, 3, 3, eyeColor);
-            renderer.drawRect(this.x + 10 + waverX, this.y + 12 + waverY, 1, 1, pupilColor);
-        }
-        
-        // Eye halo
-        renderer.drawRect(this.x + 2 + waverX, this.y + 6 + waverY, 11, 5, `rgba(130, 80, 255, ${this.alpha * 0.25})`);
     }
 }

@@ -21,8 +21,6 @@ import { TutorialLevel } from './levels/TutorialLevel.js';
 import { SurfaceFinale } from './levels/SurfaceFinale.js';
 import { GameState } from './game/GameState.js';
 import { generateProceduralLevel } from './generator/LevelGenerator.js';
-import LevelEditor from './editor/LevelEditor.js';
-import SoundStudio from './audio/SoundStudio.js';
 
 // Import visual & audio systems
 import PostProcessing from './effects/PostProcessing.js';
@@ -40,8 +38,6 @@ const GAME_STATES = {
     MENU: 'menu',
     STORY: 'story',
     FINALE: 'finale',
-    DESIGN_LEVEL: 'design_level',
-    DESIGN_SOUND: 'design_sound',
     PAUSED: 'paused'
 };
 let currentState = GAME_STATES.LOADING;
@@ -87,35 +83,15 @@ async function init() {
     // Procedural sound effects synthesizer
     setupProceduralAudio(audio);
 
-    // Initialize Procedural Sound Studio & AudioScape Manager
-    const audioScape = new AudioScapeManager(audio, soundStudio);
+    // Initialize Procedural AudioScape Manager
+    const audioScape = new AudioScapeManager(audio);
     const savedSettings = saveManager.loadSettings();
     audioScape.setVolumes(savedSettings);
     hud.setAudioScape(audioScape);
+    mainMenu.audioScape = audioScape;
 
-    let isTestLevelMode = false;
-
-    // Helper to get the next level in the main dungeon descent, injecting published community levels
+    // Helper to get the next level in the main dungeon descent
     function getNextDungeonLevel(floorIndex) {
-        let publishedList = [];
-        try {
-            const raw = localStorage.getItem('echo_published_levels');
-            if (raw) publishedList = JSON.parse(raw);
-        } catch (e) {}
-
-        // If there are published levels, integrate them into the descent!
-        const pubIdx = floorIndex - 2;
-        if (publishedList.length > 0 && pubIdx >= 0 && pubIdx < publishedList.length) {
-            const pub = publishedList[pubIdx];
-            gameState.isPublishedMap = true;
-            return {
-                ...pub,
-                name: `Depth B${floorIndex} [COMMUNITY: ${pub.name}]`,
-                isPublishedMap: true
-            };
-        }
-
-        gameState.isPublishedMap = false;
         return generateProceduralLevel({
             seed: Math.floor(Math.random() * 999999),
             roomCount: Math.min(8, 4 + floorIndex),
@@ -127,18 +103,6 @@ async function init() {
 
     // Handler for descending deeper when unlocking exit doors
     scene.onNextLevel = () => {
-        if (isTestLevelMode) {
-            // It was a test level from Level Architect — return back to editor!
-            if (audio) audio.play('stinger_sharp');
-            isTestLevelMode = false;
-            gameState.isTestLevel = false;
-            currentState = GAME_STATES.DESIGN_LEVEL;
-            audioScape.setState(AUDIO_STATES.MENU);
-            editor.toggle(true);
-            editor.showTooltipMsg('🎉 Test Level Completed! Exit door reached successfully.');
-            return;
-        }
-
         if (gameState.isTutorialLevel) {
             // Tutorial chamber completed!
             if (audio) audio.play('stinger_sharp');
@@ -163,7 +127,6 @@ async function init() {
 
         const nextLevel = getNextDungeonLevel(gameState.floorIndex);
         loadLevel(scene, nextLevel, gameState, renderer);
-        editor.loadLevel(nextLevel);
         hud.fadeIn(0.5);
     };
 
@@ -194,33 +157,6 @@ async function init() {
         gameState.currentLevel = "The Surface — A New Dawn";
     }
 
-    // Initialize Level Architect (Editor & Procedural Generator)
-    const editor = new LevelEditor(canvas, scene, renderer, (customLevel) => {
-        isTestLevelMode = true;
-        gameState.isTestLevel = true;
-        events.emit('MAP_TESTED');
-        loadLevel(scene, customLevel, gameState, renderer);
-        currentState = GAME_STATES.STORY;
-        audioScape.setState(AUDIO_STATES.EXPLORATION);
-        hud.fadeIn(0.5);
-    });
-    
-    // Hide floating buttons — navigation is through menu now
-    const editorBtn = document.getElementById('btn-open-editor');
-    if (editorBtn) editorBtn.style.display = 'none';
-    const soundBtn = document.getElementById('btn-open-sound-studio');
-    if (soundBtn) soundBtn.style.display = 'none';
-
-    // Callbacks to go back to main menu
-    editor.onClose = () => {
-        currentState = GAME_STATES.MENU;
-        mainMenu.showDesignMenu();
-    };
-    soundStudio.onClose = () => {
-        currentState = GAME_STATES.MENU;
-        mainMenu.showDesignMenu();
-    };
-
     let lastTime = 0;
 
     // Main Game Loop
@@ -246,8 +182,6 @@ async function init() {
                 const sel = mainMenu.getSelection();
                 if (sel === 'continue') {
                     currentState = GAME_STATES.STORY;
-                    isTestLevelMode = false;
-                    gameState.isTestLevel = false;
                     gameState.isTutorialLevel = false;
                     if (gameState.load('auto')) {
                         if (gameState.floorIndex === 1) {
@@ -263,8 +197,6 @@ async function init() {
                     audioScape.setState(AUDIO_STATES.EXPLORATION);
                 } else if (sel === 'story') { 
                     currentState = GAME_STATES.STORY; 
-                    isTestLevelMode = false;
-                    gameState.isTestLevel = false;
                     gameState.isTutorialLevel = false;
                     gameState.reset();
                     gameState.floorIndex = 1;
@@ -274,26 +206,94 @@ async function init() {
                     audioScape.setState(AUDIO_STATES.EXPLORATION);
                 } else if (sel === 'tutorial') {
                     currentState = GAME_STATES.STORY;
-                    isTestLevelMode = false;
-                    gameState.isTestLevel = false;
                     gameState.isTutorialLevel = true;
                     gameState.floorIndex = 0;
                     loadLevel(scene, TutorialLevel, gameState, renderer);
                     audioScape.setState(AUDIO_STATES.EXPLORATION);
-                } else if (sel === 'design_level') {
-                    currentState = GAME_STATES.DESIGN_LEVEL;
-                    editor.toggle(true);
-                } else if (sel === 'design_sound') {
-                    currentState = GAME_STATES.DESIGN_SOUND;
-                    soundStudio.toggle(true);
+                } else if (sel === 'atmo_exploration') {
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
+                } else if (sel === 'atmo_tension') {
+                    audioScape.setState(AUDIO_STATES.TENSION);
+                } else if (sel === 'atmo_chase') {
+                    audioScape.setState(AUDIO_STATES.CHASE);
+                } else if (sel === 'atmo_sanctuary') {
+                    audioScape.setState(AUDIO_STATES.SANCTUARY);
+                } else if (sel === 'atmo_surface_peaceful') {
+                    audioScape.setState(AUDIO_STATES.SURFACE_PEACEFUL);
+                } else if (sel === 'toggle_god_mode') {
+                    gameState.godMode = !gameState.godMode;
+                    toastNotification.show(gameState.godMode ? '🛡️ GOD MODE: ON (Immortal)' : '🛡️ GOD MODE: OFF', 'info');
+                } else if (sel === 'spawn_stalker') {
+                    currentState = GAME_STATES.STORY;
+                    if (!scene.entities || scene.entities.length === 0) {
+                        loadLevel(scene, Level1, gameState, renderer);
+                    }
+                    let shadow = scene.entities.find(e => e.type === 'shadow');
+                    if (!shadow && scene.player) {
+                        shadow = new Shadow(scene.player.x + 100, scene.player.y);
+                        scene.addEntity(shadow);
+                    }
+                    if (shadow && scene.player) {
+                        shadow.state = 2; // STALKING
+                        shadow.alpha = 1;
+                        shadow.x = scene.player.x + (scene.player.facingRight ? -80 : 80);
+                        shadow.y = scene.player.y;
+                    }
+                    audioScape.setState(AUDIO_STATES.CHASE);
+                    toastNotification.show('👻 Shadow Stalker summoned in darkness!', 'warning');
+                } else if (sel === 'test_jumpscare') {
+                    currentState = GAME_STATES.STORY;
+                    if (!scene.entities || scene.entities.length === 0) {
+                        loadLevel(scene, Level1, gameState, renderer);
+                    }
+                    let shadow = scene.entities.find(e => e.type === 'shadow');
+                    if (!shadow && scene.player) {
+                        shadow = new Shadow(scene.player.x + 20, scene.player.y);
+                        scene.addEntity(shadow);
+                    }
+                    if (shadow) {
+                        shadow.jumpScareTimer = 0.55;
+                    }
+                    if (audio) {
+                        audio.play('stalker_shriek');
+                        audio.play('stinger_sharp');
+                    }
+                    postProcessing.addTrauma(1.0);
+                } else if (sel === 'warp_tutorial') {
+                    currentState = GAME_STATES.STORY;
+                    gameState.isTutorialLevel = true;
+                    gameState.floorIndex = 0;
+                    loadLevel(scene, TutorialLevel, gameState, renderer);
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
+                } else if (sel === 'warp_b1') {
+                    currentState = GAME_STATES.STORY;
+                    gameState.isTutorialLevel = false;
+                    gameState.floorIndex = 1;
+                    loadLevel(scene, Level1, gameState, renderer);
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
+                } else if (sel === 'warp_b2') {
+                    currentState = GAME_STATES.STORY;
+                    gameState.isTutorialLevel = false;
+                    gameState.floorIndex = 2;
+                    const nextLevel = getNextDungeonLevel(2);
+                    loadLevel(scene, nextLevel, gameState, renderer);
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
+                } else if (sel === 'warp_b3') {
+                    currentState = GAME_STATES.STORY;
+                    gameState.isTutorialLevel = false;
+                    gameState.floorIndex = 3;
+                    const nextLevel = getNextDungeonLevel(3);
+                    loadLevel(scene, nextLevel, gameState, renderer);
+                    audioScape.setState(AUDIO_STATES.EXPLORATION);
+                } else if (sel === 'warp_finale') {
+                    startSurfaceFinale();
                 }
                 break;
                 
             case GAME_STATES.STORY:
-                if (editor.isOpen) {
-                    currentState = GAME_STATES.DESIGN_LEVEL;
-                    adaptiveAudio.stopAmbient();
-                    break;
+                if (gameState.godMode) {
+                    gameState.health = 100;
+                    gameState.sanity = 100;
                 }
 
                 if (gameState.activeNote) {
@@ -487,9 +487,37 @@ async function init() {
                     ctx.ellipse(rightEyeX, eyeY, 5, 12, 0, 0, Math.PI * 2);
                     ctx.fill();
 
+                    // 5. Gaping Horrific Screaming Void Maw
+                    const mawY = eyeY + 48;
+                    ctx.fillStyle = '#020106';
+                    ctx.beginPath();
+                    ctx.ellipse(GAME_WIDTH / 2, mawY, 68, 38, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(147, 51, 234, 0.45)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Jagged needle teeth rows
+                    ctx.fillStyle = '#f8fafc';
+                    for (let t = -54; t <= 54; t += 12) {
+                        // Upper teeth
+                        ctx.beginPath();
+                        ctx.moveTo(GAME_WIDTH / 2 + t, mawY - 32);
+                        ctx.lineTo(GAME_WIDTH / 2 + t + 5, mawY - 32);
+                        ctx.lineTo(GAME_WIDTH / 2 + t + 2.5, mawY - 10);
+                        ctx.fill();
+
+                        // Lower teeth
+                        ctx.beginPath();
+                        ctx.moveTo(GAME_WIDTH / 2 + t + 6, mawY + 32);
+                        ctx.lineTo(GAME_WIDTH / 2 + t + 11, mawY + 32);
+                        ctx.lineTo(GAME_WIDTH / 2 + t + 8.5, mawY + 10);
+                        ctx.fill();
+                    }
+
                     // Glitch noise sparks
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-                    for (let n = 0; n < 35; n++) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                    for (let n = 0; n < 45; n++) {
                         ctx.fillRect(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, 2 + Math.random() * 5, 1);
                     }
                 }
@@ -700,40 +728,16 @@ async function init() {
                         gameState.isPaused = false;
                         currentState = GAME_STATES.STORY;
                     }
+                } else if (pauseAction === 'debug_menu') {
+                    hud.pauseSubmenu = 'main';
+                    gameState.isPaused = false;
+                    currentState = GAME_STATES.MENU;
+                    mainMenu.mode = 'sound_debug';
                 } else if (pauseAction === 'quit' || input.keys['KeyQ']) {
                     hud.pauseSubmenu = 'main';
                     gameState.isPaused = false;
                     audioScape.setState(AUDIO_STATES.MENU);
-                    if (isTestLevelMode) {
-                        isTestLevelMode = false;
-                        gameState.isTestLevel = false;
-                        currentState = GAME_STATES.DESIGN_LEVEL;
-                        editor.toggle(true);
-                    } else {
-                        currentState = GAME_STATES.MENU;
-                    }
-                }
-                break;
-                
-            case GAME_STATES.DESIGN_LEVEL:
-                if (!editor.isOpen) {
-                    if (currentState === GAME_STATES.DESIGN_LEVEL) {
-                        currentState = GAME_STATES.MENU;
-                        mainMenu.showDesignMenu();
-                    }
-                } else {
-                    editor.render();
-                    renderer.present();
-                }
-                break;
-                
-            case GAME_STATES.DESIGN_SOUND:
-                if (!soundStudio.isOpen) {
                     currentState = GAME_STATES.MENU;
-                    mainMenu.showDesignMenu();
-                } else {
-                    renderer.clear();
-                    renderer.present();
                 }
                 break;
         }
@@ -868,143 +872,261 @@ function setupProceduralAudio(audioManager) {
         return buffer;
     }
 
-    // Stinger: sharp dissonant chord burst
-    const stinger = createBuffer(0.3, (t) => {
+    // --- REALISTIC FOOTSTEPS ---
+    // 1. Dry, gritty stone footsteps
+    for (let i = 1; i <= 3; i++) {
+        const baseFreq = 85 + i * 18;
+        const frictionFreq = 1600 + i * 250;
+        const stoneStep = createBuffer(0.12, (t) => {
+            const env = Math.exp(-t * 55);
+            const body = Math.sin(2 * Math.PI * (baseFreq * Math.exp(-t * 40)) * t);
+            const gritNoise = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * frictionFreq * t);
+            const crunch = (Math.random() * 2 - 1) * Math.exp(-t * 80);
+            return (body * 0.55 + gritNoise * 0.35 + crunch * 0.3) * env * 0.65;
+        });
+        audioManager.buffers.set(`footstep_stone_${i}`, stoneStep);
+        audioManager.buffers.set(`footstep_${i}`, stoneStep);
+    }
+    audioManager.buffers.set('footstep', audioManager.buffers.get('footstep_stone_1'));
+
+    // 2. Wet cavern puddle footsteps
+    for (let i = 1; i <= 3; i++) {
+        const splashPitch = 320 + i * 80;
+        const wetStep = createBuffer(0.16, (t) => {
+            const env = Math.exp(-t * 38);
+            const bubbleFreq = splashPitch * Math.exp(-t * 25) + 120;
+            const bubble = Math.sin(2 * Math.PI * bubbleFreq * t);
+            const splash = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * (2400 + i * 300) * t);
+            const thud = Math.sin(2 * Math.PI * 65 * t) * Math.exp(-t * 60);
+            return (bubble * 0.45 + splash * 0.4 + thud * 0.3) * env * 0.6;
+        });
+        audioManager.buffers.set(`footstep_wet_${i}`, wetStep);
+    }
+
+    // --- VISCERAL BIOLOGICAL HEARTBEAT ("LUB-DUB") ---
+    const visceralHeart = createBuffer(0.45, (t) => {
+        let lub = 0;
+        if (t < 0.14) {
+            const tLub = t;
+            const envLub = Math.exp(-tLub * 32);
+            const freqLub = 75 * Math.exp(-tLub * 20) + 38;
+            lub = Math.sin(2 * Math.PI * freqLub * tLub) * envLub * 0.9;
+        }
+        let dub = 0;
+        if (t >= 0.14) {
+            const tDub = t - 0.14;
+            const envDub = Math.exp(-tDub * 36);
+            const freqDub = 65 * Math.exp(-tDub * 22) + 32;
+            dub = Math.sin(2 * Math.PI * freqDub * tDub) * envDub * 0.75;
+        }
+        return (lub + dub) * 0.95;
+    });
+    audioManager.buffers.set('visceral_heartbeat', visceralHeart);
+
+    // --- RAGGED HUMAN BREATHING (HYPERVENTILATION) ---
+    const raggedBreath = createBuffer(1.4, (t) => {
+        let sample = 0;
+        const noise = (Math.random() * 2 - 1);
+        if (t < 0.65) {
+            const tin = t / 0.65;
+            const envIn = Math.sin(tin * Math.PI * 0.5) * Math.exp(- (1 - tin) * 1.5);
+            const tremor = 0.7 + 0.3 * Math.sin(2 * Math.PI * 14 * t);
+            const formant = Math.sin(2 * Math.PI * 520 * t) * 0.3 + noise * 0.7;
+            sample = formant * envIn * tremor * 0.5;
+        } else {
+            const tout = (t - 0.65) / 0.75;
+            const envOut = Math.sin(tout * Math.PI) * Math.exp(-tout * 2.2);
+            const formant = Math.sin(2 * Math.PI * 340 * t) * 0.25 + noise * 0.75;
+            sample = formant * envOut * 0.55;
+        }
+        return sample;
+    });
+    audioManager.buffers.set('ragged_breath', raggedBreath);
+    audioManager.buffers.set('breathing', raggedBreath);
+
+    // --- BONE SNAP & FLESH IMPACT ---
+    const boneSnap = createBuffer(0.3, (t) => {
+        const env = Math.exp(-t * 22);
+        let snap = 0;
+        if (t < 0.02) {
+            snap = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * 3400 * t) * (1 - t / 0.02);
+        }
+        const thud = Math.sin(2 * Math.PI * (120 * Math.exp(-t * 30) + 42) * t);
+        const crunch = (Math.random() * 2 - 1) * Math.exp(-t * 45) * 0.5;
+        return (snap * 1.2 + thud * 0.7 + crunch * 0.4) * env * 0.95;
+    });
+    audioManager.buffers.set('bone_snap', boneSnap);
+    audioManager.buffers.set('shadow_hit', boneSnap);
+
+    const fleshWound = createBuffer(0.35, (t) => {
+        const env = Math.exp(-t * 16);
+        const sub = Math.sin(2 * Math.PI * (85 * Math.exp(-t * 25) + 32) * t);
+        const squelch = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * (800 + Math.sin(t * 60) * 400) * t);
+        return (sub * 0.7 + squelch * 0.45) * env * 0.9;
+    });
+    audioManager.buffers.set('flesh_wound', fleshWound);
+
+    // --- STALKER SHRIEK & LUNGE ---
+    const stalkerShriek = createBuffer(0.75, (t) => {
+        const env = Math.exp(-t * 4.5);
+        const f1 = 580 * Math.exp(-t * 3.5) + 180;
+        const f2 = f1 * 1.05946;
+        const f3 = f1 * 1.414;
+        const fm = Math.sin(2 * Math.PI * 45 * t) * 80;
+        const tone1 = Math.sin(2 * Math.PI * (f1 + fm) * t);
+        const tone2 = Math.sin(2 * Math.PI * f2 * t);
+        const tone3 = Math.sin(2 * Math.PI * f3 * t);
+        const harsh = (Math.random() * 2 - 1) * 0.45;
+        const sub = Math.sin(2 * Math.PI * 45 * t) * 0.5;
+        return ((tone1 + tone2 + tone3) * 0.28 + harsh + sub) * env * 0.95;
+    });
+    audioManager.buffers.set('stalker_shriek', stalkerShriek);
+    audioManager.buffers.set('shadow_scream', stalkerShriek);
+
+    const stalkerLunge = createBuffer(0.5, (t) => {
+        const env = Math.sin((t / 0.5) * Math.PI);
+        const whoosh = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * (600 - t * 450) * t);
+        const growl = Math.sin(2 * Math.PI * (160 * Math.exp(-t * 8) + 40) * t);
+        return (whoosh * 0.6 + growl * 0.6) * env * 0.9;
+    });
+    audioManager.buffers.set('stalker_lunge', stalkerLunge);
+
+    // --- PSYCHOLOGICAL: PHANTOM WHISPER ---
+    const phantomWhisper = createBuffer(1.2, (t) => {
+        const env = Math.sin((t / 1.2) * Math.PI);
+        const noise = (Math.random() * 2 - 1);
+        const formant = Math.sin(2 * Math.PI * (450 + Math.sin(t * 8) * 220) * t) * 0.4;
+        const sibilance = Math.sin(2 * Math.PI * 3200 * t) * 0.25;
+        return (noise * 0.45 + formant + sibilance) * env * 0.35;
+    });
+    audioManager.buffers.set('phantom_whisper', phantomWhisper);
+    audioManager.buffers.set('whisper', phantomWhisper);
+
+    // --- PSYCHOLOGICAL: HALLUCINATION DELAYED STEP ---
+    const hallucinationStep = createBuffer(0.28, (t) => {
+        const env = Math.exp(-t * 22);
+        const impact = Math.sin(2 * Math.PI * (95 * Math.exp(-t * 35) + 38) * t);
+        const scrape = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * 1850 * t) * 0.35;
+        const tail = Math.sin(2 * Math.PI * 160 * t) * Math.exp(-t * 12) * 0.3;
+        return (impact * 0.7 + scrape * 0.3 + tail * 0.3) * env * 0.8;
+    });
+    audioManager.buffers.set('hallucination_step', hallucinationStep);
+
+    // --- TORCH SNUFF & WICK HISS ---
+    const torchSnuff = createBuffer(0.4, (t) => {
+        const env = Math.exp(-t * 18);
+        const pop = Math.sin(2 * Math.PI * (180 * Math.exp(-t * 40) + 45) * t) * 0.6;
+        const hiss = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * 2600 * t) * Math.exp(-t * 10);
+        return (pop + hiss * 0.5) * env * 0.85;
+    });
+    audioManager.buffers.set('torch_snuff', torchSnuff);
+
+    // --- ANCIENT STONE GATE GRIND ---
+    const gateGrind = createBuffer(0.65, (t) => {
+        const env = Math.sin((t / 0.65) * Math.PI);
+        const sub = Math.sin(2 * Math.PI * 55 * t);
+        const grit = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * 420 * t);
+        const friction = Math.sin(2 * Math.PI * (140 + Math.sin(t * 30) * 40) * t);
+        return (sub * 0.4 + grit * 0.4 + friction * 0.35) * env * 0.75;
+    });
+    audioManager.buffers.set('gate_grind', gateGrind);
+
+    // --- SWINGING PENDULUM WHOOSH ---
+    const pendulumWhoosh = createBuffer(0.45, (t) => {
+        const env = Math.sin((t / 0.45) * Math.PI);
+        const sweepFreq = 480 * Math.exp(-t * 3.5) + 140;
+        const tone = Math.sin(2 * Math.PI * sweepFreq * t);
+        const air = (Math.random() * 2 - 1) * Math.sin(2 * Math.PI * 900 * t);
+        const metallicRing = Math.sin(2 * Math.PI * 1850 * t) * 0.2;
+        return (tone * 0.4 + air * 0.5 + metallicRing) * env * 0.8;
+    });
+    audioManager.buffers.set('pendulum_whoosh', pendulumWhoosh);
+
+    // --- EXISTING ESSENTIALS WITH POLISHED HARMONICS ---
+    const stinger = createBuffer(0.35, (t) => {
         const env = Math.exp(-t * 12);
         const f1 = Math.sin(2 * Math.PI * 440 * t);      // A4
         const f2 = Math.sin(2 * Math.PI * 466.16 * t);   // Bb4 (minor 2nd)
         const f3 = Math.sin(2 * Math.PI * 622.25 * t);   // Eb5 (tritone)
         const f4 = Math.sin(2 * Math.PI * 277.18 * t);   // C#4
-        return (f1 + f2 + f3 + f4) * 0.25 * env * 0.9;
+        return (f1 + f2 + f3 + f4) * 0.25 * env * 0.95;
     });
     audioManager.buffers.set('stinger_sharp', stinger);
 
-    // Shadow scream: descending pitch sweep with noise
-    const scream = createBuffer(0.5, (t) => {
-        const env = Math.exp(-t * 6);
-        const freq = 800 * Math.exp(-t * 8) + 100;
-        const tone = Math.sin(2 * Math.PI * freq * t);
-        const noise = (Math.random() * 2 - 1) * 0.4;
-        return (tone * 0.6 + noise * 0.4) * env * 0.8;
-    });
-    audioManager.buffers.set('shadow_scream', scream);
-
-    // Breathing: rhythmic filtered noise
-    const breathing = createBuffer(1.5, (t) => {
-        const breathCycle = Math.sin(2 * Math.PI * 0.5 * t); // one full breath
-        const env = Math.max(0, breathCycle) * 0.7;
-        const noise = (Math.random() * 2 - 1);
-        const filtered = noise * Math.sin(2 * Math.PI * 200 * t) * 0.3;
-        return filtered * env * 0.5;
-    });
-    audioManager.buffers.set('breathing', breathing);
-
-    // Footstep variations
-    for (let i = 1; i <= 3; i++) {
-        const pitch = 80 + i * 15;
-        const step = createBuffer(0.08, (t) => {
-            const env = Math.exp(-t * (45 + i * 8));
-            const noise = (Math.random() * 2 - 1) * 0.3;
-            const tone = Math.sin(2 * Math.PI * pitch * t);
-            return (tone * 0.7 + noise) * env * 0.35;
-        });
-        audioManager.buffers.set(`footstep_${i}`, step);
-    }
-    audioManager.buffers.set('footstep', audioManager.buffers.get('footstep_1'));
-
-    // Environmental: water drip
     const drip = createBuffer(0.15, (t) => {
         const env = Math.exp(-t * 35);
         const freq = 2200 * Math.exp(-t * 20) + 800;
-        return Math.sin(2 * Math.PI * freq * t) * env * 0.25;
+        return Math.sin(2 * Math.PI * freq * t) * env * 0.28;
     });
     audioManager.buffers.set('drip', drip);
 
-    // Static crackle
     const crackle = createBuffer(0.4, (t) => {
         const env = Math.sin((t / 0.4) * Math.PI);
         const noise = (Math.random() * 2 - 1);
-        const gate = Math.random() > 0.5 ? 1 : 0;
-        return noise * gate * env * 0.3;
+        const gate = Math.random() > 0.45 ? 1 : 0;
+        return noise * gate * env * 0.35;
     });
     audioManager.buffers.set('static_crackle', crackle);
 
-    // Rumble: low trembling drone
     const rumble = createBuffer(0.7, (t) => {
         const env = Math.sin((t / 0.7) * Math.PI);
         const noise = (Math.random() * 2 - 1) * 0.3;
         const low = Math.sin(2 * Math.PI * (45 + Math.sin(t * 15) * 10) * t);
-        return (low * 0.6 + noise * 0.4) * env * 0.6;
+        return (low * 0.6 + noise * 0.4) * env * 0.65;
     });
     audioManager.buffers.set('rumble', rumble);
 
-    // Thud: heavy stone impact
     const thud = createBuffer(0.25, (t) => {
         const env = Math.exp(-t * 18);
         const freq = 120 * Math.exp(-t * 25) + 35;
         const tone = Math.sin(2 * Math.PI * freq * t);
-        return tone * env * 0.7;
+        return tone * env * 0.75;
     });
     audioManager.buffers.set('thud', thud);
 
-    // Paper: crinkling rustle
     const paper = createBuffer(0.18, (t) => {
         const env = Math.exp(-t * 15) * Math.sin(t * 40);
-        return (Math.random() * 2 - 1) * env * 0.3;
+        return (Math.random() * 2 - 1) * env * 0.35;
     });
     audioManager.buffers.set('paper', paper);
 
-    // Click: mechanical switch
-    const click = createBuffer(0.04, (t) => {
-        const env = Math.exp(-t * 120);
-        const tone = Math.sin(2 * Math.PI * 1800 * t);
-        return tone * env * 0.4;
+    const click = createBuffer(0.05, (t) => {
+        const env = Math.exp(-t * 110);
+        const tone = Math.sin(2 * Math.PI * 1650 * t);
+        return tone * env * 0.45;
     });
     audioManager.buffers.set('click', click);
 
-    // Door creak: eerie scraping wood sound
     const doorCreak = createBuffer(0.6, (t) => {
         const env = Math.sin((t / 0.6) * Math.PI);
         const freq = 180 + Math.sin(t * 35) * 80 + Math.sin(t * 70) * 40;
         const tone = Math.sin(2 * Math.PI * freq * t);
-        return tone * env * 0.35;
+        return tone * env * 0.4;
     });
     audioManager.buffers.set('door_creak', doorCreak);
 
-    // Dissonance: eerie unsettling interval
     const dissonance = createBuffer(1.4, (t) => {
         const env = Math.sin((t / 1.4) * Math.PI);
         const f1 = Math.sin(2 * Math.PI * 220 * t);
-        const f2 = Math.sin(2 * Math.PI * 233.08 * t); // minor second dissonance
-        const f3 = Math.sin(2 * Math.PI * 311.13 * t); // tritone
-        return (f1 + f2 + f3) * (1 / 3) * env * 0.5;
+        const f2 = Math.sin(2 * Math.PI * 233.08 * t);
+        const f3 = Math.sin(2 * Math.PI * 311.13 * t);
+        return (f1 + f2 + f3) * (1 / 3) * env * 0.55;
     });
     audioManager.buffers.set('dissonance', dissonance);
 
-    // Shadow Hit: heavy visceral strike impact with low bass drop
-    const shadowHit = createBuffer(0.45, (t) => {
-        const env = Math.exp(-t * 12);
-        const sub = Math.sin(2 * Math.PI * (75 * Math.exp(-t * 8) + 25) * t);
-        const noise = (Math.random() * 2 - 1) * Math.exp(-t * 22);
-        return (sub * 0.7 + noise * 0.3) * env * 0.95;
-    });
-    audioManager.buffers.set('shadow_hit', shadowHit);
-
-    // Shadow Burn: searing steam hiss and burning embers
     const shadowBurn = createBuffer(0.75, (t) => {
         const env = Math.sin((t / 0.75) * Math.PI) * Math.exp(-t * 2);
         const noise = (Math.random() * 2 - 1);
         const hiss = Math.sin(2 * Math.PI * 3200 * t) * 0.3 + noise * 0.7;
-        return hiss * env * 0.65;
+        return hiss * env * 0.7;
     });
     audioManager.buffers.set('shadow_burn', shadowBurn);
 
-    // Flame Flare: burst whoosh of torch flame
     const flameFlare = createBuffer(0.5, (t) => {
         const env = Math.sin((t / 0.5) * Math.PI);
         const noise = (Math.random() * 2 - 1);
         const tone = Math.sin(2 * Math.PI * (280 - t * 180) * t);
-        return (tone * 0.4 + noise * 0.6) * env * 0.7;
+        return (tone * 0.4 + noise * 0.6) * env * 0.75;
     });
     audioManager.buffers.set('flame_flare', flameFlare);
 }

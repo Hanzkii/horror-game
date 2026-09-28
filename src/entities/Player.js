@@ -11,7 +11,7 @@ export const PLAYER_STATES = {
 
 export class Player extends Entity {
     constructor(x, y) {
-        super(x, y, 12, 17);
+        super(x, y, 10, 17); // Vulnerable, fragile human survivor scale
         this.type = 'player';
         
         // Store spawn point for respawning
@@ -43,13 +43,21 @@ export class Player extends Entity {
         this.jumpBufferTimer = 0; // buffer jump press before touching ground
         this.jumpBufferDuration = 0.12;
         
-        // Visuals
+        // Visuals & Fear
         this.lightRadius = 150; // pixels
         this.breathTimer = 0;
         this.walkFrame = 0;
         this.walkTimer = 0;
         this.blinkTimer = 0;
         this.isBlinking = false;
+        this.idleTimer = 0;
+        this.isLookingBack = false;
+        this.isScared = false;
+
+        // Psychological Hallucinations: Delayed Footsteps
+        this.wasWalking = false;
+        this.walkDuration = 0;
+        this.hallucinationStepTimer = 0;
         
         // Sound & Interaction
         this.footstepTimer = 0;
@@ -99,6 +107,49 @@ export class Player extends Entity {
             this.lightRadius = 65 + Math.random() * 12;
         } else {
             this.lightRadius = 150;
+        }
+
+        // Fear state assessment
+        const currentSanity = (scene?.gameState?.sanity !== undefined) ? scene.gameState.sanity : 100;
+        this.isScared = (currentSanity < 50) || (this.panicLightTimer > 0);
+
+        // Paranoid backward glances when idle in dark corridors
+        if (this.state === PLAYER_STATES.IDLE && this.grounded) {
+            this.idleTimer += dt;
+            if (this.idleTimer > 1.8 && this.idleTimer < 3.2) {
+                this.isLookingBack = true;
+            } else {
+                this.isLookingBack = false;
+                if (this.idleTimer >= 4.5) this.idleTimer = 0;
+            }
+        } else {
+            this.idleTimer = 0;
+            this.isLookingBack = false;
+        }
+
+        // Psychological Hallucinations: Delayed Footstep behind the player
+        if (this.state === PLAYER_STATES.WALKING && this.grounded) {
+            this.wasWalking = true;
+            this.walkDuration += dt;
+        } else if (this.wasWalking) {
+            // Player just stopped moving
+            if (this.walkDuration > 0.6 && currentSanity < 75) {
+                this.hallucinationStepTimer = 0.38 + Math.random() * 0.12;
+            }
+            this.wasWalking = false;
+            this.walkDuration = 0;
+        }
+
+        if (this.hallucinationStepTimer > 0) {
+            this.hallucinationStepTimer -= dt;
+            if (this.hallucinationStepTimer <= 0) {
+                if (scene && scene.audio && scene.audio.buffers.has('hallucination_step')) {
+                    scene.audio.play('hallucination_step', { volume: 0.85 });
+                    if (scene.postProcessing) {
+                        scene.postProcessing.addTrauma(0.18);
+                    }
+                }
+            }
         }
         
         this.handleInput(dt, input, scene);
@@ -366,8 +417,9 @@ export class Player extends Entity {
             if (this.footstepTimer <= 0) {
                 if (scene && scene.audio) {
                     const stepNum = Math.floor(Math.random() * 3) + 1;
-                    const soundName = scene.audio.buffers.has(`footstep_${stepNum}`) ? `footstep_${stepNum}` : 'footstep';
-                    scene.audio.play(soundName);
+                    const set = Math.random() < 0.25 ? 'footstep_wet' : 'footstep_stone';
+                    const soundName = scene.audio.buffers.has(`${set}_${stepNum}`) ? `${set}_${stepNum}` : (scene.audio.buffers.has(`footstep_${stepNum}`) ? `footstep_${stepNum}` : 'footstep');
+                    scene.audio.play(soundName, { volume: 0.65 });
                 }
                 this.footstepTimer = this.footstepInterval;
             }
@@ -411,7 +463,9 @@ export class Player extends Entity {
             return;
         }
 
-        const custom = this.customization || (typeof window !== 'undefined' ? window.gameCustomization : null);
-        SpriteRenderer.drawPlayer(renderer, this.x, this.y, this.state, this.walkFrame, this.facingRight, this.breathTimer, this.isBlinking, custom);
+        SpriteRenderer.drawPlayer(renderer, this.x, this.y, this.state, this.walkFrame, this.facingRight, this.breathTimer, this.isBlinking, {
+            isScared: this.isScared,
+            isLookingBack: this.isLookingBack
+        });
     }
 }

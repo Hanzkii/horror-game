@@ -148,17 +148,23 @@ export default class SpriteRenderer {
         renderer.drawRect(x - 2, y - 2, 15, 6, `rgba(15, 5, 25, ${a * 0.45})`);
     }
 
-    static drawPlayer(renderer, x, y, state, frame, facingRight, breathTimer, isBlinking = false, custom = null) {
-        const hSkin = custom?.skin || '#d4cec0';
-        const hTorso = custom?.hoodie || '#3a4a5c';
-        const hLegs = custom?.pants || '#2a2a3a';
-        const hEyes = custom?.eyes || '#ffffff';
+    static drawPlayer(renderer, x, y, state, frame, facingRight, breathTimer, isBlinking = false, options = {}) {
+        // Vulnerable Human Survivor: Cold, pale, fragile, frightened
+        const hSkin = '#e2d7c9';
+        const hTorso = '#2c333f';
+        const hLegs = '#1b1f27';
+        const hBoots = '#12151b';
         
-        const w = 12;
-        const h = 17;
+        const isScared = options?.isScared ?? false;
+        const isLookingBack = options?.isLookingBack ?? false;
 
-        // Breath animation
-        const breathScale = (state === 0) ? Math.sin(breathTimer * 2) * 0.4 : 0;
+        // Fear Tremble / Shiver
+        const shiverX = isScared ? (Math.sin(Date.now() * 0.05) * 0.6) : 0;
+        const px = x + shiverX;
+
+        // Breath animation: rapid hyperventilation when scared, slow shallow breaths when calm
+        const breathSpeed = isScared ? 8.0 : 2.2;
+        const breathScale = (state === 0) ? Math.sin(breathTimer * breathSpeed) * (isScared ? 0.6 : 0.35) : 0;
         
         // Legs (bottom 7px: y + 10 to y + 17)
         let leftLegY = y + 10;
@@ -170,7 +176,7 @@ export default class SpriteRenderer {
             const legOffsets = [0, -1, 0, 1];
             leftLegY += legOffsets[frame];
             rightLegY += legOffsets[(frame + 2) % 4];
-            leftArmY += legOffsets[(frame + 2) % 4]; // Arms opposite to legs
+            leftArmY += legOffsets[(frame + 2) % 4];
             rightArmY += legOffsets[frame];
         } else if (state === 2) { // JUMPING
             leftLegY -= 2;
@@ -186,38 +192,138 @@ export default class SpriteRenderer {
             leftLegY -= 1;
             rightLegY -= 1;
             leftArmY -= 1;
-            rightArmY -= 3; // one arm up
+            rightArmY -= 3;
         }
 
         // Draw left arm (behind)
-        renderer.drawRect(x + 1, leftArmY - breathScale, 2, 5, '#222830');
+        renderer.drawRect(px + 1, leftArmY - breathScale, 2, 5, '#1e232b');
 
-        // Draw legs
-        renderer.drawRect(x + 2, leftLegY, 4, 7, hLegs);
-        renderer.drawRect(x + 6, rightLegY, 4, 7, hLegs);
+        // Draw slender human legs & boots
+        renderer.drawRect(px + 2, leftLegY, 3, 5, hLegs);
+        renderer.drawRect(px + 6, rightLegY, 3, 5, hLegs);
+        renderer.drawRect(px + 2, leftLegY + 5, 3, 2, hBoots);
+        renderer.drawRect(px + 6, rightLegY + 5, 3, 2, hBoots);
 
-        // Draw torso
-        renderer.drawRect(x + 2, y + 4 - breathScale, 8, 6 + breathScale, hTorso);
+        // Draw torso (slender tattered survivor jacket)
+        renderer.drawRect(px + 2, y + 4 - breathScale, 7, 6 + breathScale, hTorso);
+        renderer.drawRect(px + 3, y + 5 - breathScale, 5, 4, '#384150'); // jacket inner highlight
         
-        // Draw right arm (front)
-        renderer.drawRect(x + 9, rightArmY - breathScale, 2, 5, '#222830');
+        // Draw right arm (front) holding fragile lantern
+        renderer.drawRect(px + 8, rightArmY - breathScale, 2, 5, '#1e232b');
+        // Small handheld lantern
+        const lanternX = facingRight ? px + 9 : px - 1;
+        const lanternY = rightArmY + 3 - breathScale;
+        renderer.drawRect(lanternX, lanternY, 2, 3, '#475569'); // iron cage
+        renderer.drawRect(lanternX + 0.5, lanternY + 1, 1, 1, '#f59e0b'); // amber wick flame
 
-        // Head
-        renderer.drawRect(x + 3, y - breathScale, 6, 4, hSkin);
+        // Fragile pale human head & tattered hood
+        renderer.drawRect(px + 2, y - 1 - breathScale, 7, 5, '#222731'); // hood back
+        renderer.drawRect(px + 3, y - 2 - breathScale, 5, 2, '#222731'); // hood top
         
-        // Hood part
-        renderer.drawRect(x + 2, y - 1 - breathScale, 8, 4, hTorso);
-        renderer.drawRect(x + 3, y - breathScale, 6, 2, hTorso); // hood peak
-        
-        // Face/Skin visible area
-        renderer.drawRect(x + (facingRight ? 4 : 3), y + 1 - breathScale, 5, 3, hSkin);
+        // Head / Skin
+        const faceDir = isLookingBack ? !facingRight : facingRight;
+        const faceX = faceDir ? px + 4 : px + 2;
+        renderer.drawRect(faceX, y + 1 - breathScale, 5, 3, hSkin);
 
-        // Eyes
+        // Wide, terrified eyes with dilated pupils
         if (!isBlinking) {
-            const eyeX = facingRight ? x + 6 : x + 4;
-            renderer.drawRect(eyeX, y + 2 - breathScale, 1, 1, hEyes);
-            renderer.drawRect(eyeX + 2, y + 2 - breathScale, 1, 1, hEyes);
+            const eyeX = faceDir ? px + 5 : px + 3;
+            // White sclera
+            renderer.drawRect(eyeX, y + 1 - breathScale, 3, 2, '#ffffff');
+            // Dilated dark pupil darting around
+            const pupilOffset = isScared ? (Math.floor(Date.now() / 250) % 2) : 0;
+            renderer.drawRect(eyeX + pupilOffset, y + 1 - breathScale, 1, 2, '#0f172a');
         }
+    }
+
+    /**
+     * Towering, grotesque, nightmare Shadow Stalker (16x38px)
+     */
+    static drawShadow(renderer, x, y, width, height, alpha, tendrilTimer, eyeGlow, timer, history = []) {
+        if (alpha <= 0.01) return;
+
+        // 1. Afterimage ghost trails
+        history.forEach((hist, i) => {
+            const alphaMod = i === 0 ? 0.22 : (i === 1 ? 0.12 : 0.06);
+            renderer.drawRect(
+                hist.x, hist.y,
+                width, height,
+                `rgba(10, 6, 20, ${alpha * alphaMod})`
+            );
+        });
+
+        // Wavering, twitching motion
+        const twitch = (Math.sin(timer * 25) > 0.85) ? (Math.random() - 0.5) * 2.5 : 0;
+        const waverX = Math.sin(tendrilTimer) * 1.5 + twitch;
+        const waverY = Math.cos(tendrilTimer * 0.7) * 1.5;
+
+        // 2. Towering Smoky Void Body (16x38px)
+        // Outer miasma aura
+        renderer.drawRect(
+            x + waverX - 3, y + waverY - 3,
+            width + 6, height + 6,
+            `rgba(20, 10, 35, ${alpha * 0.4})`
+        );
+        // Core shadow body
+        renderer.drawRect(
+            x + waverX, y + waverY,
+            width, height,
+            `rgba(8, 4, 16, ${alpha})`
+        );
+
+        // 3. Glitching void static blocks
+        for (let i = 0; i < 5; i++) {
+            const gx = x + (Math.random() - 0.2) * width * 1.3;
+            const gy = y + Math.random() * height;
+            const gw = 2 + Math.random() * 3;
+            const gh = 2 + Math.random() * 2;
+            renderer.drawRect(gx, gy, gw, gh, `rgba(12, 6, 24, ${alpha * 0.85})`);
+        }
+
+        // 4. Elongated Twitching Claw Arms
+        const armTwitchLeft = Math.sin(timer * 18) * 3;
+        const armTwitchRight = Math.cos(timer * 15) * 3;
+        // Left arm & needle claws
+        renderer.drawRect(x + waverX - 4, y + 10 + waverY + armTwitchLeft, 4, 16, `rgba(10, 5, 20, ${alpha * 0.9})`);
+        renderer.drawRect(x + waverX - 6, y + 24 + waverY + armTwitchLeft, 3, 1, `rgba(180, 180, 210, ${alpha * 0.75})`); // claw tips
+        renderer.drawRect(x + waverX - 6, y + 26 + waverY + armTwitchLeft, 2, 1, `rgba(180, 180, 210, ${alpha * 0.75})`);
+        // Right arm & needle claws
+        renderer.drawRect(x + waverX + width, y + 10 + waverY + armTwitchRight, 4, 16, `rgba(10, 5, 20, ${alpha * 0.9})`);
+        renderer.drawRect(x + waverX + width + 3, y + 24 + waverY + armTwitchRight, 3, 1, `rgba(180, 180, 210, ${alpha * 0.75})`); // claw tips
+        renderer.drawRect(x + waverX + width + 3, y + 26 + waverY + armTwitchRight, 2, 1, `rgba(180, 180, 210, ${alpha * 0.75})`);
+
+        // 5. Writhing Ground Tendrils
+        for (let i = 0; i < 4; i++) {
+            const tx = x + 2 + i * 4 + Math.sin(tendrilTimer * 1.8 + i) * 3;
+            renderer.drawRect(tx, y + height - 3, 2, 14 + (i % 2) * 4, `rgba(12, 6, 24, ${alpha * 0.8})`);
+        }
+
+        // 6. Horrifying Nightmare Visage
+        // Black hollow sockets
+        const eyeY = y + 7 + waverY;
+        renderer.drawRect(x + 2 + waverX, eyeY, 5, 5, `rgba(0, 0, 0, ${alpha})`);
+        renderer.drawRect(x + 9 + waverX, eyeY, 5, 5, `rgba(0, 0, 0, ${alpha})`);
+
+        // Piercing, unblinking white-hot pinprick pupils
+        const pupilColor = `rgba(255, 255, 255, ${alpha * eyeGlow})`;
+        renderer.drawRect(x + 4 + waverX, eyeY + 2, 2, 2, pupilColor);
+        renderer.drawRect(x + 10 + waverX, eyeY + 2, 2, 2, pupilColor);
+
+        // Eye aura / spectral bleed
+        renderer.drawRect(x + 1 + waverX, eyeY - 1, 14, 7, `rgba(147, 51, 234, ${alpha * 0.28})`);
+
+        // 7. Gaping Void Maw with Jagged Needle Teeth
+        const mawY = y + 16 + waverY;
+        renderer.drawRect(x + 4 + waverX, mawY, 8, 8, `rgba(2, 1, 5, ${alpha * 0.98})`);
+        // Sharp needle teeth (top row)
+        renderer.drawRect(x + 5 + waverX, mawY, 1, 2, `rgba(240, 240, 255, ${alpha * 0.9})`);
+        renderer.drawRect(x + 7 + waverX, mawY, 1, 2, `rgba(240, 240, 255, ${alpha * 0.9})`);
+        renderer.drawRect(x + 9 + waverX, mawY, 1, 2, `rgba(240, 240, 255, ${alpha * 0.9})`);
+        renderer.drawRect(x + 11 + waverX, mawY, 1, 2, `rgba(240, 240, 255, ${alpha * 0.9})`);
+        // Bottom teeth
+        renderer.drawRect(x + 6 + waverX, mawY + 6, 1, 2, `rgba(240, 240, 255, ${alpha * 0.9})`);
+        renderer.drawRect(x + 8 + waverX, mawY + 6, 1, 2, `rgba(240, 240, 255, ${alpha * 0.9})`);
+        renderer.drawRect(x + 10 + waverX, mawY + 6, 1, 2, `rgba(240, 240, 255, ${alpha * 0.9})`);
     }
 
     static drawTorch(renderer, x, y, timer, isExtinguished = false) {

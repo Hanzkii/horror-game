@@ -31,57 +31,9 @@ export default class MainMenu {
         // Audio volumes
         this.settings = saveManager.loadSettings();
 
-        // Character Customization Palettes
-        this.palette = {
-            hoodies: [
-                { name: 'SHADOW BLUE', color: '#3a4a5c' },
-                { name: 'CRIMSON ROBE', color: '#7a2222' },
-                { name: 'ABYSS BLACK', color: '#1b1b22' },
-                { name: 'FOREST MOSS', color: '#2d4c38' },
-                { name: 'OCCULT GOLD', color: '#7a6020' },
-                { name: 'SPECTRAL ASH', color: '#555866' },
-                { name: 'GHOST WHITE', color: '#b0b8c8' }
-            ],
-            pants: [
-                { name: 'CHARCOAL', color: '#2a2a3a' },
-                { name: 'OBSIDIAN', color: '#15151a' },
-                { name: 'BROWN LEATHER', color: '#4a3224' },
-                { name: 'FADED DENIM', color: '#283548' },
-                { name: 'BONE GREY', color: '#3c4048' }
-            ],
-            skins: [
-                { name: 'PALE', color: '#d4cec0' },
-                { name: 'ASHEN', color: '#a8b0be' },
-                { name: 'WARM', color: '#cfa080' },
-                { name: 'GHOSTLY CYAN', color: '#8ee2db' }
-            ],
-            eyes: [
-                { name: 'WHITE', color: '#ffffff' },
-                { name: 'CYAN GLOW', color: '#00e5ff' },
-                { name: 'BLOOD RED', color: '#ff3333' },
-                { name: 'AMBER', color: '#ffaa00' },
-                { name: 'PURPLE', color: '#d055ff' },
-                { name: 'EMERALD', color: '#22ff88' }
-            ],
-            lanterns: [
-                { name: 'WARM AMBER', color: 'rgba(255, 200, 120, 1)' },
-                { name: 'COLD CYAN', color: 'rgba(80, 230, 255, 1)' },
-                { name: 'BLOOD GLOW', color: 'rgba(255, 70, 70, 1)' },
-                { name: 'PHANTOM VIOLET', color: 'rgba(210, 100, 255, 1)' },
-                { name: 'EMERALD FOG', color: 'rgba(80, 255, 160, 1)' }
-            ]
-        };
-
-        this.customization = {
-            hoodieIndex: 0,
-            pantsIndex: 0,
-            skinIndex: 0,
-            eyesIndex: 0,
-            lanternIndex: 0
-        };
-
-        this.charOptionIndex = 0;
-        this.loadCustomization();
+        // Sound Test & Debug State
+        this.debugGodMode = false;
+        this.audioScape = null;
 
         // Ambient soul motes
         for (let i = 0; i < 40; i++) {
@@ -109,19 +61,6 @@ export default class MainMenu {
         }
     }
 
-    loadCustomization() {
-        try {
-            const saved = localStorage.getItem('echo_char_custom');
-            if (saved) Object.assign(this.customization, JSON.parse(saved));
-        } catch (e) {}
-    }
-
-    saveCustomization() {
-        try {
-            localStorage.setItem('echo_char_custom', JSON.stringify(this.customization));
-        } catch (e) {}
-    }
-
     playSfx(name = 'click') {
         if (this.audio && typeof this.audio.play === 'function') {
             try { this.audio.play(name, { volume: 0.35 }); } catch (e) {}
@@ -135,7 +74,7 @@ export default class MainMenu {
     }
 
     showDesignMenu() {
-        this.mode = 'dev';
+        this.mode = 'sound_debug';
         this.selectedIndex = 0;
     }
 
@@ -187,7 +126,7 @@ export default class MainMenu {
         const enterPressed = input.isJustPressed('confirm') || input.isJustPressed('jump');
 
         if (this.mode === 'main') {
-            const maxOptions = this.hasSavedGame ? 7 : 6;
+            const maxOptions = this.hasSavedGame ? 6 : 5;
             if (upPressed) {
                 this.selectedIndex = (this.selectedIndex - 1 + maxOptions) % maxOptions;
                 this.playSfx('click');
@@ -196,21 +135,6 @@ export default class MainMenu {
                 this.playSfx('click');
             } else if (enterPressed) {
                 this.executeMainSelection(this.selectedIndex);
-            }
-        } else if (this.mode === 'character') {
-            if (upPressed) {
-                this.charOptionIndex = (this.charOptionIndex - 1 + 6) % 6;
-                this.playSfx('click');
-            } else if (downPressed) {
-                this.charOptionIndex = (this.charOptionIndex + 1) % 6;
-                this.playSfx('click');
-            } else if (input.isJustPressed('left')) {
-                this.cycleCharOption(this.charOptionIndex, -1);
-            } else if (input.isJustPressed('right')) {
-                this.cycleCharOption(this.charOptionIndex, 1);
-            } else if (enterPressed && this.charOptionIndex === 5) {
-                this.mode = 'main';
-                this.playSfx('click');
             }
         }
     }
@@ -221,42 +145,19 @@ export default class MainMenu {
                 case 0: this.selectedAction = 'continue'; break;
                 case 1: this.selectedAction = 'story'; break;
                 case 2: this.selectedAction = 'tutorial'; break;
-                case 3: this.mode = 'character'; break;
+                case 3: this.mode = 'sound_debug'; break;
                 case 4: this.mode = 'achievements'; break;
                 case 5: this.mode = 'settings'; break;
-                case 6: this.mode = 'dev'; break;
             }
         } else {
             switch (index) {
                 case 0: this.selectedAction = 'story'; break;
                 case 1: this.selectedAction = 'tutorial'; break;
-                case 2: this.mode = 'character'; break;
+                case 2: this.mode = 'sound_debug'; break;
                 case 3: this.mode = 'achievements'; break;
                 case 4: this.mode = 'settings'; break;
-                case 5: this.mode = 'dev'; break;
             }
         }
-        this.playSfx('click');
-    }
-
-    cycleCharOption(idx, delta) {
-        if (idx === 0) {
-            const len = this.palette.hoodies.length;
-            this.customization.hoodieIndex = (this.customization.hoodieIndex + delta + len) % len;
-        } else if (idx === 1) {
-            const len = this.palette.pants.length;
-            this.customization.pantsIndex = (this.customization.pantsIndex + delta + len) % len;
-        } else if (idx === 2) {
-            const len = this.palette.skins.length;
-            this.customization.skinIndex = (this.customization.skinIndex + delta + len) % len;
-        } else if (idx === 3) {
-            const len = this.palette.eyes.length;
-            this.customization.eyesIndex = (this.customization.eyesIndex + delta + len) % len;
-        } else if (idx === 4) {
-            const len = this.palette.lanterns.length;
-            this.customization.lanternIndex = (this.customization.lanternIndex + delta + len) % len;
-        }
-        this.saveCustomization();
         this.playSfx('click');
     }
 
@@ -312,14 +213,11 @@ export default class MainMenu {
             case 'settings':
                 this.renderSettings(ctx, width, height);
                 break;
-            case 'character':
-                this.renderCharacterDesign(ctx, width, height);
+            case 'sound_debug':
+                this.renderSoundDebug(ctx, width, height);
                 break;
             case 'controls':
                 this.renderControlsGuide(ctx, width, height);
-                break;
-            case 'dev':
-                this.renderDevStudio(ctx, width, height);
                 break;
             case 'main':
             default:
@@ -350,18 +248,16 @@ export default class MainMenu {
                 `CONTINUE  •  ${this.saveSummary}`,
                 'NEW DESCENT',
                 'TUTORIAL CHAMBER',
-                'CHARACTER DESIGN',
+                'SOUND TEST & DEBUG',
                 'ACHIEVEMENTS',
-                'SETTINGS & AUDIO',
-                'DESIGN STUDIO'
+                'SETTINGS & AUDIO'
             ]
             : [
                 'DESCEND INTO ABYSS',
                 'TUTORIAL CHAMBER',
-                'CHARACTER DESIGN',
+                'SOUND TEST & DEBUG',
                 'ACHIEVEMENTS',
-                'SETTINGS & AUDIO',
-                'DESIGN STUDIO'
+                'SETTINGS & AUDIO'
             ];
 
         const startY = height * 0.35;
@@ -548,111 +444,202 @@ export default class MainMenu {
         });
     }
 
-    renderCharacterDesign(ctx, width, height) {
-        Typography.drawText(ctx, 'CHARACTER DESIGN & WARDROBE', width / 2, 70, {
+    renderSoundDebug(ctx, width, height) {
+        Typography.drawText(ctx, 'SOUND TEST & DEBUG SUITE', width / 2, 54, {
             font: FONT_STACKS.TITLE,
+            color: '#38bdf8',
+            align: 'center',
+            shadowColor: 'rgba(56, 189, 248, 0.4)',
+            shadowBlur: 10
+        });
+
+        Typography.drawText(ctx, 'Procedural SFX Synthesizer  •  Atmosphere State Mixer  •  Cheats & Diagnostics', width / 2, 84, {
+            font: FONT_STACKS.CAPTION,
+            color: '#94a3b8',
+            align: 'center'
+        });
+
+        const panelW = Math.min(540, width * 0.46);
+        const panelH = height - 165;
+        const leftX = width / 2 - panelW - 14;
+        const rightX = width / 2 + 14;
+        const panelY = 104;
+
+        // LEFT PANEL: SFX SOUNDBOARD
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(leftX, panelY, panelW, panelH);
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(leftX, panelY, panelW, panelH);
+
+        Typography.drawText(ctx, 'SFX SOUNDBOARD (CLICK TO TRIGGER)', leftX + panelW / 2, panelY + 24, {
+            font: FONT_STACKS.BODY_BOLD,
             color: '#f8fafc',
             align: 'center'
         });
 
-        const options = [
-            { label: 'HOODIE COAT', value: this.palette.hoodies[this.customization.hoodieIndex].name },
-            { label: 'TROUSERS', value: this.palette.pants[this.customization.pantsIndex].name },
-            { label: 'COMPLEXION', value: this.palette.skins[this.customization.skinIndex].name },
-            { label: 'EYE GLOW', value: this.palette.eyes[this.customization.eyesIndex].name },
-            { label: 'LANTERN FLAME', value: this.palette.lanterns[this.customization.lanternIndex].name }
+        const sfxList = [
+            { label: '👟 Stone Step', id: 'footstep_stone_1' },
+            { label: '💧 Wet Cavern Step', id: 'footstep_wet_1' },
+            { label: '💓 Visceral Heartbeat', id: 'visceral_heartbeat' },
+            { label: '🫁 Ragged Breathing', id: 'ragged_breath' },
+            { label: '🦴 Bone Snap Fracture', id: 'bone_snap' },
+            { label: '🩸 Flesh Wound Tear', id: 'flesh_wound' },
+            { label: '😱 Stalker Shriek', id: 'stalker_shriek' },
+            { label: '⚡ Stalker Lunge Ambush', id: 'stalker_lunge' },
+            { label: '👁️ Phantom Whisper', id: 'phantom_whisper' },
+            { label: '👣 Hallucination Step', id: 'hallucination_step' },
+            { label: '🕯️ Torch Extinguish', id: 'torch_snuff' },
+            { label: '🪨 Heavy Gate Grind', id: 'gate_grind' },
+            { label: '⚔️ Pendulum Whoosh', id: 'pendulum_whoosh' },
+            { label: '💥 Horror Stinger', id: 'stinger_sharp' },
+            { label: '⚙️ Lever Mechanism', id: 'click' },
+            { label: '🚪 Heavy Door Creak', id: 'door_creak' }
         ];
 
-        const startY = 160;
-        const panelW = 480;
-        const startX = width / 2 - panelW / 2;
+        const sfxCols = 2;
+        const btnW = (panelW - 36) / sfxCols;
+        const btnH = 34;
+        const startSfxY = panelY + 44;
 
-        for (let i = 0; i < options.length; i++) {
-            const opt = options[i];
-            const y = startY + i * 58;
+        for (let i = 0; i < sfxList.length; i++) {
+            const col = i % sfxCols;
+            const row = Math.floor(i / sfxCols);
+            const bx = leftX + 14 + col * (btnW + 8);
+            const by = startSfxY + row * (btnH + 6);
+            const item = sfxList[i];
 
-            Typography.drawText(ctx, opt.label, startX, y + 22, {
-                font: FONT_STACKS.BODY_BOLD,
-                color: this.charOptionIndex === i ? '#38bdf8' : '#cbd5e1'
-            });
-
-            // Prev button
-            const prevX = startX + 220;
             this.hitboxes.push({
-                x: prevX, y, w: 34, h: 34,
-                action: () => this.cycleCharOption(i, -1)
+                x: bx, y: by, w: btnW, h: btnH,
+                action: () => {
+                    this.playSfx(item.id);
+                }
             });
-            Typography.drawButton(ctx, '<', prevX, y, 34, 34);
 
-            // Value badge
-            Typography.drawText(ctx, opt.value, prevX + 90, y + 22, {
+            Typography.drawButton(ctx, item.label, bx, by, btnW, btnH, {
                 font: FONT_STACKS.CAPTION,
-                color: '#f8fafc',
-                align: 'center'
+                textColor: '#e2e8f0',
+                borderColor: 'rgba(255, 255, 255, 0.15)'
             });
-
-            // Next button
-            const nextX = prevX + 150;
-            this.hitboxes.push({
-                x: nextX, y, w: 34, h: 34,
-                action: () => this.cycleCharOption(i, 1)
-            });
-            Typography.drawButton(ctx, '>', nextX, y, 34, 34);
         }
 
-        // Save & Return Button
+        // RIGHT PANEL: ATMOSPHERE & CHEATS
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(rightX, panelY, panelW, panelH);
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(rightX, panelY, panelW, panelH);
+
+        Typography.drawText(ctx, 'ATMOSPHERE & DEBUG SUITE', rightX + panelW / 2, panelY + 24, {
+            font: FONT_STACKS.BODY_BOLD,
+            color: '#f8fafc',
+            align: 'center'
+        });
+
+        // 1. Atmosphere Selectors
+        const atmoY = panelY + 44;
+        const atmoList = [
+            { label: '🌿 EXPLORATION AMBIENCE', state: 'exploration' },
+            { label: '⚡ TENSION SOUNDSCAPE', state: 'tension' },
+            { label: '🩸 PURSUIT / CHASE DREAD', state: 'chase' },
+            { label: '🕯️ HOLY TORCH SANCTUARY', state: 'sanctuary' },
+            { label: '☀️ SURFACE SUNRISE PEACEFUL', state: 'surface_peaceful' }
+        ];
+
+        const atmoBtnW = (panelW - 28);
+        for (let i = 0; i < atmoList.length; i++) {
+            const by = atmoY + i * 35;
+            const item = atmoList[i];
+            this.hitboxes.push({
+                x: rightX + 14, y: by, w: atmoBtnW, h: 28,
+                action: () => {
+                    this.selectedAction = `atmo_${item.state}`;
+                    this.playSfx('click');
+                }
+            });
+            Typography.drawButton(ctx, item.label, rightX + 14, by, atmoBtnW, 28, {
+                font: FONT_STACKS.CAPTION,
+                textColor: '#cbd5e1'
+            });
+        }
+
+        // 2. Debug Cheats & Diagnostics
+        const cheatY = atmoY + atmoList.length * 35 + 8;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.beginPath();
+        ctx.moveTo(rightX + 14, cheatY);
+        ctx.lineTo(rightX + panelW - 14, cheatY);
+        ctx.stroke();
+
+        const cheats = [
+            { label: `🛡️ GOD MODE: ${this.debugGodMode ? 'ACTIVE [ON]' : 'DISABLED [OFF]'}`, action: 'toggle_god_mode', color: this.debugGodMode ? '#10b981' : '#f87171' },
+            { label: '👻 SPAWN SHADOW STALKER', action: 'spawn_stalker', color: '#cbd5e1' },
+            { label: '😱 TRIGGER FULLSCREEN JUMPSCARE', action: 'test_jumpscare', color: '#f87171' }
+        ];
+
+        for (let i = 0; i < cheats.length; i++) {
+            const by = cheatY + 8 + i * 34;
+            const c = cheats[i];
+            this.hitboxes.push({
+                x: rightX + 14, y: by, w: atmoBtnW, h: 28,
+                action: () => {
+                    if (c.action === 'toggle_god_mode') {
+                        this.debugGodMode = !this.debugGodMode;
+                    }
+                    this.selectedAction = c.action;
+                    this.playSfx('click');
+                }
+            });
+            Typography.drawButton(ctx, c.label, rightX + 14, by, atmoBtnW, 28, {
+                font: FONT_STACKS.CAPTION,
+                textColor: c.color
+            });
+        }
+
+        // 3. Level Warps
+        const warpY = cheatY + 8 + cheats.length * 34 + 8;
+        Typography.drawText(ctx, 'WARP TO LEVEL:', rightX + 16, warpY + 10, {
+            font: FONT_STACKS.CAPTION,
+            color: '#94a3b8'
+        });
+
+        const warps = [
+            { label: 'TUTORIAL', act: 'warp_tutorial' },
+            { label: 'B1', act: 'warp_b1' },
+            { label: 'B2', act: 'warp_b2' },
+            { label: 'B3', act: 'warp_b3' },
+            { label: 'SURFACE', act: 'warp_finale' }
+        ];
+        const warpBtnW = (panelW - 28 - (warps.length - 1) * 6) / warps.length;
+        for (let i = 0; i < warps.length; i++) {
+            const wx = rightX + 14 + i * (warpBtnW + 6);
+            const w = warps[i];
+            this.hitboxes.push({
+                x: wx, y: warpY + 18, w: warpBtnW, h: 26,
+                action: () => {
+                    this.selectedAction = w.act;
+                    this.playSfx('click');
+                }
+            });
+            Typography.drawButton(ctx, w.label, wx, warpY + 18, warpBtnW, 26, {
+                font: FONT_STACKS.CAPTION,
+                textColor: '#38bdf8'
+            });
+        }
+
+        // Back to Title Button
         const backW = 200;
-        const backH = 44;
+        const backH = 38;
         const backX = width / 2 - backW / 2;
-        const backY = height - 80;
+        const backY = height - 50;
         this.hitboxes.push({
             x: backX, y: backY, w: backW, h: backH,
             action: () => { this.mode = 'main'; this.playSfx('click'); }
         });
-        Typography.drawButton(ctx, 'SAVE & RETURN', backX, backY, backW, backH, {
-            isSelected: true,
-            font: FONT_STACKS.BODY_BOLD
+        Typography.drawButton(ctx, '< BACK TO TITLE', backX, backY, backW, backH, {
+            font: FONT_STACKS.BODY_BOLD,
+            isSelected: true
         });
-    }
-
-    renderDevStudio(ctx, width, height) {
-        Typography.drawText(ctx, 'DEVELOPER STUDIO', width / 2, height * 0.25, {
-            font: FONT_STACKS.TITLE,
-            color: '#f59e0b',
-            align: 'center'
-        });
-
-        const devOptions = [
-            { label: 'LEVEL ARCHITECT (EDITOR)', action: 'design_level' },
-            { label: 'SOUND STUDIO (SYNTH)', action: 'design_sound' },
-            { label: '< BACK TO TITLE', action: 'back' }
-        ];
-
-        const startY = height * 0.4;
-        const btnW = 320;
-        const btnH = 46;
-
-        for (let i = 0; i < devOptions.length; i++) {
-            const y = startY + i * (btnH + 16);
-            const x = width / 2 - btnW / 2;
-            const opt = devOptions[i];
-
-            this.hitboxes.push({
-                x, y, w: btnW, h: btnH,
-                action: () => {
-                    if (opt.action === 'back') {
-                        this.mode = 'main';
-                    } else {
-                        this.selectedAction = opt.action;
-                    }
-                    this.playSfx('click');
-                }
-            });
-
-            Typography.drawButton(ctx, opt.label, x, y, btnW, btnH, {
-                font: FONT_STACKS.BODY_BOLD
-            });
-        }
     }
 
     render(ctx = null) {

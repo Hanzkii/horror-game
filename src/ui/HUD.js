@@ -431,11 +431,11 @@ export default class HUD {
                 });
 
                 const btnW = 280;
-                const btnH = 46;
+                const btnH = 44;
                 const btnX = width / 2 - btnW / 2;
 
                 // 1. Resume
-                const resumeY = height * 0.40;
+                const resumeY = height * 0.38;
                 const isHoverResume = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= resumeY && mouse.y <= resumeY + btnH;
                 if (isHoverResume && isClick) {
                     this.pauseAction = 'resume';
@@ -446,7 +446,7 @@ export default class HUD {
                 });
 
                 // 2. Settings
-                const settingsY = height * 0.50;
+                const settingsY = height * 0.46;
                 const isHoverSettings = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= settingsY && mouse.y <= settingsY + btnH;
                 if (isHoverSettings && isClick) {
                     this.pauseSubmenu = 'settings';
@@ -457,14 +457,26 @@ export default class HUD {
                     font: FONT_STACKS.BODY_BOLD
                 });
 
-                // 3. Return to Main Menu / Exit to Editor
-                const quitY = height * 0.60;
+                // 3. Sound Test & Debug
+                const debugY = height * 0.54;
+                const isHoverDebug = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= debugY && mouse.y <= debugY + btnH;
+                if (isHoverDebug && isClick) {
+                    this.pauseAction = 'debug_menu';
+                }
+                Typography.drawButton(ctx, 'SOUND TEST & DEBUG', btnX, debugY, btnW, btnH, {
+                    isHovered: isHoverDebug,
+                    font: FONT_STACKS.BODY_BOLD,
+                    textColor: isHoverDebug ? '#38bdf8' : '#94a3b8',
+                    borderColor: isHoverDebug ? '#38bdf8' : 'rgba(56, 189, 248, 0.25)'
+                });
+
+                // 4. Return to Main Menu
+                const quitY = height * 0.62;
                 const isHoverQuit = mouse.x >= btnX && mouse.x <= btnX + btnW && mouse.y >= quitY && mouse.y <= quitY + btnH;
                 if (isHoverQuit && isClick) {
                     this.pauseAction = 'quit';
                 }
-                const quitLabel = gameState.isTestLevel ? 'EXIT TO EDITOR' : 'RETURN TO MAIN MENU';
-                Typography.drawButton(ctx, quitLabel, btnX, quitY, btnW, btnH, {
+                Typography.drawButton(ctx, 'RETURN TO MAIN MENU', btnX, quitY, btnW, btnH, {
                     isHovered: isHoverQuit,
                     font: FONT_STACKS.BODY_BOLD,
                     borderColor: isHoverQuit ? '#ef4444' : 'rgba(239, 68, 68, 0.3)',
