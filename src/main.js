@@ -844,6 +844,16 @@ async function init() {
         audioScape.setState(AUDIO_STATES.MENU);
         
         currentState = GAME_STATES.MENU;
+
+        // Flush input so the click/key that dismissed the overlay doesn't
+        // bleed through and accidentally select a menu button on frame 1
+        input.update();
+        if (input.mouse) {
+            input.mouse.isClicked = false;
+            input.mouse.isDown = false;
+            input.mouse.wasDown = false;
+        }
+
         requestAnimationFrame(loop);
     }
 
