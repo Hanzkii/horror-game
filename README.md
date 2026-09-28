@@ -2,6 +2,10 @@
 
 A browser-based psychological horror platformer built from scratch in vanilla JavaScript using HTML5 Canvas and the Web Audio API (zero external runtime dependencies).
 
+[![Play Online on GitHub Pages](https://img.shields.io/badge/Play%20Online-GitHub%20Pages-10b981?style=for-the-badge&logo=github&logoColor=white)](https://hanzkii.github.io/horror-game/)
+
+🎮 **Play directly in your browser:** **[https://hanzkii.github.io/horror-game/](https://hanzkii.github.io/horror-game/)**
+
 ---
 
 ## 👁️ Overview & Story
@@ -12,6 +16,7 @@ Trapped deep within an abyssal subterranean labyrinth, you awaken into suffocati
 - **Engine**: Custom vanilla JavaScript engine (60 FPS fixed-timestep physics, dual-pass high-resolution vector HUD)
 - **Audio**: Real-time procedural audio synthesis via Web Audio API (dynamic heartbeats, reactive drones, binaural whispers, hallucinated footsteps)
 - **Atmosphere**: Dynamic radial lighting, lantern oil depletion, torch snuffing, sanity-driven visual corruption, and fullscreen jumpscares
+- **Live Deployment**: Hosted on [GitHub Pages](https://hanzkii.github.io/horror-game/)
 
 ---
 
@@ -68,8 +73,13 @@ Available **exclusively while playing inside the game** via the **Pause Menu** (
 
 ---
 
-## 🚀 How to Run
+## 🚀 How to Play & Run
 
+### 🌐 Play Online in Browser (Instant)
+The game is deployed and ready to play without installing anything:  
+👉 **[https://hanzkii.github.io/horror-game/](https://hanzkii.github.io/horror-game/)**
+
+### 💻 Run Locally
 Because the project utilizes native ES6 JavaScript modules, serve the directory with any local HTTP server:
 
 ```bash
